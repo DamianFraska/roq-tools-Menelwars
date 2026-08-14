@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.7.4
+// @version      0.7.5
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -263,64 +263,240 @@ function displayName(name) {
 }
 
   function renderOptimizer() {
-    if (!optPanel) return;
-    const available = RECIPES.filter(isAvailable);
-    const known = available.filter(x=>x.litry!==null).sort((a,b)=>b.litry-a.litry);
-    const unknown = available.filter(x=>x.litry===null);
-    const th = threshold(known);
-    let body="";
 
-    if (currentTab==="top") {
-      body = known.slice(0,10).map((r,i)=>`
-        <div>
-  <b>${esc(displayName(r.baza))}</b>
-</div>
+  if (!optPanel) return;
 
-<div>
-  ${esc(displayName(r.drozdze))}
-  ·
-  ${esc(displayName(r.woda))}
-  ·
-  P${r.program}
-</div>
-      ).join("") || `<div class="muted">Brak znanych receptur.</div>`;
-    }
+  const available =
+    RECIPES.filter(isAvailable);
 
-    if (currentTab==="unknown") {
-      const ranked = unknown.map(r=>({...r,trioMax:maxForTrio(r)}))
-        .sort((a,b)=>(b.trioMax??-1)-(a.trioMax??-1)||a.baza.localeCompare(b.baza)||a.program-b.program);
-      body = ranked.map(r=>`
-        <div>
-  <b>${esc(displayName(r.baza))}</b>
-</div>
+  const known =
+    available
+      .filter(x => x.litry !== null)
+      .sort((a,b) => b.litry - a.litry);
 
-<div>
-  ${esc(displayName(r.drozdze))}
-  ·
-  ${esc(displayName(r.woda))}
-  ·
-  P${r.program}
-</div>
-        ${r.trioMax!==null && r.trioMax>=th ? `<div class="star">⭐ Interesująca do zbadania</div>
-        <div class="muted">Inny program tej trójki: do ${fmt(r.trioMax)} l.</div>`:""}</div>`
-      ).join("") || `<div class="muted">Brak nieodkrytych receptur.</div>`;
-    }
+  const unknown =
+    available.filter(x => x.litry === null);
 
-    if (currentTab==="progress") {
-      const globalKnown = RECIPES.filter(x=>x.litry!==null).length;
-      const gp = globalKnown/RECIPES.length*100;
-      const ap = available.length ? known.length/available.length*100 : 0;
-      body = `<b>Cała baza</b><br>Znane: <b>${globalKnown} / ${RECIPES.length}</b><br>
-      Nieodkryte: <b>${RECIPES.length-globalKnown}</b><br>Postęp: <b>${gp.toFixed(1).replace(".",",")}%</b>
-      <div class="bar"><div style="width:${gp}%"></div></div>
-      <b>Dla Twoich składników</b><br>Znane: <b>${known.length} / ${available.length}</b><br>
-      Nieodkryte: <b>${unknown.length}</b><br>Postęp: <b>${ap.toFixed(1).replace(".",",")}%</b>
-      <div class="bar"><div style="width:${ap}%"></div></div>`;
-    }
+  const th =
+    threshold(known);
 
-    optPanel.querySelector(".body").innerHTML = body;
-    optPanel.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===currentTab));
+  let body = "";
+
+
+  // =========================================================
+  // NAJLEPSZE
+  // =========================================================
+
+  if (currentTab === "top") {
+
+    body =
+      known
+        .slice(0,10)
+        .map((r,i) => `
+
+          <div class="card">
+
+            <span class="rank">
+              ${i+1}.
+            </span>
+
+            <span class="liters">
+              ${fmt(r.litry)} l
+            </span>
+
+            <div>
+              <b>
+                ${esc(displayName(r.baza))}
+              </b>
+            </div>
+
+            <div>
+              ${esc(displayName(r.drozdze))}
+              ·
+              ${esc(displayName(r.woda))}
+              ·
+              P${r.program}
+            </div>
+
+          </div>
+
+        `)
+        .join("")
+      ||
+      `<div class="muted">
+        Brak znanych receptur.
+      </div>`;
   }
+
+
+  // =========================================================
+  // NIEODKRYTE
+  // =========================================================
+
+  if (currentTab === "unknown") {
+
+    const ranked =
+      unknown
+        .map(r => ({
+          ...r,
+          trioMax: maxForTrio(r)
+        }))
+        .sort(
+          (a,b) =>
+            (b.trioMax ?? -1) -
+            (a.trioMax ?? -1)
+            ||
+            a.baza.localeCompare(b.baza)
+            ||
+            a.program - b.program
+        );
+
+
+    body =
+      ranked
+        .map(r => `
+
+          <div class="card">
+
+            <div>
+              <b>
+                ${esc(displayName(r.baza))}
+              </b>
+            </div>
+
+            <div>
+              ${esc(displayName(r.drozdze))}
+              ·
+              ${esc(displayName(r.woda))}
+              ·
+              P${r.program}
+            </div>
+
+            ${
+              r.trioMax !== null &&
+              r.trioMax >= th
+
+                ? `
+                    <div class="star">
+                      ⭐ Interesująca do zbadania
+                    </div>
+
+                    <div class="muted">
+                      Inny program tej trójki:
+                      do ${fmt(r.trioMax)} l.
+                    </div>
+                  `
+
+                : ""
+            }
+
+          </div>
+
+        `)
+        .join("")
+      ||
+      `<div class="muted">
+        Brak nieodkrytych receptur.
+      </div>`;
+  }
+
+
+  // =========================================================
+  // POSTĘP
+  // =========================================================
+
+  if (currentTab === "progress") {
+
+    const globalKnown =
+      RECIPES.filter(x => x.litry !== null).length;
+
+    const gp =
+      globalKnown /
+      RECIPES.length *
+      100;
+
+    const ap =
+      available.length
+        ? known.length /
+          available.length *
+          100
+        : 0;
+
+
+    body = `
+
+      <b>Cała baza</b>
+      <br>
+
+      Znane:
+      <b>
+        ${globalKnown} / ${RECIPES.length}
+      </b>
+
+      <br>
+
+      Nieodkryte:
+      <b>
+        ${RECIPES.length - globalKnown}
+      </b>
+
+      <br>
+
+      Postęp:
+      <b>
+        ${gp.toFixed(1).replace(".",",")}%
+      </b>
+
+      <div class="bar">
+        <div style="width:${gp}%"></div>
+      </div>
+
+
+      <b>Dla Twoich składników</b>
+      <br>
+
+      Znane:
+      <b>
+        ${known.length} / ${available.length}
+      </b>
+
+      <br>
+
+      Nieodkryte:
+      <b>
+        ${unknown.length}
+      </b>
+
+      <br>
+
+      Postęp:
+      <b>
+        ${ap.toFixed(1).replace(".",",")}%
+      </b>
+
+      <div class="bar">
+        <div style="width:${ap}%"></div>
+      </div>
+
+    `;
+  }
+
+
+  optPanel
+    .querySelector(".body")
+    .innerHTML = body;
+
+
+  optPanel
+    .querySelectorAll(".tab")
+    .forEach(
+      t =>
+        t.classList.toggle(
+          "active",
+          t.dataset.tab === currentTab
+        )
+    );
+}
 
   function openOptimizer() {
     if (optPanel) { optPanel.remove(); optPanel=null; return; }
