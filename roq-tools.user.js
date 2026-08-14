@@ -1,8 +1,7 @@
 // ==UserScript==
-// @name         RoQ Tools - MenelWars
-// @namespace    roq.tools
-// @version      0.7.0
-// @description  Optymalizator receptur i ściąga mapy do MenelWars.
+// @name         MenelWars Tools
+// @namespace    roq.menelwars.tools
+// @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @author       RoQ
 // @match        https://menelwars.pl/*
 // @match        https://www.menelwars.pl/*
