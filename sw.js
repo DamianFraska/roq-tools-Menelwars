@@ -1,5 +1,5 @@
 
-const CACHE = "roq-tools-v1";
+const CACHE = "roq-tools-v2";
 const ASSETS = [
   "./",
   "./index.html",

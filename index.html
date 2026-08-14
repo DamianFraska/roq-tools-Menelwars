@@ -32,6 +32,7 @@
   <nav class="tabs">
     <button class="active" data-tab="optimizer-view">🏆 Najlepsze</button>
     <button data-tab="unknown-view">🔬 Nieodkryte</button>
+    <button data-tab="submit-view">➕ Dodaj</button>
     <button data-tab="map-view">🗺 Mapa</button>
     <button data-tab="progress-view">📊 Postęp</button>
   </nav>
@@ -51,6 +52,61 @@
     <div class="panel">
       <div class="panel-head">🔬 Nieodkryte dla Twoich składników</div>
       <div class="panel-body" id="unknown-list"></div>
+    </div>
+  </section>
+
+
+  <section id="submit-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">➕ Zgłoś odkrytą recepturę</div>
+      <div class="panel-body">
+        <form id="submit-form" class="submit-form">
+
+          <label>
+            <span>Nick</span>
+            <input id="submit-nick" type="text" maxlength="40" placeholder="Twój nick" required>
+          </label>
+
+          <label>
+            <span>Baza</span>
+            <select id="submit-base"></select>
+          </label>
+
+          <label>
+            <span>Drożdże</span>
+            <select id="submit-yeast"></select>
+          </label>
+
+          <label>
+            <span>Woda</span>
+            <select id="submit-water"></select>
+          </label>
+
+          <label>
+            <span>Program</span>
+            <select id="submit-program"></select>
+          </label>
+
+          <label>
+            <span>Wynik w litrach</span>
+            <input id="submit-liters" type="text" inputmode="decimal" placeholder="np. 4,18" required>
+          </label>
+
+          <label>
+            <span>Uwagi (opcjonalnie)</span>
+            <textarea id="submit-notes" maxlength="250" rows="3" placeholder="np. ponowny test / korekta"></textarea>
+          </label>
+
+          <div id="submit-info" class="submit-info"></div>
+
+          <button class="primary-btn" type="submit">
+            Wyślij do weryfikacji
+          </button>
+
+          <div id="submit-status" class="submit-status"></div>
+
+        </form>
+      </div>
     </div>
   </section>
 
