@@ -5,6 +5,7 @@
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
 // @match        https://www.menelwars.pl/*
+// @version      0.7.1
 // @grant        GM_registerMenuCommand
 // @run-at       document-start
 // @updateURL    https://raw.githubusercontent.com/RoQ665/Menelwars-Tools/main/menelwars-tools.user.js
@@ -130,7 +131,13 @@
     .tabs{display:flex;border-bottom:1px solid #d1c1a7}
     .tab{flex:1;text-align:center;padding:9px 5px;cursor:pointer;font-weight:700;background:#eee3cf}
     .tab.active{background:#fff8eb}
-    .body,.mapbody{padding:10px 12px;max-height:52vh;overflow:auto;background:#fff8eb}
+    .body,.mapbody{
+  	padding:10px 12px;
+  	max-height:68vh;
+ 	overflow-y:auto;
+  	overflow-x:hidden;
+  	background:#fff8eb;
+	}
     .card{border:1px solid #d8c7aa;border-radius:9px;padding:9px 10px;margin-bottom:8px;background:#fffdf8}
     .rank{font-weight:800} .liters{float:right;font-weight:800;font-size:15px;color:#356a3c}
     .star{color:#9a6500;font-weight:700;margin-top:5px} .muted{color:#766b5e}
@@ -178,7 +185,7 @@
     if (currentTab==="unknown") {
       const ranked = unknown.map(r=>({...r,trioMax:maxForTrio(r)}))
         .sort((a,b)=>(b.trioMax??-1)-(a.trioMax??-1)||a.baza.localeCompare(b.baza)||a.program-b.program);
-      body = ranked.slice(0,40).map(r=>`
+      body = ranked.map(r=>`
         <div class="card"><div><b>${esc(r.baza)}</b></div>
         <div>${esc(r.drozdze)} · ${esc(r.woda)} · P${r.program}</div>
         ${r.trioMax!==null && r.trioMax>=th ? `<div class="star">⭐ Interesująca do zbadania</div>
