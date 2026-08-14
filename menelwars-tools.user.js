@@ -218,7 +218,7 @@
   	<span class="title">MenelWars Tools</span>
   	<button id="map">🗺 Mapa</button>
   	<button id="submit">➕ Zgłoś</button>
-  	<button id="opt">⚗ Optymalizator</button>
+  	<button id="opt">⚗ Recepty</button>
 	`;
     root.appendChild(bar); document.documentElement.appendChild(host);
     root.getElementById("map").onclick = openMap;
@@ -282,7 +282,7 @@
 	}
     if (!root) mount();
     optPanel = document.createElement("div"); optPanel.className="panel";
-    optPanel.innerHTML = `<div class="head"><span>⚗ MenelWars — Optymalizator</span><span class="close">×</span></div>
+    optPanel.innerHTML = `<div class="head"><span>⚗ MenelWars — Recepty</span><span class="close">×</span></div>
       <div class="premium"><div class="ptitle">Posiadane składniki premium</div>
       <div class="checks">${[...PREMIUM.baza,...PREMIUM.drozdze].map(checkboxHtml).join("")}</div></div>
       <div class="tabs"><div class="tab active" data-tab="top">Najlepsze</div>
@@ -827,7 +827,7 @@ function openSubmit() {
   });
 }
 
-  GM_registerMenuCommand("⚗ Otwórz Optymalizator",()=>{mount();openOptimizer();});
+  GM_registerMenuCommand("⚗ Otwórz Recepty",()=>{mount();openOptimizer();});
   GM_registerMenuCommand("🗺 Otwórz Mapę",()=>{mount();openMap();});
 
   function boot() {
