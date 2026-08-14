@@ -1,6 +1,6 @@
 {
-  "name": "RoQ Tools",
-  "short_name": "RoQ Tools",
+  "name": "MenelWars Tools",
+  "short_name": "MenelWars Tools",
   "description": "Mobilny optymalizator receptur i ściąga mapy do MenelWars.",
   "start_url": "./",
   "scope": "./",
