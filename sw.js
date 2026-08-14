@@ -1,5 +1,5 @@
 
-const CACHE = "roq-tools-v2";
+const CACHE = "roq-tools-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,7 +8,8 @@ const ASSETS = [
   "./app.js",
   "./manifest.webmanifest",
   "./icon-192.png",
-  "./icon-512.png"
+  "./icon-512.png",
+  "./roq-tools.user.js"
 ];
 
 self.addEventListener("install", event => {

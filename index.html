@@ -35,6 +35,7 @@
     <button data-tab="submit-view">➕ Dodaj</button>
     <button data-tab="map-view">🗺 Mapa</button>
     <button data-tab="progress-view">📊 Postęp</button>
+    <button data-tab="pc-view">🖥 PC</button>
   </nav>
 
   <section id="optimizer-view" class="view">
@@ -123,6 +124,38 @@
       <div class="panel-body" id="progress-body"></div>
     </div>
   </section>
+
+  <section id="pc-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">🖥 RoQ Tools na komputerze</div>
+      <div class="panel-body pc-install">
+        <p>
+          Na komputerze najwygodniej korzystać z RoQ Tools bezpośrednio
+          na stronie MenelWars przez Tampermonkey.
+        </p>
+
+        <a class="install-script-btn" href="./roq-tools.user.js">
+          🧩 Zainstaluj RoQ Tools do Tampermonkey
+        </a>
+
+        <div class="pc-note">
+          <b>Ważne:</b> musisz mieć zainstalowany Tampermonkey oraz w Chrome
+          włączone <b>„Zezwalaj na skrypty użytkownika”</b>.
+        </div>
+
+        <div class="pc-note">
+          Receptury są pobierane ze wspólnej zatwierdzonej bazy,
+          więc aktualizacja wyników nie wymaga ponownej instalacji skryptu.
+        </div>
+
+        <div class="pc-note">
+          Aktualizacja samego RoQ Tools będzie obsługiwana przez Tampermonkey
+          po opublikowaniu nowszej wersji pliku <code>roq-tools.user.js</code>.
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <footer>RoQ Tools · autor: RoQ</footer>

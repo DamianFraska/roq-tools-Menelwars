@@ -13,7 +13,7 @@ body{background:linear-gradient(180deg,#efe2ca,#f8f0e2);padding-bottom:80px}
 main{max-width:760px;margin:auto;padding:12px}
 .hero{background:#fff9ee;border:1px solid #cbb99a;border-radius:14px;padding:13px;margin-bottom:12px;box-shadow:0 4px 14px #5a402014}
 .hero h1{font-size:20px;margin:0 0 5px}.hero p{margin:0;color:#6b5c49;font-size:13px}
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px;position:sticky;top:61px;z-index:15;background:#efe2ca;padding:6px 0}
+.tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:12px;position:sticky;top:61px;z-index:15;background:#efe2ca;padding:6px 0}
 .tabs button{border:1px solid #c8b596;background:#eadfc9;border-radius:9px;padding:10px 4px;font-weight:700;color:#514231}
 .tabs button.active{background:#6a5136;color:white}
 .panel{background:#fff8eb;border:1px solid #ccb797;border-radius:14px;overflow:hidden;box-shadow:0 5px 18px #5a402019}
@@ -109,4 +109,38 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
     min-width:94px;
     flex:0 0 auto;
   }
+}
+
+.pc-install p{
+  margin-top:0;
+  line-height:1.5;
+}
+.install-script-btn{
+  display:block;
+  text-decoration:none;
+  text-align:center;
+  border:1px solid #5b472f;
+  border-radius:11px;
+  background:#6a5136;
+  color:#fff;
+  padding:13px 12px;
+  font-weight:800;
+  margin:12px 0;
+}
+.install-script-btn:active{
+  transform:translateY(1px);
+}
+.pc-note{
+  background:#fffdf8;
+  border:1px solid #dfd0b6;
+  border-radius:9px;
+  padding:10px;
+  margin-top:9px;
+  line-height:1.45;
+  font-size:13px;
+}
+.pc-note code{
+  background:#eee3cf;
+  padding:2px 4px;
+  border-radius:4px;
 }
