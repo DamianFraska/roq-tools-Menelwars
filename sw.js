@@ -1,4 +1,4 @@
-const CACHE = "roq-tools-v4";
+const CACHE = "menelwars-tools-v2";
 
 const ASSETS = [
   "./",
