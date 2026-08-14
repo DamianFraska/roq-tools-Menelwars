@@ -15,6 +15,28 @@
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
   const NICK_KEY = "roq_tools_submitter_nick_v1";
 
+  const DISPLAY_NAMES = {
+  "Ziemniak irga": 'Ziemniaki "Irga"',
+  "Ziemniak vinieta": 'Ziemniaki "Vineta"',
+  "Obierki jabłek": "Obierki po jabłkach",
+  "Obierki ziemniaków": "Obierki po ziemniakach",
+  "Cukier": 'Cukier "Klasyczny"',
+
+  "Instant": 'Drożdże "Instant"',
+  "Babuni": "Drożdże Babuni",
+  "Klasyczne": "Drożdże klasyczne",
+  "Piekarskie": "Drożdże piekarskie",
+  "Turbo": "Turbo drożdże",
+  "Winiarskie": "Drożdże winiarskie",
+
+  "Górski strumyk": 'Woda "Górski strumyk"',
+  "Menel zdrój": 'Woda "Menel Zdrój"'
+};
+
+function displayName(name) {
+  return DISPLAY_NAMES[name] || name;
+}
+
   const MAP = [
     ["Wilanów", "Agresywnie", "⚔️"],
     ["Mokotów", "Przyjacielski", "🤝"],
@@ -200,7 +222,7 @@
               ${premium[name] ? "checked" : ""}
             >
 
-            <span>${name}</span>
+            <span>${displayName(name)}</span>
 
           </label>
 
@@ -242,14 +264,14 @@
         <div class="recipe-main">
 
           <strong>
-            ${r.baza}
-          </strong>
+	  ${displayName(r.baza)}
+	</strong>
 
-          <small>
-            ${r.drozdze} ·
-            ${r.woda} ·
-            P${r.program}
-          </small>
+	<small>
+	  ${displayName(r.drozdze)} ·
+	  ${displayName(r.woda)} ·
+	  P${r.program}
+	</small>
 
         </div>
 
@@ -278,7 +300,7 @@
   function renderUnknown(data) {
 
     const list =
-      data.unknown.slice(0,60);
+  data.unknown;
 
     el("unknown-list").innerHTML =
       list
@@ -288,15 +310,15 @@
 
             <div>
 
-              <strong>
-                ${r.baza}
-              </strong>
+	<strong>
+	  ${displayName(r.baza)}
+	</strong>
 
-              <small>
-                ${r.drozdze} ·
-                ${r.woda} ·
-                P${r.program}
-              </small>
+	<small>
+	  ${displayName(r.drozdze)} ·
+	  ${displayName(r.woda)} ·
+	  P${r.program}
+	</small>
 
             </div>
 
@@ -449,11 +471,14 @@
 
   function fillSelect(id, values) {
 
-    el(id).innerHTML =
-      values
-        .map(v => `<option value="${v}">${v}</option>`)
-        .join("");
-  }
+  el(id).innerHTML =
+    values
+      .map(
+        v =>
+          `<option value="${v}">${displayName(v)}</option>`
+      )
+      .join("");
+}
 
   function setupSubmissionForm() {
 

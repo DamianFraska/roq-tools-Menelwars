@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.7.3
+// @version      0.7.4
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -46,6 +46,28 @@
     ["Białołęka",null],
     ["Targówek",null]
   ];
+
+const DISPLAY_NAMES = {
+  "Ziemniak irga": 'Ziemniaki "Irga"',
+  "Ziemniak vinieta": 'Ziemniaki "Vineta"',
+  "Obierki jabłek": "Obierki po jabłkach",
+  "Obierki ziemniaków": "Obierki po ziemniakach",
+  "Cukier": 'Cukier "Klasyczny"',
+
+  "Instant": 'Drożdże "Instant"',
+  "Babuni": "Drożdże Babuni",
+  "Klasyczne": "Drożdże klasyczne",
+  "Piekarskie": "Drożdże piekarskie",
+  "Turbo": "Turbo drożdże",
+  "Winiarskie": "Drożdże winiarskie",
+
+  "Górski strumyk": 'Woda "Górski strumyk"',
+  "Menel zdrój": 'Woda "Menel Zdrój"'
+};
+
+function displayName(name) {
+  return DISPLAY_NAMES[name] || name;
+}
 
   const PREMIUM_KEY = "roq_tools_premium_v1";
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
@@ -228,8 +250,17 @@
   }
 
   function checkboxHtml(name) {
-    return `<label><input type="checkbox" data-premium="${esc(name)}" ${premiumState[name]?"checked":""}>${esc(name)}</label>`;
-  }
+  return `
+    <label>
+      <input
+        type="checkbox"
+        data-premium="${esc(name)}"
+        ${premiumState[name] ? "checked" : ""}
+      >
+      ${esc(displayName(name))}
+    </label>
+  `;
+}
 
   function renderOptimizer() {
     if (!optPanel) return;
@@ -241,8 +272,17 @@
 
     if (currentTab==="top") {
       body = known.slice(0,10).map((r,i)=>`
-        <div class="card"><span class="rank">${i+1}.</span><span class="liters">${fmt(r.litry)} l</span>
-        <div><b>${esc(r.baza)}</b></div><div>${esc(r.drozdze)} · ${esc(r.woda)} · P${r.program}</div></div>`
+        <div>
+  <b>${esc(displayName(r.baza))}</b>
+</div>
+
+<div>
+  ${esc(displayName(r.drozdze))}
+  ·
+  ${esc(displayName(r.woda))}
+  ·
+  P${r.program}
+</div>
       ).join("") || `<div class="muted">Brak znanych receptur.</div>`;
     }
 
@@ -250,8 +290,17 @@
       const ranked = unknown.map(r=>({...r,trioMax:maxForTrio(r)}))
         .sort((a,b)=>(b.trioMax??-1)-(a.trioMax??-1)||a.baza.localeCompare(b.baza)||a.program-b.program);
       body = ranked.map(r=>`
-        <div class="card"><div><b>${esc(r.baza)}</b></div>
-        <div>${esc(r.drozdze)} · ${esc(r.woda)} · P${r.program}</div>
+        <div>
+  <b>${esc(displayName(r.baza))}</b>
+</div>
+
+<div>
+  ${esc(displayName(r.drozdze))}
+  ·
+  ${esc(displayName(r.woda))}
+  ·
+  P${r.program}
+</div>
         ${r.trioMax!==null && r.trioMax>=th ? `<div class="star">⭐ Interesująca do zbadania</div>
         <div class="muted">Inny program tej trójki: do ${fmt(r.trioMax)} l.</div>`:""}</div>`
       ).join("") || `<div class="muted">Brak nieodkrytych receptur.</div>`;
@@ -394,7 +443,7 @@ function openSubmit() {
               BASES
                 .map(
                   x =>
-                    `<option>${esc(x)}</option>`
+                    `<option value="${esc(x)}">${esc(displayName(x))}</option>`
                 )
                 .join("")
             }
@@ -411,7 +460,7 @@ function openSubmit() {
               YEASTS
                 .map(
                   x =>
-                    `<option>${esc(x)}</option>`
+                    `<option value="${esc(x)}">${esc(displayName(x))}</option>`
                 )
                 .join("")
             }
@@ -428,7 +477,7 @@ function openSubmit() {
               WATERS
                 .map(
                   x =>
-                    `<option>${esc(x)}</option>`
+                    `<option value="${esc(x)}">${esc(displayName(x))}</option>`
                 )
                 .join("")
             }
@@ -827,7 +876,7 @@ function openSubmit() {
   });
 }
 
-  GM_registerMenuCommand("⚗ Otwórz Destylarnia",()=>{mount();openOptimizer();});
+  GM_registerMenuCommand("⚗ Otwórz Destylarnię",()=>{mount();openOptimizer();});
   GM_registerMenuCommand("🗺 Otwórz Mapę",()=>{mount();openMap();});
 
   function boot() {
