@@ -1,12 +1,15 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
+// @version      0.7.2
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
 // @match        https://www.menelwars.pl/*
-// @version      0.7.1
 // @grant        GM_registerMenuCommand
+// @grant        GM_xmlhttpRequest
+// @connect      script.google.com
+// @connect      script.googleusercontent.com
 // @run-at       document-start
 // @updateURL    https://raw.githubusercontent.com/RoQ665/Menelwars-Tools/main/menelwars-tools.user.js
 // @downloadURL  https://raw.githubusercontent.com/RoQ665/Menelwars-Tools/main/menelwars-tools.user.js
@@ -46,6 +49,7 @@
 
   const PREMIUM_KEY = "roq_tools_premium_v1";
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
+  const NICK_KEY = "roq_tools_submitter_nick_v1";
 
   let premiumState = {};
   let remoteApproved = {};
@@ -110,7 +114,12 @@
     return vals[Math.min(Math.floor(vals.length*.8), vals.length-1)];
   }
 
-  let host=null, root=null, optPanel=null, mapPanel=null, currentTab="top";
+  	let host=null;
+	let root=null;
+	let optPanel=null;
+	let mapPanel=null;
+	let submitPanel=null;
+	let currentTab="top";
 
   const CSS = `
     *{box-sizing:border-box}
@@ -145,6 +154,55 @@
     .bar>div{height:100%;background:#6d8c55}
     .maprow{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-bottom:1px solid #e2d5bf}
     .district{font-weight:700} .action{text-align:right;font-weight:700} .unknown{color:#9a6500}
+
+.form{
+  display:grid;
+  gap:8px;
+}
+
+.form label{
+  display:grid;
+  gap:4px;
+  font-weight:700;
+}
+
+.form input,
+.form select,
+.form textarea{
+  width:100%;
+  border:1px solid #ccb797;
+  border-radius:7px;
+  background:#fffdf8;
+  color:#332a20;
+  padding:8px 9px;
+  font:13px Arial,sans-serif;
+}
+
+.form textarea{
+  resize:vertical;
+}
+
+.submitInfo{
+  padding:8px;
+  border-radius:7px;
+  background:#fff5d5;
+  border:1px solid #d6b85f;
+}
+
+.submitStatus{
+  min-height:20px;
+  text-align:center;
+  font-weight:700;
+  color:#4f643d;
+}
+
+.sendBtn{
+  width:100%;
+  background:#6a5136;
+  color:white;
+  border-color:#5b472f;
+  padding:10px;
+}
   `;
 
   function mount() {
@@ -156,9 +214,15 @@
     root = host.attachShadow({mode:"open"});
     const style = document.createElement("style"); style.textContent = CSS; root.appendChild(style);
     const bar = document.createElement("div"); bar.id="bar";
-    bar.innerHTML = `<span class="title">MenelWars Tools</span><button id="map">🗺 Mapa</button><button id="opt">⚗ Optymalizator</button>`;
+    bar.innerHTML = `
+  	<span class="title">MenelWars Tools</span>
+  	<button id="map">🗺 Mapa</button>
+  	<button id="submit">➕ Zgłoś</button>
+  	<button id="opt">⚗ Optymalizator</button>
+	`;
     root.appendChild(bar); document.documentElement.appendChild(host);
     root.getElementById("map").onclick = openMap;
+    root.getElementById("submit").onclick = openSubmit;
     root.getElementById("opt").onclick = openOptimizer;
     return true;
   }
@@ -212,6 +276,10 @@
   function openOptimizer() {
     if (optPanel) { optPanel.remove(); optPanel=null; return; }
     if (mapPanel) { mapPanel.remove(); mapPanel=null; }
+	if (submitPanel) {
+  	submitPanel.remove();
+  	submitPanel = null;
+	}
     if (!root) mount();
     optPanel = document.createElement("div"); optPanel.className="panel";
     optPanel.innerHTML = `<div class="head"><span>⚗ MenelWars — Optymalizator</span><span class="close">×</span></div>
@@ -231,7 +299,437 @@
     renderOptimizer();
   }
 
+function currentKnownValue(k) {
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      remoteApproved,
+      k
+    )
+  ) {
+    return Number(remoteApproved[k]);
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      KNOWN,
+      k
+    )
+  ) {
+    return Number(KNOWN[k]);
+  }
+
+  return null;
+}
+
+
+function openSubmit() {
+
+  if (submitPanel) {
+    submitPanel.remove();
+    submitPanel = null;
+    return;
+  }
+
+  if (optPanel) {
+    optPanel.remove();
+    optPanel = null;
+  }
+
+  if (mapPanel) {
+    mapPanel.remove();
+    mapPanel = null;
+  }
+
+  if (!root) {
+    mount();
+  }
+
+  submitPanel =
+    document.createElement("div");
+
+  submitPanel.className =
+    "panel";
+
+  const savedNick =
+    localStorage.getItem(NICK_KEY) || "";
+
+  submitPanel.innerHTML = `
+
+    <div class="head">
+
+      <span>
+        ➕ Zgłoś recepturę
+      </span>
+
+      <span class="close">
+        ×
+      </span>
+
+    </div>
+
+    <div class="body">
+
+      <form
+        id="recipeForm"
+        class="form">
+
+        <label>
+          Nick
+
+          <input
+            id="recipeNick"
+            type="text"
+            maxlength="40"
+            value="${esc(savedNick)}"
+            required>
+        </label>
+
+        <label>
+          Baza
+
+          <select id="recipeBase">
+
+            ${
+              BASES
+                .map(
+                  x =>
+                    `<option>${esc(x)}</option>`
+                )
+                .join("")
+            }
+
+          </select>
+        </label>
+
+        <label>
+          Drożdże
+
+          <select id="recipeYeast">
+
+            ${
+              YEASTS
+                .map(
+                  x =>
+                    `<option>${esc(x)}</option>`
+                )
+                .join("")
+            }
+
+          </select>
+        </label>
+
+        <label>
+          Woda
+
+          <select id="recipeWater">
+
+            ${
+              WATERS
+                .map(
+                  x =>
+                    `<option>${esc(x)}</option>`
+                )
+                .join("")
+            }
+
+          </select>
+        </label>
+
+        <label>
+          Program
+
+          <select id="recipeProgram">
+
+            ${
+              PROGRAMS
+                .map(
+                  x =>
+                    `<option value="${x}">P${x}</option>`
+                )
+                .join("")
+            }
+
+          </select>
+        </label>
+
+        <label>
+          Wynik w litrach
+
+          <input
+            id="recipeLiters"
+            type="text"
+            inputmode="decimal"
+            placeholder="np. 4,18"
+            required>
+        </label>
+
+        <label>
+          Uwagi
+
+          <textarea
+            id="recipeNotes"
+            rows="3"
+            maxlength="250"
+            placeholder="opcjonalnie"></textarea>
+        </label>
+
+        <div
+          id="recipeInfo"
+          class="submitInfo">
+        </div>
+
+        <button
+          type="submit"
+          class="sendBtn">
+
+          Wyślij do weryfikacji
+
+        </button>
+
+        <div
+          id="recipeStatus"
+          class="submitStatus">
+        </div>
+
+      </form>
+
+    </div>
+  `;
+
+  root.appendChild(
+    submitPanel
+  );
+
+  submitPanel
+    .querySelector(".close")
+    .onclick = () => {
+
+      submitPanel.remove();
+      submitPanel = null;
+    };
+
+
+  function submissionKey() {
+
+    return key(
+      submitPanel.querySelector("#recipeBase").value,
+      submitPanel.querySelector("#recipeYeast").value,
+      submitPanel.querySelector("#recipeWater").value,
+      Number(
+        submitPanel.querySelector("#recipeProgram").value
+      )
+    );
+  }
+
+
+  function updateRecipeInfo() {
+
+    const known =
+      currentKnownValue(
+        submissionKey()
+      );
+
+    const info =
+      submitPanel.querySelector("#recipeInfo");
+
+    if (known === null) {
+
+      info.innerHTML =
+        "🔬 Ta receptura jest obecnie <b>nieodkryta</b>.";
+
+    } else {
+
+      info.innerHTML =
+        "ℹ️ Aktualny znany wynik: <b>" +
+        fmt(known) +
+        " l</b>. Możesz wysłać korektę.";
+    }
+  }
+
+
+  [
+    "#recipeBase",
+    "#recipeYeast",
+    "#recipeWater",
+    "#recipeProgram"
+  ].forEach(selector => {
+
+    submitPanel
+      .querySelector(selector)
+      .addEventListener(
+        "change",
+        updateRecipeInfo
+      );
+  });
+
+
+  submitPanel
+    .querySelector("#recipeForm")
+    .addEventListener(
+      "submit",
+      event => {
+
+        event.preventDefault();
+
+        const status =
+          submitPanel.querySelector(
+            "#recipeStatus"
+          );
+
+        const nick =
+          submitPanel
+            .querySelector("#recipeNick")
+            .value
+            .trim();
+
+        const litryRaw =
+          submitPanel
+            .querySelector("#recipeLiters")
+            .value
+            .trim();
+
+        const litry =
+          Number(
+            litryRaw
+              .replace(/\s+/g, "")
+              .replace(",", ".")
+          );
+
+        if (!nick) {
+
+          status.textContent =
+            "Podaj nick.";
+
+          return;
+        }
+
+        if (
+          !Number.isFinite(litry) ||
+          litry <= 0
+        ) {
+
+          status.textContent =
+            "Podaj poprawny wynik.";
+
+          return;
+        }
+
+        localStorage.setItem(
+          NICK_KEY,
+          nick
+        );
+
+        const payload = {
+
+          nick,
+
+          baza:
+            submitPanel
+              .querySelector("#recipeBase")
+              .value,
+
+          drozdze:
+            submitPanel
+              .querySelector("#recipeYeast")
+              .value,
+
+          woda:
+            submitPanel
+              .querySelector("#recipeWater")
+              .value,
+
+          program:
+            Number(
+              submitPanel
+                .querySelector("#recipeProgram")
+                .value
+            ),
+
+          litry,
+
+          uwagi:
+            submitPanel
+              .querySelector("#recipeNotes")
+              .value
+              .trim()
+        };
+
+        status.textContent =
+          "Wysyłanie...";
+
+
+        GM_xmlhttpRequest({
+
+          method: "POST",
+
+          url: BACKEND_URL,
+
+          headers: {
+            "Content-Type":
+              "text/plain;charset=UTF-8"
+          },
+
+          data:
+            JSON.stringify(payload),
+
+          onload: response => {
+
+            try {
+
+              const result =
+                JSON.parse(
+                  response.responseText
+                );
+
+              if (result.ok) {
+
+                status.textContent =
+                  "✅ Zgłoszenie wysłane do weryfikacji.";
+
+                submitPanel
+                  .querySelector("#recipeLiters")
+                  .value = "";
+
+                submitPanel
+                  .querySelector("#recipeNotes")
+                  .value = "";
+
+              } else {
+
+                status.textContent =
+                  "⚠️ " +
+                  (
+                    result.error ||
+                    "Nie udało się wysłać."
+                  );
+              }
+
+            } catch {
+
+              status.textContent =
+                "⚠️ Nieprawidłowa odpowiedź serwera.";
+            }
+          },
+
+          onerror: () => {
+
+            status.textContent =
+              "⚠️ Błąd połączenia z serwerem.";
+          }
+        });
+      }
+    );
+
+
+  updateRecipeInfo();
+}
+
   function openMap() {
+	if (submitPanel) {
+  	submitPanel.remove();
+  	submitPanel = null;
+	}
     if (mapPanel) { mapPanel.remove(); mapPanel=null; return; }
     if (optPanel) { optPanel.remove(); optPanel=null; }
     if (!root) mount();
@@ -244,24 +742,90 @@
   }
 
   function fetchApproved() {
-    if (!backendConfigured() || !document.head) return;
-    const cb = "roqApproved_"+Date.now()+"_"+Math.floor(Math.random()*100000);
-    const s = document.createElement("script");
-    const cleanup=()=>{try{delete window[cb]}catch{} s.remove();};
-    window[cb]=payload=>{
-      try {
-        if (payload && payload.ok && payload.recipes && typeof payload.recipes==="object") {
-          remoteApproved=payload.recipes;
-          localStorage.setItem(REMOTE_KEY,JSON.stringify(remoteApproved));
-          RECIPES=buildRecipes();
-          if (optPanel) renderOptimizer();
-        }
-      } finally { cleanup(); }
-    };
-    s.onerror=cleanup;
-    s.src=BACKEND_URL+"?action=approved&callback="+encodeURIComponent(cb)+"&_="+Date.now();
-    document.head.appendChild(s);
+
+  if (!backendConfigured()) {
+    console.warn(
+      "[MenelWars Tools] BACKEND_URL nie jest skonfigurowany."
+    );
+    return;
   }
+
+  const url =
+    BACKEND_URL +
+    "?action=approved&_=" +
+    Date.now();
+
+  GM_xmlhttpRequest({
+
+    method: "GET",
+
+    url: url,
+
+    headers: {
+      "Accept": "application/json"
+    },
+
+    onload: function(response) {
+
+      try {
+
+        const payload =
+          JSON.parse(response.responseText);
+
+        if (
+          !payload ||
+          !payload.ok ||
+          !payload.recipes ||
+          typeof payload.recipes !== "object"
+        ) {
+
+          console.warn(
+            "[MenelWars Tools] Nieprawidłowa odpowiedź backendu:",
+            payload
+          );
+
+          return;
+        }
+
+        remoteApproved =
+          payload.recipes;
+
+        localStorage.setItem(
+          REMOTE_KEY,
+          JSON.stringify(remoteApproved)
+        );
+
+        RECIPES =
+          buildRecipes();
+
+        console.log(
+          "[MenelWars Tools] Pobrano zatwierdzone receptury:",
+          Object.keys(remoteApproved).length
+        );
+
+        if (optPanel) {
+          renderOptimizer();
+        }
+
+      } catch (err) {
+
+        console.error(
+          "[MenelWars Tools] Błąd parsowania backendu:",
+          err,
+          response.responseText
+        );
+      }
+    },
+
+    onerror: function(err) {
+
+      console.error(
+        "[MenelWars Tools] Błąd połączenia z backendem:",
+        err
+      );
+    }
+  });
+}
 
   GM_registerMenuCommand("⚗ Otwórz Optymalizator",()=>{mount();openOptimizer();});
   GM_registerMenuCommand("🗺 Otwórz Mapę",()=>{mount();openMap();});
