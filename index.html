@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#3d3022">
+  <meta name="description" content="RoQ Tools — mobilny optymalizator receptur i ściąga mapy do MenelWars.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <title>RoQ Tools</title>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">⚗</div>
+    <div><strong>RoQ Tools</strong><small>MenelWars</small></div>
+  </div>
+  <div class="actions">
+    <span id="net-state" class="chip">online</span>
+    <button id="install-btn" class="install" hidden>Instaluj</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>Mobilny zestaw narzędzi</h1>
+    <p>Optymalizator receptur, nieodkryte kombinacje i szybka ściąga mapy. Ustawienia premium są zapamiętywane na tym urządzeniu.</p>
+  </section>
+
+  <nav class="tabs">
+    <button class="active" data-tab="optimizer-view">🏆 Najlepsze</button>
+    <button data-tab="unknown-view">🔬 Nieodkryte</button>
+    <button data-tab="map-view">🗺 Mapa</button>
+    <button data-tab="progress-view">📊 Postęp</button>
+  </nav>
+
+  <section id="optimizer-view" class="view">
+    <div class="panel" style="margin-bottom:12px">
+      <div class="panel-head">🎒 Posiadane składniki premium</div>
+      <div class="panel-body"><div id="premium-grid" class="check-grid"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">🏆 Najlepsze dostępne receptury</div>
+      <div class="panel-body" id="top-list"></div>
+    </div>
+  </section>
+
+  <section id="unknown-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">🔬 Nieodkryte dla Twoich składników</div>
+      <div class="panel-body" id="unknown-list"></div>
+    </div>
+  </section>
+
+  <section id="map-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">🗺 Ściąga — Mapa</div>
+      <div class="panel-body" id="map-list"></div>
+    </div>
+  </section>
+
+  <section id="progress-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">📊 Postęp badań</div>
+      <div class="panel-body" id="progress-body"></div>
+    </div>
+  </section>
+</main>
+
+<footer>RoQ Tools · autor: RoQ</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
