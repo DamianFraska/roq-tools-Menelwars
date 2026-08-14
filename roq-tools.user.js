@@ -8,14 +8,14 @@
 // @match        https://www.menelwars.pl/*
 // @grant        GM_registerMenuCommand
 // @run-at       document-start
-// @updateURL    https://__GITHUB_USERNAME__.github.io/roq-tools/roq-tools.user.js
-// @downloadURL  https://__GITHUB_USERNAME__.github.io/roq-tools/roq-tools.user.js
+// @updateURL    https://raw.githubusercontent.com/RoQ665/roq-tools-Menelwars/main/roq-tools.user.js
+// @downloadURL  https://raw.githubusercontent.com/RoQ665/roq-tools-Menelwars/main/roq-tools.user.js
 // ==/UserScript==
 
 (function() {
   'use strict';
 
-  const BACKEND_URL = "WKLEJ_TUTAJ_URL_WEB_APP";
+  const BACKEND_URL = "https://script.google.com/macros/s/AKfycby8rjCO9HuRtQvQvFoF-OkjFhfnfcS1bTIag0V9LCSJykW6c8k5IZVH8K3pSVFH66ZBKQ/exec";
 
   const BASES = ["Ziemniak irga", "Ziemniak vinieta", "Jabłko", "Obierki jabłek", "Obierki ziemniaków", "Cukier", "Turbo Zacier"];
   const YEASTS = ["Instant", "Babuni", "Klasyczne", "Piekarskie", "Turbo", "Winiarskie"];
