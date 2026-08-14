@@ -9,7 +9,7 @@
   // WKLEJ TU URL WEB APP Z GOOGLE APPS SCRIPT
   // Musi kończyć się na /exec
   // ============================================================
-  const BACKEND_URL = "WKLEJ_TUTAJ_URL_WEB_APP";
+  const BACKEND_URL = "https://script.google.com/macros/s/AKfycby8rjCO9HuRtQvQvFoF-OkjFhfnfcS1bTIag0V9LCSJykW6c8k5IZVH8K3pSVFH66ZBKQ/exec";
 
   const STORAGE_KEY = "roq_tools_premium_v1";
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
@@ -599,12 +599,14 @@
       el("submit-nick").value.trim();
 
     const litryRaw =
-      el("submit-liters").value.trim();
+  	el("submit-liters").value.trim();
 
-    const litry =
-      Number(
-        litryRaw.replace(",", ".")
-      );
+	const litry =
+  		Number(
+    			litryRaw
+      				.replace(/\s+/g, "")
+      				.replace(",", ".")
+  	);
 
     if (!nick) {
 
