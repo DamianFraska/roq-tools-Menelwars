@@ -1223,6 +1223,8 @@ function showAdminContent() {
   el("admin-content").hidden = false;
 
   el("admin-status").textContent = "";
+
+  loadAdminSubmissions();	
 }
 
 
@@ -1397,6 +1399,173 @@ async function loginToAdmin(event) {
   }
 }
 
+function adminSubmissionCard(item) {
+
+  const notes =
+    item.uwagi
+      ? `
+          <div
+            class="muted"
+            style="margin-top:5px">
+            💬 ${escapeHtml(item.uwagi)}
+          </div>
+        `
+      : "";
+
+  return `
+    <div style="
+      border:1px solid #d8c7aa;
+      border-radius:8px;
+      background:#fffdf8;
+      padding:9px 10px;
+      margin-bottom:6px;
+    ">
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        gap:8px;
+        align-items:center;
+      ">
+
+        <strong>
+          ${escapeHtml(item.nick)}
+        </strong>
+
+        <strong>
+          ${formatSaldo(item.litry)} l
+        </strong>
+
+      </div>
+
+      <div
+        style="
+          font-size:13px;
+          margin-top:4px;
+        "
+      >
+        ${escapeHtml(displayName(item.baza))}
+        ·
+        ${escapeHtml(displayName(item.drozdze))}
+        ·
+        ${escapeHtml(displayName(item.woda))}
+        ·
+        P${item.program}
+      </div>
+
+      <div
+        class="muted"
+        style="margin-top:3px">
+        ${escapeHtml(item.date)}
+      </div>
+
+      ${notes}
+
+    </div>
+  `;
+}
+
+
+async function loadAdminSubmissions() {
+
+  const token =
+    adminToken();
+
+  if (!token) {
+    showAdminLogin();
+    return;
+  }
+
+  el("admin-status").textContent =
+    "Pobieranie zgłoszeń...";
+
+  try {
+
+    const payload =
+      await jsonp(
+        "adminSubmissions",
+        {token}
+      );
+
+    if (
+      !payload ||
+      !payload.ok
+    ) {
+
+      if (
+        payload &&
+        String(
+          payload.error || ""
+        )
+          .toLowerCase()
+          .includes(
+            "brak dostępu"
+          )
+      ) {
+
+        setAdminToken("");
+
+        showAdminLogin(
+          "Sesja administratora wygasła."
+        );
+
+        return;
+      }
+
+      throw new Error(
+        payload &&
+        payload.error
+          ? payload.error
+          : "Nie udało się pobrać zgłoszeń."
+      );
+    }
+
+    const submissions =
+      Array.isArray(
+        payload.submissions
+      )
+        ? payload.submissions
+        : [];
+
+    el(
+      "admin-submissions-count"
+    ).textContent =
+      `Oczekujące zgłoszenia: ${submissions.length}`;
+
+    el(
+      "admin-submissions"
+    ).innerHTML =
+      submissions.length
+
+        ? submissions
+            .map(
+              adminSubmissionCard
+            )
+            .join("")
+
+        : `
+            <div
+              style="
+                padding:14px;
+                border:1px solid #bad7ba;
+                border-radius:8px;
+                background:#eef7ee;
+              ">
+              ✅ Brak zgłoszeń oczekujących na weryfikację.
+            </div>
+          `;
+
+    el("admin-status").textContent =
+      "";
+
+  } catch (err) {
+
+    el("admin-status").textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się pobrać zgłoszeń.";
+  }
+}
 
 function setupAdmin() {
 
@@ -1405,6 +1574,12 @@ function setupAdmin() {
       "submit",
       loginToAdmin
     );
+
+  el("admin-refresh")
+  .addEventListener(
+    "click",
+    loadAdminSubmissions
+  );
 
 
   el("admin-logout")
