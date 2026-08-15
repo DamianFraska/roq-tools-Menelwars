@@ -1819,6 +1819,14 @@ async function loadAdminPaymentsStatus() {
     const staged =
       Boolean(payload.hasStagedData);
 
+    const writeProtection =
+      payload.writeProtection || {};
+
+    const writeBlocked =
+      Boolean(
+        writeProtection.blocked
+      );
+
     box.innerHTML = `
 
       <div style="
@@ -1913,6 +1921,49 @@ async function loadAdminPaymentsStatus() {
         </div>
 
       </div>
+
+      ${
+        writeBlocked
+          ? `
+              <div style="
+                margin-top:10px;
+                padding:10px;
+                border:1px solid #e0b766;
+                border-radius:8px;
+                background:#fff8e7;
+              ">
+
+                <strong>
+                  🌙 Okres ochronny 00:00–04:00
+                </strong>
+
+                <div
+                  class="muted"
+                  style="margin-top:4px"
+                >
+                  Możesz sprawdzać raporty,
+                  ale wprowadzanie danych
+                  będzie zablokowane do 04:00.
+                </div>
+
+              </div>
+            `
+          : `
+              <div style="
+                margin-top:10px;
+                padding:10px;
+                border:1px solid #bad7ba;
+                border-radius:8px;
+                background:#eef7ee;
+              ">
+
+                <strong>
+                  ✅ Wprowadzanie danych dostępne
+                </strong>
+
+              </div>
+            `
+      }
     `;
 
   } catch (err) {
