@@ -376,6 +376,19 @@
     🔍 Sprawdź dane
   </button>
 
+  <button
+  id="admin-payments-import"
+  class="primary-btn"
+  type="button"
+  hidden
+  style="
+    width:100%;
+    margin-top:8px;
+  "
+>
+  ✅ Wprowadź dane
+</button>
+
   <div
     id="admin-payments-preview-status"
     class="submit-status"
@@ -390,6 +403,51 @@
 </div>
 
 </div>
+                <div class="panel" style="margin-top:12px">
+
+          <div class="panel-head">
+            👥 Gracze
+          </div>
+
+          <div class="panel-body">
+
+            <form
+              id="admin-player-add-form"
+              class="submit-form"
+              style="margin-bottom:12px"
+            >
+
+              <label>
+                <span>Nick nowego gracza</span>
+
+                <input
+                  id="admin-player-nick"
+                  type="text"
+                  maxlength="50"
+                  placeholder="Nick gracza"
+                  required
+                >
+              </label>
+
+              <button
+                class="primary-btn"
+                type="submit"
+              >
+                ➕ Dodaj gracza
+              </button>
+
+            </form>
+
+            <div
+              id="admin-players-status"
+              class="submit-status"
+            ></div>
+
+            <div id="admin-players-list"></div>
+
+          </div>
+
+        </div>
 
         <div
           id="admin-status"

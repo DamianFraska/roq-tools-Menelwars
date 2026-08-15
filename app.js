@@ -1226,6 +1226,7 @@ function showAdminContent() {
 
   loadAdminSubmissions();	
   loadAdminPaymentsStatus();
+  loadAdminPlayers();
 }
 
 
@@ -1756,6 +1757,344 @@ function formatAdminDate(value) {
   return `${m[3]}.${m[2]}.${m[1]}`;
 }
 
+function adminPlayerRow(player) {
+
+  return `
+    <div
+      style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:10px;
+        padding:7px 9px;
+        margin-bottom:5px;
+        border:1px solid #d8c7aa;
+        border-radius:7px;
+        background:#fffdf8;
+      "
+    >
+
+      <strong>
+        ${escapeHtml(player.nick)}
+      </strong>
+
+      <button
+        type="button"
+        data-delete-player="${escapeHtml(player.nick)}"
+        style="
+          background:#fff0f0;
+          border-color:#d9aaaa;
+          white-space:nowrap;
+        "
+      >
+        🗑 Usuń
+      </button>
+
+    </div>
+  `;
+}
+
+async function loadAdminPlayers() {
+
+  const token =
+    adminToken();
+
+  const box =
+    el("admin-players-list");
+
+  const status =
+    el("admin-players-status");
+
+  if (
+    !token ||
+    !box ||
+    !status
+  ) {
+    return;
+  }
+
+
+  status.textContent =
+    "Pobieranie graczy...";
+
+
+  try {
+
+    const payload =
+      await jsonp(
+        "adminPaymentsStatus",
+        {token}
+      );
+
+
+    if (
+      !payload ||
+      !payload.ok
+    ) {
+
+      throw new Error(
+        payload &&
+        payload.error
+          ? payload.error
+          : "Nie udało się pobrać graczy."
+      );
+    }
+
+
+    const players =
+      Array.isArray(
+        payload.players
+      )
+        ? payload.players
+        : [];
+
+
+    box.innerHTML =
+      players.length
+        ? players
+            .map(adminPlayerRow)
+            .join("")
+        : `
+            <div class="empty">
+              Brak graczy.
+            </div>
+          `;
+
+
+    box
+      .querySelectorAll(
+        "[data-delete-player]"
+      )
+      .forEach(button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            deleteAdminPlayer(
+              button.dataset
+                .deletePlayer
+            );
+          }
+        );
+      });
+
+
+    status.textContent = "";
+
+
+  } catch (err) {
+
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się pobrać graczy.";
+  }
+}
+
+async function addAdminPlayer(event) {
+
+  event.preventDefault();
+
+
+  const token =
+    adminToken();
+
+  const input =
+    el("admin-player-nick");
+
+  const status =
+    el("admin-players-status");
+
+
+  const nick =
+    String(
+      input.value || ""
+    ).trim();
+
+
+  if (!nick) {
+
+    status.textContent =
+      "Podaj nick gracza.";
+
+    return;
+  }
+
+
+  status.textContent =
+    "Dodawanie gracza...";
+
+
+  try {
+
+    await fetch(
+      BACKEND_URL,
+      {
+        method: "POST",
+        mode: "no-cors",
+
+        headers: {
+          "Content-Type":
+            "text/plain;charset=UTF-8"
+        },
+
+        body:
+          JSON.stringify({
+            action:
+              "adminAddPlayer",
+
+            token,
+
+            nick
+          })
+      }
+    );
+
+
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          700
+        )
+    );
+
+
+    input.value = "";
+
+    status.textContent =
+      `✅ Dodano gracza ${nick}.`;
+
+
+    await loadAdminPlayers();
+
+    await loadAdminPaymentsStatus();
+
+
+  } catch (err) {
+
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się dodać gracza.";
+  }
+}
+
+async function deleteAdminPlayer(
+  nick
+) {
+
+  const token =
+    adminToken();
+
+  const status =
+    el("admin-players-status");
+
+
+  const first =
+    window.confirm(
+      `Czy na pewno chcesz usunąć gracza "${nick}"?`
+    );
+
+
+  if (!first) {
+    return;
+  }
+
+
+  const second =
+    window.prompt(
+      `UWAGA!\n\n` +
+      `Usunięcie gracza "${nick}" usunie jego bieżącą historię z tabeli.\n\n` +
+      `Aby potwierdzić, wpisz dokładnie nick gracza:`
+    );
+
+
+  if (
+    second === null
+  ) {
+    return;
+  }
+
+
+  if (
+    second.trim()
+      .toLocaleLowerCase(
+        "pl-PL"
+      ) !==
+    nick.trim()
+      .toLocaleLowerCase(
+        "pl-PL"
+      )
+  ) {
+
+    status.textContent =
+      "Usuwanie anulowane — nick potwierdzający jest nieprawidłowy.";
+
+    return;
+  }
+
+
+  status.textContent =
+    `Usuwanie gracza ${nick}...`;
+
+
+  try {
+
+    await fetch(
+      BACKEND_URL,
+      {
+        method: "POST",
+        mode: "no-cors",
+
+        headers: {
+          "Content-Type":
+            "text/plain;charset=UTF-8"
+        },
+
+        body:
+          JSON.stringify({
+            action:
+              "adminDeletePlayer",
+
+            token,
+
+            nick,
+
+            confirmationNick:
+              second.trim()
+          })
+      }
+    );
+
+
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          700
+        )
+    );
+
+
+    status.textContent =
+      `✅ Usunięto gracza ${nick}.`;
+
+
+    await loadAdminPlayers();
+
+    await loadAdminPaymentsStatus();
+
+
+  } catch (err) {
+
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się usunąć gracza.";
+  }
+}
 
 async function loadAdminPaymentsStatus() {
 
@@ -1996,6 +2335,18 @@ function renderAdminPaymentsPreview(payload) {
       day => !day.canClose
     );
 
+  const importButton =
+  el("admin-payments-import");
+
+
+if (importButton) {
+
+  importButton.hidden =
+    validDays.length === 0;
+
+  importButton.disabled =
+    false;
+}
 
   function compactPlayerRow(
     player,
@@ -2086,24 +2437,37 @@ function renderAdminPaymentsPreview(payload) {
 
 
     const paidPlayers =
-      players.filter(
-        player =>
-          player.status === "paid"
-      );
+  players.filter(
+    player =>
+      player.status === "paid"
+  );
 
 
-    const zeroPlayers =
-      players.filter(
-        player =>
-          player.status === "zero"
-      );
+const zeroPlayers =
+  players.filter(
+    player =>
+      player.status === "zero"
+  );
 
 
-    const missingPlayers =
-      players.filter(
-        player =>
-          player.status === "missing"
-      );
+const missingPlayers =
+  players.filter(
+    player =>
+      player.status === "missing"
+  );
+
+
+const freshmanPlayers =
+  players.filter(
+    player =>
+      player.status === "freshman"
+  );
+
+
+// "before_join" celowo nie trafia
+// do żadnej listy.
+// Taki gracz nie należał jeszcze
+// do gangu w tym dniu.
 
 
     const errorsHtml =
@@ -2200,7 +2564,58 @@ function renderAdminPaymentsPreview(payload) {
             </div>
           `
         : "";
+    
+    const freshmanHtml =
+  freshmanPlayers.length
+    ? `
+        <div style="margin-top:10px">
 
+          <strong>
+            🟦 Świeżak (${freshmanPlayers.length})
+          </strong>
+
+          <div style="margin-top:6px">
+            ${
+              freshmanPlayers
+                .map(
+                  player =>
+                    `
+                      <div style="
+                        display:grid;
+                        grid-template-columns:1fr auto;
+                        align-items:center;
+                        gap:8px;
+                        padding:6px 8px;
+                        margin-bottom:4px;
+                        border:1px solid #b8cde2;
+                        border-radius:7px;
+                        background:#eef5fb;
+                      ">
+
+                        <strong style="
+                          font-size:13px;
+                          overflow-wrap:anywhere;
+                        ">
+                          🟦 ${escapeHtml(player.nick)}
+                        </strong>
+
+                        <strong style="
+                          font-size:13px;
+                          text-align:right;
+                        ">
+                          Świeżak
+                        </strong>
+
+                      </div>
+                    `
+                )
+                .join("")
+            }
+          </div>
+
+        </div>
+      `
+    : "";
 
     const zeroHtml =
       zeroPlayers.length
@@ -2283,18 +2698,18 @@ function renderAdminPaymentsPreview(payload) {
 
 
     return `
-      <div style="
-        margin-top:10px;
-      ">
-        ${errorsHtml}
-        ${warningsHtml}
-        ${missingHtml}
-        ${zeroHtml}
-        ${paidHtml}
-      </div>
-    `;
-  }
-
+  <div style="
+    margin-top:10px;
+  ">
+    ${errorsHtml}
+    ${warningsHtml}
+    ${missingHtml}
+    ${freshmanHtml}
+    ${zeroHtml}
+    ${paidHtml}
+  </div>
+`;
+}
 
   function dayCardHtml(
     day,
@@ -2718,6 +3133,225 @@ async function previewAdminPayments() {
   }
 }
 
+async function importAdminPayments() {
+
+  const token =
+    adminToken();
+
+
+  if (!token) {
+
+    showAdminLogin();
+    return;
+  }
+
+
+  const report =
+    el("admin-payments-report")
+      .value
+      .trim();
+
+
+  const status =
+    el(
+      "admin-payments-preview-status"
+    );
+
+
+  const button =
+    el(
+      "admin-payments-import"
+    );
+
+
+  if (!report) {
+
+    status.textContent =
+      "Wklej raport wpłat.";
+
+    return;
+  }
+
+
+  const confirmed =
+    window.confirm(
+      "Wprowadzić poprawne dni do arkusza?\n\n" +
+      "Dni zawierające błędy zostaną pominięte."
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  const nonce =
+    makeNonce();
+
+
+  button.disabled = true;
+
+  status.textContent =
+    "Wprowadzanie danych...";
+
+
+  try {
+
+    await fetch(
+      BACKEND_URL,
+      {
+        method: "POST",
+        mode: "no-cors",
+
+        headers: {
+          "Content-Type":
+            "text/plain;charset=UTF-8"
+        },
+
+        body:
+          JSON.stringify({
+            action:
+              "adminImportPayments",
+
+            token,
+            nonce,
+            report
+          })
+      }
+    );
+
+
+    let payload = null;
+
+
+    for (
+      let i = 0;
+      i < 20;
+      i++
+    ) {
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            500
+          )
+      );
+
+
+      payload =
+        await jsonp(
+          "adminImportPaymentsResult",
+          {
+            token,
+            nonce
+          }
+        );
+
+
+      if (
+        !payload ||
+        !payload.pending
+      ) {
+        break;
+      }
+    }
+
+
+    if (
+      !payload ||
+      payload.pending
+    ) {
+
+      throw new Error(
+        "Serwer nie zwrócił wyniku zapisu."
+      );
+    }
+
+
+    if (!payload.ok) {
+
+      throw new Error(
+        payload.error ||
+        "Nie udało się wprowadzić danych."
+      );
+    }
+
+
+    let message =
+      `✅ ${payload.message || "Dane zostały zapisane."}`;
+
+
+    if (
+      Array.isArray(
+        payload.written
+      ) &&
+      payload.written.length
+    ) {
+
+      message +=
+        "\n\nZapisane dni:\n" +
+        payload.written
+          .map(item => {
+
+            const mode =
+              item.mode === "overwrite"
+                ? "nadpisano"
+                : "dodano";
+
+            return (
+              `• ${item.date} — ${mode}`
+            );
+          })
+          .join("\n");
+    }
+
+
+    if (
+      Array.isArray(
+        payload.skipped
+      ) &&
+      payload.skipped.length
+    ) {
+
+      message +=
+        "\n\nPominięte dni:\n" +
+        payload.skipped
+          .map(
+            item =>
+              `• ${item.date} — ${item.reason}`
+          )
+          .join("\n");
+    }
+
+
+    status.textContent =
+      message;
+
+
+    // Po zapisie pobieramy aktualny stan arkusza.
+    await loadAdminPaymentsStatus();
+
+
+    // Ponownie sprawdzamy raport,
+    // żeby użytkownik widział aktualny rezultat.
+    await previewAdminPayments();
+
+
+  } catch (err) {
+
+    status.textContent =
+      err &&
+      err.message
+        ? err.message
+        : "Nie udało się wprowadzić danych.";
+
+  } finally {
+
+    button.disabled = false;
+  }
+}
+
 function setupAdmin() {
 
   el("admin-login-form")
@@ -2738,11 +3372,23 @@ function setupAdmin() {
     previewAdminPayments
   );
 
+  el("admin-payments-import")
+  ?.addEventListener(
+    "click",
+    importAdminPayments
+  );
+
   el("admin-payments-refresh")
   .addEventListener(
     "click",
     loadAdminPaymentsStatus
   );
+
+  el("admin-player-add-form")
+    ?.addEventListener(
+      "submit",
+      addAdminPlayer
+    );
 
   el("admin-logout")
     .addEventListener(
