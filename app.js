@@ -1967,7 +1967,6 @@ function renderAdminPaymentsPreview(payload) {
   }
 
 
-  // Na razie pokazujemy pierwszy dzień raportu.
   const day =
     days[0];
 
@@ -1990,72 +1989,90 @@ function renderAdminPaymentsPreview(payload) {
       : [];
 
 
-  const rows =
-    players
-      .map(player => {
-
-        let bg = "#eef7ee";
-        let border = "#bad7ba";
-        let icon = "🟢";
-        let value =
-          paymentPreviewMoney(
-            player.amount
-          );
-
-        if (
-          player.status === "zero"
-        ) {
-
-          bg = "#fff8e7";
-          border = "#e0b766";
-          icon = "🟡";
-          value = "0";
-        }
+  const paidPlayers =
+    players.filter(
+      player =>
+        player.status === "paid"
+    );
 
 
-        if (
-          player.status === "missing"
-        ) {
-
-          bg = "#fff1f1";
-          border = "#e3b2b2";
-          icon = "🔴";
-          value = "BRAK";
-        }
+  const zeroPlayers =
+    players.filter(
+      player =>
+        player.status === "zero"
+    );
 
 
-        return `
-          <div style="
-            display:grid;
-            grid-template-columns:1fr auto;
-            align-items:center;
-            gap:8px;
-            padding:6px 8px;
-            margin-bottom:4px;
-            border:1px solid ${border};
-            border-radius:7px;
-            background:${bg};
-          ">
+  const missingPlayers =
+    players.filter(
+      player =>
+        player.status === "missing"
+    );
 
-            <strong style="
-              font-size:13px;
-              overflow-wrap:anywhere;
-            ">
-              ${icon}
-              ${escapeHtml(player.nick)}
-            </strong>
 
-            <strong style="
-              font-size:13px;
-              text-align:right;
-            ">
-              ${escapeHtml(value)}
-            </strong>
+  function compactPlayerRow(
+    player,
+    type
+  ) {
 
-          </div>
-        `;
-      })
-      .join("");
+    let icon = "🟢";
+    let bg = "#eef7ee";
+    let border = "#bad7ba";
+    let value =
+      paymentPreviewMoney(
+        player.amount
+      );
+
+
+    if (type === "zero") {
+
+      icon = "🟡";
+      bg = "#fff8e7";
+      border = "#e0b766";
+      value = "0";
+    }
+
+
+    if (type === "missing") {
+
+      icon = "🔴";
+      bg = "#fff1f1";
+      border = "#e3b2b2";
+      value = "BRAK";
+    }
+
+
+    return `
+      <div style="
+        display:grid;
+        grid-template-columns:1fr auto;
+        align-items:center;
+        gap:8px;
+        padding:6px 8px;
+        margin-bottom:4px;
+        border:1px solid ${border};
+        border-radius:7px;
+        background:${bg};
+      ">
+
+        <strong style="
+          font-size:13px;
+          overflow-wrap:anywhere;
+        ">
+          ${icon}
+          ${escapeHtml(player.nick)}
+        </strong>
+
+        <strong style="
+          font-size:13px;
+          text-align:right;
+        ">
+          ${escapeHtml(value)}
+        </strong>
+
+      </div>
+    `;
+  }
 
 
   const errorsHtml =
@@ -2116,6 +2133,124 @@ function renderAdminPaymentsPreview(payload) {
                   .map(
                     warning =>
                       `<div>• ${escapeHtml(warning)}</div>`
+                  )
+                  .join("")
+              }
+            </div>
+
+          </div>
+        `
+      : "";
+
+
+  const missingHtml =
+    missingPlayers.length
+      ? `
+          <div style="
+            margin-top:10px;
+          ">
+
+            <strong>
+              🔴 Braki w raporcie (${missingPlayers.length})
+            </strong>
+
+            <div style="
+              margin-top:6px;
+            ">
+              ${
+                missingPlayers
+                  .map(
+                    player =>
+                      compactPlayerRow(
+                        player,
+                        "missing"
+                      )
+                  )
+                  .join("")
+              }
+            </div>
+
+          </div>
+        `
+      : "";
+
+
+  const zeroHtml =
+    zeroPlayers.length
+      ? `
+          <div style="
+            margin-top:10px;
+          ">
+
+            <strong>
+              🟡 Nie wpłacili (${zeroPlayers.length})
+            </strong>
+
+            <div style="
+              margin-top:6px;
+            ">
+              ${
+                zeroPlayers
+                  .map(
+                    player =>
+                      compactPlayerRow(
+                        player,
+                        "zero"
+                      )
+                  )
+                  .join("")
+              }
+            </div>
+
+          </div>
+        `
+      : "";
+
+
+  const paidHtml =
+    paidPlayers.length
+      ? `
+          <div style="
+            margin-top:12px;
+            border-top:1px solid #d8c7aa;
+            padding-top:10px;
+          ">
+
+            <button
+              id="admin-payments-toggle-paid"
+              type="button"
+              style="
+                width:100%;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                gap:8px;
+              "
+            >
+              <span>
+                ✅ Wpłacili (${paidPlayers.length})
+              </span>
+
+              <span id="admin-payments-toggle-paid-icon">
+                Pokaż ▼
+              </span>
+            </button>
+
+            <div
+              id="admin-payments-paid-list"
+              hidden
+              style="
+                margin-top:8px;
+              "
+            >
+              ${
+                paidPlayers
+                  .map(
+                    player =>
+                      compactPlayerRow(
+                        player,
+                        "paid"
+                      )
                   )
                   .join("")
               }
@@ -2189,12 +2324,48 @@ function renderAdminPaymentsPreview(payload) {
 
     </div>
 
-    ${rows}
-
     ${errorsHtml}
-
     ${warningsHtml}
+    ${missingHtml}
+    ${zeroHtml}
+    ${paidHtml}
   `;
+
+
+  const toggle =
+    el(
+      "admin-payments-toggle-paid"
+    );
+
+
+  if (toggle) {
+
+    toggle.addEventListener(
+      "click",
+      () => {
+
+        const list =
+          el(
+            "admin-payments-paid-list"
+          );
+
+        const icon =
+          el(
+            "admin-payments-toggle-paid-icon"
+          );
+
+
+        list.hidden =
+          !list.hidden;
+
+
+        icon.textContent =
+          list.hidden
+            ? "Pokaż ▼"
+            : "Ukryj ▲";
+      }
+    );
+  }
 }
 
 
