@@ -886,13 +886,13 @@ function displayName(name) {
 
   function formatPaymentsDate(value) {
 
-    const m =
-      /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(value || ""));
+  const m =
+    /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
 
-    if (!m) return "—";
+  if (!m) return "—";
 
-    return `${m[3]}.${m[2]}.${m[1]}`;
-  }
+  return `${m[3]}.${m[2]}.${m[1]}`;
+}
 
   function formatSaldo(value) {
 
@@ -907,37 +907,79 @@ function displayName(name) {
 
   function paymentsRow(player) {
 
-    const saldo = Number(player.saldo);
+  const saldo = Number(player.saldo);
 
-    let label = "✅ Rozliczony";
-    let bg = "#eef7ee";
-    let border = "#bad7ba";
-    let value = "0";
+  let label = "✅ Rozliczony";
+  let bg = "#eef7ee";
+  let border = "#bad7ba";
+  let value = "0";
 
-    if (saldo < 0) {
-      label = "🔴 Dług";
-      bg = "#fff1f1";
-      border = "#e3b2b2";
-      value = formatSaldo(Math.abs(saldo));
-    }
-
-    if (saldo > 0) {
-      label = "🟢 Nadpłata";
-      bg = "#eef8f0";
-      border = "#b6d9bd";
-      value = formatSaldo(saldo);
-    }
-
-    return `
-      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;margin-bottom:8px;border:1px solid ${border};border-radius:10px;background:${bg}">
-        <strong style="overflow-wrap:anywhere">${escapeHtml(player.nick)}</strong>
-        <div style="text-align:right">
-          <div style="font-weight:700">${label}</div>
-          <div style="font-size:15px;font-weight:800">${value}</div>
-        </div>
-      </div>
-    `;
+  if (saldo < 0) {
+    label = "🔴 Dług";
+    bg = "#fff1f1";
+    border = "#e3b2b2";
+    value = formatSaldo(Math.abs(saldo));
   }
+
+  if (saldo > 0) {
+    label = "🟢 Nadpłata";
+    bg = "#eef8f0";
+    border = "#b6d9bd";
+    value = formatSaldo(saldo);
+  }
+
+  return `
+    <div
+      style="
+        display:grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        gap:8px;
+        align-items:center;
+        padding:6px 9px;
+        margin-bottom:4px;
+        border:1px solid ${border};
+        border-radius:7px;
+        background:${bg};
+      "
+    >
+      <strong
+        style="
+          overflow-wrap:anywhere;
+          font-size:13px;
+        "
+      >
+        ${escapeHtml(player.nick)}
+      </strong>
+
+      <div
+        style="
+          display:flex;
+          align-items:center;
+          gap:8px;
+          text-align:right;
+        "
+      >
+        <span
+          style="
+            font-size:12px;
+            font-weight:700;
+          "
+        >
+          ${label}
+        </span>
+
+        <strong
+          style="
+            font-size:13px;
+            min-width:58px;
+          "
+        >
+          ${value}
+        </strong>
+      </div>
+    </div>
+  `;
+}
 
   function escapeHtml(value) {
     return String(value)
