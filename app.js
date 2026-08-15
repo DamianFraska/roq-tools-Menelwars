@@ -15,6 +15,7 @@
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
   const NICK_KEY = "roq_tools_submitter_nick_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
+  const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
 
   const DISPLAY_NAMES = {
   "Ziemniak irga": 'Ziemniaki "Irga"',
@@ -1182,6 +1183,250 @@ function displayName(name) {
     }
   }
 
+  // ============================================================
+// PANEL ADMINISTRATORA
+// ============================================================
+
+function adminToken() {
+  return localStorage.getItem(ADMIN_TOKEN_KEY) || "";
+}
+
+
+function setAdminToken(token) {
+
+  if (token) {
+    localStorage.setItem(
+      ADMIN_TOKEN_KEY,
+      token
+    );
+  } else {
+    localStorage.removeItem(
+      ADMIN_TOKEN_KEY
+    );
+  }
+}
+
+
+function showAdminLogin(message="") {
+
+  el("admin-login").hidden = false;
+  el("admin-content").hidden = true;
+
+  el("admin-login-status").textContent =
+    message;
+}
+
+
+function showAdminContent() {
+
+  el("admin-login").hidden = true;
+  el("admin-content").hidden = false;
+
+  el("admin-status").textContent = "";
+}
+
+
+async function checkAdminAccess() {
+
+  const token = adminToken();
+
+  if (!token) {
+    showAdminLogin();
+    return;
+  }
+
+  el("admin-login").hidden = true;
+  el("admin-content").hidden = false;
+
+  el("admin-status").textContent =
+    "Sprawdzanie dostępu...";
+
+  try {
+
+    const result =
+      await jsonp(
+        "adminTest",
+        {token}
+      );
+
+    if (
+      !result ||
+      !result.ok
+    ) {
+
+      setAdminToken("");
+
+      showAdminLogin(
+        "Sesja administratora wygasła. Zaloguj się ponownie."
+      );
+
+      return;
+    }
+
+    showAdminContent();
+
+  } catch (err) {
+
+    el("admin-status").textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się sprawdzić dostępu.";
+  }
+}
+
+
+async function loginToAdmin(event) {
+
+  event.preventDefault();
+
+  const password =
+    el("admin-password").value;
+
+  const status =
+    el("admin-login-status");
+
+  if (!password) {
+
+    status.textContent =
+      "Wpisz hasło administratora.";
+
+    return;
+  }
+
+  if (!backendConfigured()) {
+
+    status.textContent =
+      "Backend nie jest skonfigurowany.";
+
+    return;
+  }
+
+  const nonce =
+    makeNonce();
+
+  status.textContent =
+    "Sprawdzanie hasła...";
+
+  try {
+
+    await fetch(
+      BACKEND_URL,
+      {
+        method: "POST",
+        mode: "no-cors",
+
+        headers: {
+          "Content-Type":
+            "text/plain;charset=UTF-8"
+        },
+
+        body: JSON.stringify({
+          action: "adminLogin",
+          nonce,
+          password
+        })
+      }
+    );
+
+
+    let result = null;
+
+    for (let i=0; i<12; i++) {
+
+      await new Promise(
+        resolve =>
+          setTimeout(resolve,500)
+      );
+
+      result =
+        await jsonp(
+          "adminLoginResult",
+          {nonce}
+        );
+
+      if (
+        !result ||
+        !result.pending
+      ) {
+        break;
+      }
+    }
+
+
+    if (
+      !result ||
+      result.pending
+    ) {
+
+      throw new Error(
+        "Serwer nie zwrócił wyniku logowania. Spróbuj ponownie."
+      );
+    }
+
+
+    if (
+      !result.ok ||
+      !result.token
+    ) {
+
+      status.textContent =
+        result.error ||
+        "Nieprawidłowe hasło administratora.";
+
+      return;
+    }
+
+
+    setAdminToken(
+      result.token
+    );
+
+    el("admin-password").value = "";
+
+    status.textContent = "";
+
+    await checkAdminAccess();
+
+
+  } catch (err) {
+
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się zalogować.";
+  }
+}
+
+
+function setupAdmin() {
+
+  el("admin-login-form")
+    .addEventListener(
+      "submit",
+      loginToAdmin
+    );
+
+
+  el("admin-logout")
+    .addEventListener(
+      "click",
+      () => {
+
+        setAdminToken("");
+
+        showAdminLogin(
+          "Wylogowano administratora."
+        );
+      }
+    );
+
+
+  if (adminToken()) {
+    checkAdminAccess();
+  } else {
+    showAdminLogin();
+  }
+}	
 
   // ============================================================
   // TABS
@@ -1215,8 +1460,12 @@ function displayName(name) {
             );
 
           if (btn.dataset.tab === "payments-view") {
-            loadPayments();
-          }
+  loadPayments();
+}
+
+if (btn.dataset.tab === "admin-view") {
+  checkAdminAccess();
+}
         }
       );
     });
@@ -1227,10 +1476,11 @@ function displayName(name) {
   // ============================================================
 
   renderMap();
-  setupSubmissionForm();
-  setupPayments();
-  renderAll();
-  fetchApprovedRecipes();
+setupSubmissionForm();
+setupPayments();
+setupAdmin();
+renderAll();
+fetchApprovedRecipes();
 
   // Pobieramy nowe zatwierdzone dane także co 5 minut.
   setInterval(

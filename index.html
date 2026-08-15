@@ -37,6 +37,7 @@
     <button data-tab="map-view">🗺 Mapa</button>
     <button data-tab="progress-view">📊 Postęp</button>
     <button data-tab="pc-view">🖥 PC</button>
+    <button data-tab="admin-view">🛠 Admin</button>
   </nav>
 
   <section id="optimizer-view" class="view">
@@ -183,7 +184,7 @@
 
         <a
   		class="install-script-btn"
-  		href="https://raw.githubusercontent.com/RoQ665/roq-tools-Menelwars/main/menelwars-tools.user.js"
+  		href="https://raw.githubusercontent.com/RoQ665/Menelwars-Tools/main/menelwars-tools.user.js"
   		target="_blank"
   		rel="noopener noreferrer"
 	>
@@ -207,6 +208,89 @@
       </div>
     </div>
   </section>
+
+  <section id="admin-view" class="view" hidden>
+
+  <div class="panel">
+
+    <div class="panel-head">
+      🛠 Panel administratora
+    </div>
+
+    <div class="panel-body">
+
+      <div id="admin-login">
+
+        <p class="muted">
+          🔐 Dostęp tylko dla administratora.
+        </p>
+
+        <form id="admin-login-form" class="submit-form">
+
+          <label>
+            <span>Hasło administratora</span>
+
+            <input
+              id="admin-password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Hasło administratora"
+              required
+            >
+          </label>
+
+          <button class="primary-btn" type="submit">
+            🔓 Zaloguj
+          </button>
+
+          <div
+            id="admin-login-status"
+            class="submit-status">
+          </div>
+
+        </form>
+
+      </div>
+
+
+      <div id="admin-content" hidden>
+
+        <div style="
+          padding:14px;
+          border:1px solid #bad7ba;
+          border-radius:10px;
+          background:#eef7ee;
+          margin-bottom:12px;
+        ">
+
+          <strong>
+            ✅ Dostęp administratora aktywny
+          </strong>
+
+          <div class="muted" style="margin-top:4px">
+            Panel administratora jest gotowy.
+          </div>
+
+        </div>
+
+        <button
+          id="admin-logout"
+          type="button">
+          🔒 Wyloguj administratora
+        </button>
+
+        <div
+          id="admin-status"
+          class="submit-status">
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
 
 </main>
 
