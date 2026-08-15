@@ -1934,6 +1934,417 @@ async function loadAdminPaymentsStatus() {
   }
 }
 
+function paymentPreviewMoney(value) {
+  return Number(value).toLocaleString(
+    "pl-PL",
+    {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }
+  );
+}
+
+
+function renderAdminPaymentsPreview(payload) {
+
+  const result =
+    el("admin-payments-preview-result");
+
+  const days =
+    Array.isArray(payload.days)
+      ? payload.days
+      : [];
+
+  if (!days.length) {
+
+    result.innerHTML = `
+      <div class="empty">
+        Nie znaleziono danych do wyświetlenia.
+      </div>
+    `;
+
+    return;
+  }
+
+
+  // Na razie pokazujemy pierwszy dzień raportu.
+  const day =
+    days[0];
+
+
+  const errors =
+    Array.isArray(day.errors)
+      ? day.errors
+      : [];
+
+
+  const warnings =
+    Array.isArray(day.warnings)
+      ? day.warnings
+      : [];
+
+
+  const players =
+    Array.isArray(day.players)
+      ? day.players
+      : [];
+
+
+  const rows =
+    players
+      .map(player => {
+
+        let bg = "#eef7ee";
+        let border = "#bad7ba";
+        let icon = "🟢";
+        let value =
+          paymentPreviewMoney(
+            player.amount
+          );
+
+        if (
+          player.status === "zero"
+        ) {
+
+          bg = "#fff8e7";
+          border = "#e0b766";
+          icon = "🟡";
+          value = "0";
+        }
+
+
+        if (
+          player.status === "missing"
+        ) {
+
+          bg = "#fff1f1";
+          border = "#e3b2b2";
+          icon = "🔴";
+          value = "BRAK";
+        }
+
+
+        return `
+          <div style="
+            display:grid;
+            grid-template-columns:1fr auto;
+            align-items:center;
+            gap:8px;
+            padding:6px 8px;
+            margin-bottom:4px;
+            border:1px solid ${border};
+            border-radius:7px;
+            background:${bg};
+          ">
+
+            <strong style="
+              font-size:13px;
+              overflow-wrap:anywhere;
+            ">
+              ${icon}
+              ${escapeHtml(player.nick)}
+            </strong>
+
+            <strong style="
+              font-size:13px;
+              text-align:right;
+            ">
+              ${escapeHtml(value)}
+            </strong>
+
+          </div>
+        `;
+      })
+      .join("");
+
+
+  const errorsHtml =
+    errors.length
+      ? `
+          <div style="
+            margin-top:10px;
+            padding:10px;
+            border:1px solid #e3b2b2;
+            border-radius:8px;
+            background:#fff1f1;
+          ">
+
+            <strong>
+              ❌ Błędy: ${errors.length}
+            </strong>
+
+            <div style="
+              margin-top:6px;
+              font-size:13px;
+            ">
+              ${
+                errors
+                  .map(
+                    error =>
+                      `<div>• ${escapeHtml(error)}</div>`
+                  )
+                  .join("")
+              }
+            </div>
+
+          </div>
+        `
+      : "";
+
+
+  const warningsHtml =
+    warnings.length
+      ? `
+          <div style="
+            margin-top:10px;
+            padding:10px;
+            border:1px solid #e0b766;
+            border-radius:8px;
+            background:#fff8e7;
+          ">
+
+            <strong>
+              ⚠️ Ostrzeżenia: ${warnings.length}
+            </strong>
+
+            <div style="
+              margin-top:6px;
+              font-size:13px;
+            ">
+              ${
+                warnings
+                  .map(
+                    warning =>
+                      `<div>• ${escapeHtml(warning)}</div>`
+                  )
+                  .join("")
+              }
+            </div>
+
+          </div>
+        `
+      : "";
+
+
+  result.innerHTML = `
+
+    <div style="
+      padding:10px;
+      border:1px solid ${
+        day.canClose
+          ? "#bad7ba"
+          : "#e3b2b2"
+      };
+      border-radius:8px;
+      background:${
+        day.canClose
+          ? "#eef7ee"
+          : "#fff1f1"
+      };
+      margin-bottom:10px;
+    ">
+
+      <strong>
+        ${
+          day.canClose
+            ? "✅ Raport poprawny"
+            : "❌ Raport wymaga poprawy"
+        }
+      </strong>
+
+      <div style="
+        margin-top:6px;
+        font-size:13px;
+      ">
+
+        Data:
+        <b>${escapeHtml(day.date)}</b>
+
+        <br>
+
+        Wpłacili:
+        <b>${Number(day.paidCount) || 0}</b>
+
+        · Nie wpłacili:
+        <b>${Number(day.zeroCount) || 0}</b>
+
+        · Braki:
+        <b>${Number(day.missingCount) || 0}</b>
+
+        <br>
+
+        Suma raportu:
+        <b>
+          ${paymentPreviewMoney(day.reportedTotal)} zł
+        </b>
+
+        <br>
+
+        Suma obliczona:
+        <b>
+          ${paymentPreviewMoney(day.calculatedTotal)} zł
+        </b>
+
+      </div>
+
+    </div>
+
+    ${rows}
+
+    ${errorsHtml}
+
+    ${warningsHtml}
+  `;
+}
+
+
+async function previewAdminPayments() {
+
+  const token =
+    adminToken();
+
+  if (!token) {
+    showAdminLogin();
+    return;
+  }
+
+
+  const report =
+    el("admin-payments-report")
+      .value
+      .trim();
+
+
+  const status =
+    el("admin-payments-preview-status");
+
+
+  const result =
+    el("admin-payments-preview-result");
+
+
+  if (!report) {
+
+    status.textContent =
+      "Wklej raport wpłat.";
+
+    result.innerHTML = "";
+
+    return;
+  }
+
+
+  status.textContent =
+    "Sprawdzanie danych...";
+
+  result.innerHTML = "";
+
+
+  const nonce =
+    makeNonce();
+
+
+  try {
+
+    await fetch(
+      BACKEND_URL,
+      {
+        method: "POST",
+        mode: "no-cors",
+
+        headers: {
+          "Content-Type":
+            "text/plain;charset=UTF-8"
+        },
+
+        body: JSON.stringify({
+          action:
+            "adminPreviewPayments",
+
+          token,
+          nonce,
+          report
+        })
+      }
+    );
+
+
+    let payload = null;
+
+
+    for (
+      let i = 0;
+      i < 12;
+      i++
+    ) {
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            500
+          )
+      );
+
+
+      payload =
+        await jsonp(
+          "adminPreviewPaymentsResult",
+          {
+            token,
+            nonce
+          }
+        );
+
+
+      if (
+        !payload ||
+        !payload.pending
+      ) {
+        break;
+      }
+    }
+
+
+    if (
+      !payload ||
+      payload.pending
+    ) {
+
+      throw new Error(
+        "Serwer nie zwrócił wyniku sprawdzania."
+      );
+    }
+
+
+    if (!payload.ok) {
+
+      throw new Error(
+        payload.error ||
+        "Nie udało się sprawdzić raportu."
+      );
+    }
+
+
+    status.textContent =
+      `Rozpoznano dni: ${payload.dayCount}`;
+
+
+    renderAdminPaymentsPreview(
+      payload
+    );
+
+
+  } catch (err) {
+
+    status.textContent =
+      err &&
+      err.message
+        ? err.message
+        : "Nie udało się sprawdzić danych.";
+  }
+}
+
 function setupAdmin() {
 
   el("admin-login-form")
@@ -1947,6 +2358,12 @@ function setupAdmin() {
       "click",
       loadAdminSubmissions
     );
+
+  el("admin-payments-preview")
+  .addEventListener(
+    "click",
+    previewAdminPayments
+  );
 
   el("admin-payments-refresh")
   .addEventListener(
