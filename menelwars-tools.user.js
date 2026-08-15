@@ -1,13 +1,15 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.7.6
+// @version      0.8.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
 // @match        https://www.menelwars.pl/*
 // @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
+// @grant        GM_getResourceURL
+// @resource     MAP_IMAGE https://raw.githubusercontent.com/RoQ665/Menelwars-Tools/main/mapa-warszawa.png
 // @connect      script.google.com
 // @connect      script.googleusercontent.com
 // @run-at       document-start
@@ -33,19 +35,36 @@
   const KNOWN = {"Ziemniak irga|Instant|Kranówa|1":1.71,"Ziemniak irga|Instant|Kranówa|2":1.55,"Ziemniak irga|Instant|Kranówa|3":1.46,"Ziemniak irga|Instant|Kranówa|4":1.73,"Ziemniak irga|Instant|Kranówa|5":1.43,"Ziemniak irga|Instant|Górski strumyk|1":1.84,"Ziemniak irga|Instant|Górski strumyk|2":1.73,"Ziemniak irga|Instant|Górski strumyk|3":0.94,"Ziemniak irga|Instant|Górski strumyk|4":1.73,"Ziemniak irga|Instant|Górski strumyk|5":1.25,"Ziemniak irga|Instant|Menel zdrój|1":1.32,"Ziemniak irga|Instant|Menel zdrój|2":2,"Ziemniak irga|Instant|Menel zdrój|3":1.35,"Ziemniak irga|Instant|Menel zdrój|4":1.61,"Ziemniak irga|Babuni|Kranówa|1":2.32,"Ziemniak irga|Babuni|Kranówa|2":1.35,"Ziemniak irga|Babuni|Kranówa|3":2.07,"Ziemniak irga|Babuni|Kranówa|4":1.67,"Ziemniak irga|Babuni|Kranówa|5":1.62,"Ziemniak irga|Babuni|Górski strumyk|1":2.49,"Ziemniak irga|Babuni|Górski strumyk|2":1.5,"Ziemniak irga|Babuni|Górski strumyk|3":1.34,"Ziemniak irga|Babuni|Górski strumyk|4":1.67,"Ziemniak irga|Babuni|Górski strumyk|5":1.42,"Ziemniak irga|Babuni|Menel zdrój|1":1.79,"Ziemniak irga|Babuni|Menel zdrój|2":1.75,"Ziemniak irga|Babuni|Menel zdrój|3":1.91,"Ziemniak irga|Babuni|Menel zdrój|4":1.55,"Ziemniak irga|Babuni|Menel zdrój|5":1.84,"Ziemniak irga|Klasyczne|Kranówa|1":1.86,"Ziemniak irga|Klasyczne|Kranówa|2":1.8,"Ziemniak irga|Klasyczne|Kranówa|3":2.13,"Ziemniak irga|Klasyczne|Kranówa|4":1.46,"Ziemniak irga|Klasyczne|Kranówa|5":1.8,"Ziemniak irga|Klasyczne|Górski strumyk|1":2,"Ziemniak irga|Klasyczne|Górski strumyk|2":2,"Ziemniak irga|Klasyczne|Górski strumyk|3":1.38,"Ziemniak irga|Klasyczne|Górski strumyk|4":1.46,"Ziemniak irga|Klasyczne|Górski strumyk|5":1.59,"Ziemniak irga|Klasyczne|Menel zdrój|1":1.44,"Ziemniak irga|Klasyczne|Menel zdrój|2":2.32,"Ziemniak irga|Klasyczne|Menel zdrój|3":1.97,"Ziemniak irga|Klasyczne|Menel zdrój|4":1.36,"Ziemniak irga|Klasyczne|Menel zdrój|5":2.06,"Ziemniak irga|Piekarskie|Kranówa|1":1.86,"Ziemniak irga|Piekarskie|Kranówa|2":1.54,"Ziemniak irga|Piekarskie|Kranówa|3":1.97,"Ziemniak irga|Piekarskie|Kranówa|4":1.75,"Ziemniak irga|Piekarskie|Kranówa|5":1.44,"Ziemniak irga|Piekarskie|Górski strumyk|1":2,"Ziemniak irga|Piekarskie|Górski strumyk|2":1.71,"Ziemniak irga|Piekarskie|Górski strumyk|3":1.28,"Ziemniak irga|Piekarskie|Górski strumyk|4":1.75,"Ziemniak irga|Piekarskie|Górski strumyk|5":1.27,"Ziemniak irga|Piekarskie|Menel zdrój|1":1.44,"Ziemniak irga|Piekarskie|Menel zdrój|2":1.99,"Ziemniak irga|Piekarskie|Menel zdrój|3":1.82,"Ziemniak irga|Piekarskie|Menel zdrój|4":1.62,"Ziemniak irga|Piekarskie|Menel zdrój|5":1.64,"Ziemniak irga|Turbo|Kranówa|1":3.38,"Ziemniak irga|Turbo|Kranówa|2":2.48,"Ziemniak irga|Turbo|Kranówa|3":3.13,"Ziemniak irga|Turbo|Kranówa|4":3.15,"Ziemniak irga|Turbo|Kranówa|5":2.91,"Ziemniak irga|Turbo|Górski strumyk|1":3.64,"Ziemniak irga|Turbo|Górski strumyk|2":2.76,"Ziemniak irga|Turbo|Górski strumyk|3":2.03,"Ziemniak irga|Turbo|Górski strumyk|4":3.15,"Ziemniak irga|Turbo|Górski strumyk|5":2.56,"Ziemniak irga|Turbo|Menel zdrój|1":2.62,"Ziemniak irga|Turbo|Menel zdrój|2":3.21,"Ziemniak irga|Turbo|Menel zdrój|3":2.89,"Ziemniak irga|Turbo|Menel zdrój|4":2.92,"Ziemniak irga|Turbo|Menel zdrój|5":3.32,"Ziemniak irga|Winiarskie|Kranówa|1":2.15,"Ziemniak irga|Winiarskie|Kranówa|2":1.2,"Ziemniak irga|Winiarskie|Kranówa|3":2.26,"Ziemniak irga|Winiarskie|Kranówa|4":1.89,"Ziemniak irga|Winiarskie|Kranówa|5":1.96,"Ziemniak irga|Winiarskie|Górski strumyk|1":2.31,"Ziemniak irga|Winiarskie|Górski strumyk|2":1.34,"Ziemniak irga|Winiarskie|Górski strumyk|3":1.46,"Ziemniak irga|Winiarskie|Górski strumyk|4":1.89,"Ziemniak irga|Winiarskie|Górski strumyk|5":1.73,"Ziemniak irga|Winiarskie|Menel zdrój|1":1.66,"Ziemniak irga|Winiarskie|Menel zdrój|2":1.55,"Ziemniak irga|Winiarskie|Menel zdrój|3":2.08,"Ziemniak irga|Winiarskie|Menel zdrój|4":1.75,"Ziemniak irga|Winiarskie|Menel zdrój|5":2.24,"Ziemniak vinieta|Instant|Kranówa|1":1.86,"Ziemniak vinieta|Instant|Kranówa|2":1.71,"Ziemniak vinieta|Instant|Kranówa|3":1.34,"Ziemniak vinieta|Instant|Kranówa|4":1.47,"Ziemniak vinieta|Instant|Kranówa|5":1.13,"Ziemniak vinieta|Instant|Górski strumyk|1":2.01,"Ziemniak vinieta|Babuni|Kranówa|1":2.53,"Ziemniak vinieta|Babuni|Kranówa|2":1.49,"Ziemniak vinieta|Babuni|Kranówa|3":1.89,"Ziemniak vinieta|Babuni|Kranówa|4":1.42,"Ziemniak vinieta|Babuni|Kranówa|5":1.28,"Ziemniak vinieta|Babuni|Górski strumyk|1":2.72,"Ziemniak vinieta|Babuni|Górski strumyk|2":1.66,"Ziemniak vinieta|Babuni|Górski strumyk|3":1.23,"Ziemniak vinieta|Babuni|Górski strumyk|4":1.42,"Ziemniak vinieta|Babuni|Górski strumyk|5":1.13,"Ziemniak vinieta|Babuni|Menel zdrój|1":1.96,"Ziemniak vinieta|Babuni|Menel zdrój|2":1.93,"Ziemniak vinieta|Babuni|Menel zdrój|3":1.75,"Ziemniak vinieta|Babuni|Menel zdrój|4":1.32,"Ziemniak vinieta|Babuni|Menel zdrój|5":1.46,"Ziemniak vinieta|Klasyczne|Kranówa|1":2.03,"Ziemniak vinieta|Klasyczne|Kranówa|2":1.98,"Ziemniak vinieta|Klasyczne|Górski strumyk|1":2.19,"Ziemniak vinieta|Klasyczne|Górski strumyk|2":2.21,"Ziemniak vinieta|Klasyczne|Górski strumyk|3":1.27,"Ziemniak vinieta|Klasyczne|Górski strumyk|4":1.25,"Ziemniak vinieta|Klasyczne|Górski strumyk|5":1.26,"Ziemniak vinieta|Klasyczne|Menel zdrój|1":1.57,"Ziemniak vinieta|Klasyczne|Menel zdrój|2":2.56,"Ziemniak vinieta|Klasyczne|Menel zdrój|3":1.8,"Ziemniak vinieta|Klasyczne|Menel zdrój|4":1.16,"Ziemniak vinieta|Klasyczne|Menel zdrój|5":1.63,"Ziemniak vinieta|Piekarskie|Kranówa|1":2.03,"Ziemniak vinieta|Piekarskie|Kranówa|4":1.49,"Ziemniak vinieta|Piekarskie|Górski strumyk|1":2.19,"Ziemniak vinieta|Piekarskie|Górski strumyk|2":1.89,"Ziemniak vinieta|Piekarskie|Górski strumyk|3":1.17,"Ziemniak vinieta|Piekarskie|Górski strumyk|5":1.01,"Ziemniak vinieta|Piekarskie|Menel zdrój|1":1.57,"Ziemniak vinieta|Piekarskie|Menel zdrój|2":2.19,"Ziemniak vinieta|Piekarskie|Menel zdrój|3":1.67,"Ziemniak vinieta|Piekarskie|Menel zdrój|4":1.38,"Ziemniak vinieta|Piekarskie|Menel zdrój|5":1.3,"Ziemniak vinieta|Turbo|Kranówa|1":3.69,"Ziemniak vinieta|Turbo|Kranówa|2":2.73,"Ziemniak vinieta|Turbo|Kranówa|3":2.87,"Ziemniak vinieta|Turbo|Kranówa|4":2.68,"Ziemniak vinieta|Turbo|Kranówa|5":2.31,"Ziemniak vinieta|Turbo|Górski strumyk|1":3.98,"Ziemniak vinieta|Turbo|Górski strumyk|2":3.04,"Ziemniak vinieta|Turbo|Górski strumyk|3":1.86,"Ziemniak vinieta|Turbo|Górski strumyk|4":2.68,"Ziemniak vinieta|Turbo|Górski strumyk|5":2.03,"Ziemniak vinieta|Turbo|Menel zdrój|1":2.86,"Ziemniak vinieta|Turbo|Menel zdrój|2":3.53,"Ziemniak vinieta|Turbo|Menel zdrój|3":2.65,"Ziemniak vinieta|Turbo|Menel zdrój|4":2.49,"Ziemniak vinieta|Turbo|Menel zdrój|5":2.64,"Ziemniak vinieta|Winiarskie|Kranówa|1":2.34,"Ziemniak vinieta|Winiarskie|Kranówa|2":1.33,"Ziemniak vinieta|Winiarskie|Kranówa|3":2.07,"Ziemniak vinieta|Winiarskie|Kranówa|4":1.61,"Ziemniak vinieta|Winiarskie|Kranówa|5":1.56,"Ziemniak vinieta|Winiarskie|Górski strumyk|1":2.52,"Ziemniak vinieta|Winiarskie|Górski strumyk|2":1.48,"Ziemniak vinieta|Winiarskie|Górski strumyk|3":1.34,"Ziemniak vinieta|Winiarskie|Górski strumyk|4":1.61,"Ziemniak vinieta|Winiarskie|Górski strumyk|5":1.37,"Ziemniak vinieta|Winiarskie|Menel zdrój|1":1.82,"Ziemniak vinieta|Winiarskie|Menel zdrój|3":1.91,"Ziemniak vinieta|Winiarskie|Menel zdrój|4":1.49,"Ziemniak vinieta|Winiarskie|Menel zdrój|5":1.78,"Jabłko|Instant|Kranówa|1":1.51,"Jabłko|Instant|Kranówa|2":1.23,"Jabłko|Instant|Kranówa|3":1.25,"Jabłko|Instant|Kranówa|4":1.52,"Jabłko|Instant|Kranówa|5":1,"Jabłko|Instant|Górski strumyk|1":1.63,"Jabłko|Instant|Górski strumyk|2":1.37,"Jabłko|Instant|Górski strumyk|3":0.81,"Jabłko|Instant|Górski strumyk|4":1.52,"Jabłko|Instant|Górski strumyk|5":0.88,"Jabłko|Instant|Menel zdrój|1":1.17,"Jabłko|Babuni|Kranówa|1":2.05,"Jabłko|Babuni|Kranówa|2":1.07,"Jabłko|Babuni|Kranówa|3":1.78,"Jabłko|Babuni|Kranówa|4":1.46,"Jabłko|Babuni|Kranówa|5":1.13,"Jabłko|Babuni|Menel zdrój|1":1.59,"Jabłko|Klasyczne|Kranówa|1":1.65,"Jabłko|Klasyczne|Kranówa|2":1.43,"Jabłko|Klasyczne|Kranówa|3":1.83,"Jabłko|Klasyczne|Kranówa|4":1.28,"Jabłko|Klasyczne|Kranówa|5":1.26,"Jabłko|Piekarskie|Kranówa|1":1.65,"Jabłko|Piekarskie|Kranówa|2":1.22,"Jabłko|Piekarskie|Kranówa|3":1.7,"Jabłko|Piekarskie|Kranówa|4":1.53,"Jabłko|Piekarskie|Kranówa|5":1.01,"Jabłko|Piekarskie|Górski strumyk|5":0.88,"Jabłko|Piekarskie|Menel zdrój|5":1.15,"Jabłko|Turbo|Kranówa|1":2.99,"Jabłko|Turbo|Kranówa|2":1.97,"Jabłko|Turbo|Kranówa|3":2.7,"Jabłko|Turbo|Kranówa|4":2.76,"Jabłko|Turbo|Kranówa|5":2.03,"Jabłko|Turbo|Górski strumyk|1":3.22,"Jabłko|Turbo|Górski strumyk|2":2.19,"Jabłko|Turbo|Górski strumyk|3":1.75,"Jabłko|Turbo|Górski strumyk|4":2.76,"Jabłko|Turbo|Górski strumyk|5":1.79,"Jabłko|Turbo|Menel zdrój|1":2.32,"Jabłko|Turbo|Menel zdrój|2":2.55,"Jabłko|Turbo|Menel zdrój|3":2.49,"Jabłko|Turbo|Menel zdrój|4":2.55,"Jabłko|Turbo|Menel zdrój|5":2.32,"Jabłko|Winiarskie|Kranówa|1":1.9,"Jabłko|Winiarskie|Kranówa|2":0.96,"Jabłko|Winiarskie|Kranówa|3":1.94,"Jabłko|Winiarskie|Kranówa|4":1.65,"Jabłko|Winiarskie|Kranówa|5":1.37,"Jabłko|Winiarskie|Górski strumyk|1":2.05,"Jabłko|Winiarskie|Górski strumyk|2":1.06,"Jabłko|Winiarskie|Menel zdrój|1":1.47,"Jabłko|Winiarskie|Menel zdrój|2":1.24,"Jabłko|Winiarskie|Menel zdrój|3":1.79,"Jabłko|Winiarskie|Menel zdrój|4":1.53,"Jabłko|Winiarskie|Menel zdrój|5":1.56,"Obierki jabłek|Instant|Kranówa|1":1.58,"Obierki jabłek|Instant|Kranówa|2":1.3,"Obierki jabłek|Instant|Kranówa|3":1.32,"Obierki jabłek|Instant|Kranówa|4":1.52,"Obierki jabłek|Instant|Kranówa|5":1.51,"Obierki jabłek|Instant|Górski strumyk|1":1.7,"Obierki jabłek|Instant|Górski strumyk|2":1.45,"Obierki jabłek|Instant|Górski strumyk|3":0.86,"Obierki jabłek|Instant|Górski strumyk|4":1.52,"Obierki jabłek|Instant|Menel zdrój|1":1.22,"Obierki jabłek|Instant|Menel zdrój|2":1.68,"Obierki jabłek|Instant|Menel zdrój|3":1.22,"Obierki jabłek|Instant|Menel zdrój|4":1.4,"Obierki jabłek|Instant|Menel zdrój|5":1.72,"Obierki jabłek|Babuni|Kranówa|1":2.14,"Obierki jabłek|Babuni|Kranówa|2":1.13,"Obierki jabłek|Babuni|Kranówa|3":1.88,"Obierki jabłek|Babuni|Kranówa|4":1.46,"Obierki jabłek|Babuni|Kranówa|5":1.71,"Obierki jabłek|Babuni|Menel zdrój|1":1.66,"Obierki jabłek|Babuni|Menel zdrój|2":1.46,"Obierki jabłek|Turbo|Kranówa|1":3.12,"Obierki jabłek|Turbo|Kranówa|2":2.08,"Obierki jabłek|Turbo|Kranówa|3":2.76,"Obierki jabłek|Turbo|Kranówa|4":2.76,"Obierki jabłek|Turbo|Kranówa|5":3.08,"Obierki jabłek|Turbo|Górski strumyk|1":3.36,"Obierki jabłek|Turbo|Górski strumyk|2":2.31,"Obierki jabłek|Turbo|Górski strumyk|3":1.84,"Obierki jabłek|Turbo|Górski strumyk|4":2.76,"Obierki jabłek|Turbo|Górski strumyk|5":2.71,"Obierki jabłek|Turbo|Menel zdrój|1":2.41,"Obierki jabłek|Turbo|Menel zdrój|2":2.69,"Obierki jabłek|Turbo|Menel zdrój|3":2.63,"Obierki jabłek|Turbo|Menel zdrój|4":2.55,"Obierki jabłek|Turbo|Menel zdrój|5":3.51,"Obierki jabłek|Winiarskie|Kranówa|1":1.98,"Obierki jabłek|Winiarskie|Kranówa|2":1.01,"Obierki jabłek|Winiarskie|Kranówa|3":2.03,"Obierki jabłek|Winiarskie|Kranówa|4":1.65,"Obierki jabłek|Winiarskie|Kranówa|5":2.08,"Obierki jabłek|Winiarskie|Górski strumyk|1":2.14,"Obierki jabłek|Winiarskie|Górski strumyk|2":1.12,"Obierki jabłek|Winiarskie|Górski strumyk|3":1.33,"Obierki jabłek|Winiarskie|Górski strumyk|5":1.83,"Obierki jabłek|Winiarskie|Menel zdrój|1":1.54,"Obierki jabłek|Winiarskie|Menel zdrój|2":1.3,"Obierki jabłek|Winiarskie|Menel zdrój|3":1.89,"Obierki jabłek|Winiarskie|Menel zdrój|4":1.53,"Obierki jabłek|Winiarskie|Menel zdrój|5":2.37,"Obierki ziemniaków|Instant|Kranówa|1":1.37,"Obierki ziemniaków|Instant|Kranówa|2":1.72,"Obierki ziemniaków|Instant|Kranówa|3":1.94,"Obierki ziemniaków|Instant|Kranówa|4":1.42,"Obierki ziemniaków|Instant|Kranówa|5":1.37,"Obierki ziemniaków|Instant|Górski strumyk|1":1.47,"Obierki ziemniaków|Instant|Menel zdrój|1":1.06,"Obierki ziemniaków|Instant|Menel zdrój|2":2.23,"Obierki ziemniaków|Instant|Menel zdrój|3":1.79,"Obierki ziemniaków|Instant|Menel zdrój|4":1.32,"Obierki ziemniaków|Instant|Menel zdrój|5":1.57,"Obierki ziemniaków|Babuni|Kranówa|1":1.86,"Obierki ziemniaków|Babuni|Kranówa|2":1.5,"Obierki ziemniaków|Babuni|Kranówa|5":1.56,"Obierki ziemniaków|Babuni|Menel zdrój|1":1.44,"Obierki ziemniaków|Babuni|Menel zdrój|2":1.94,"Obierki ziemniaków|Babuni|Menel zdrój|3":2.55,"Obierki ziemniaków|Babuni|Menel zdrój|4":1.27,"Obierki ziemniaków|Babuni|Menel zdrój|5":1.77,"Obierki ziemniaków|Klasyczne|Górski strumyk|1":1.61,"Obierki ziemniaków|Klasyczne|Górski strumyk|2":2.22,"Obierki ziemniaków|Klasyczne|Górski strumyk|3":1.84,"Obierki ziemniaków|Klasyczne|Górski strumyk|4":1.2,"Obierki ziemniaków|Klasyczne|Menel zdrój|1":1.16,"Obierki ziemniaków|Klasyczne|Menel zdrój|2":2.58,"Obierki ziemniaków|Klasyczne|Menel zdrój|3":2.62,"Obierki ziemniaków|Klasyczne|Menel zdrój|4":1.11,"Obierki ziemniaków|Klasyczne|Menel zdrój|5":1.98,"Obierki ziemniaków|Piekarskie|Kranówa|1":1.49,"Obierki ziemniaków|Piekarskie|Kranówa|2":1.71,"Obierki ziemniaków|Piekarskie|Kranówa|3":2.63,"Obierki ziemniaków|Piekarskie|Górski strumyk|1":1.61,"Obierki ziemniaków|Piekarskie|Górski strumyk|2":1.9,"Obierki ziemniaków|Piekarskie|Górski strumyk|3":1.71,"Obierki ziemniaków|Piekarskie|Górski strumyk|4":1.43,"Obierki ziemniaków|Piekarskie|Górski strumyk|5":1.22,"Obierki ziemniaków|Piekarskie|Menel zdrój|1":1.16,"Obierki ziemniaków|Piekarskie|Menel zdrój|2":2.21,"Obierki ziemniaków|Piekarskie|Menel zdrój|3":2.43,"Obierki ziemniaków|Piekarskie|Menel zdrój|4":1.33,"Obierki ziemniaków|Piekarskie|Menel zdrój|5":1.58,"Obierki ziemniaków|Turbo|Kranówa|1":2.71,"Obierki ziemniaków|Turbo|Kranówa|2":2.76,"Obierki ziemniaków|Turbo|Kranówa|3":4.18,"Obierki ziemniaków|Turbo|Kranówa|4":2.58,"Obierki ziemniaków|Turbo|Kranówa|5":2.8,"Obierki ziemniaków|Turbo|Górski strumyk|1":2.92,"Obierki ziemniaków|Turbo|Górski strumyk|2":3.07,"Obierki ziemniaków|Turbo|Górski strumyk|3":2.71,"Obierki ziemniaków|Turbo|Górski strumyk|4":2.58,"Obierki ziemniaków|Turbo|Górski strumyk|5":2.46,"Obierki ziemniaków|Turbo|Menel zdrój|1":2.1,"Obierki ziemniaków|Turbo|Menel zdrój|2":3.56,"Obierki ziemniaków|Turbo|Menel zdrój|3":3.86,"Obierki ziemniaków|Turbo|Menel zdrój|4":2.39,"Obierki ziemniaków|Turbo|Menel zdrój|5":3.2,"Obierki ziemniaków|Winiarskie|Kranówa|1":1.72,"Obierki ziemniaków|Winiarskie|Kranówa|2":1.34,"Obierki ziemniaków|Winiarskie|Kranówa|3":3.01,"Obierki ziemniaków|Winiarskie|Kranówa|4":1.55,"Obierki ziemniaków|Winiarskie|Kranówa|5":1.89,"Obierki ziemniaków|Winiarskie|Górski strumyk|1":1.85,"Obierki ziemniaków|Winiarskie|Górski strumyk|2":1.49,"Obierki ziemniaków|Winiarskie|Górski strumyk|3":1.95,"Obierki ziemniaków|Winiarskie|Górski strumyk|4":1.55,"Obierki ziemniaków|Winiarskie|Górski strumyk|5":1.66,"Obierki ziemniaków|Winiarskie|Menel zdrój|1":1.33,"Obierki ziemniaków|Winiarskie|Menel zdrój|2":1.73,"Obierki ziemniaków|Winiarskie|Menel zdrój|3":2.78,"Obierki ziemniaków|Winiarskie|Menel zdrój|4":1.44,"Obierki ziemniaków|Winiarskie|Menel zdrój|5":2.16,"Cukier|Babuni|Menel zdrój|1":1.79,"Cukier|Klasyczne|Kranówa|4":1.36,"Cukier|Piekarskie|Kranówa|1":1.86,"Cukier|Piekarskie|Kranówa|2":1.24,"Cukier|Piekarskie|Górski strumyk|5":0.92,"Cukier|Turbo|Kranówa|1":3.38,"Cukier|Turbo|Kranówa|2":1.99,"Cukier|Turbo|Kranówa|3":3.36,"Cukier|Turbo|Kranówa|4":2.93,"Cukier|Turbo|Kranówa|5":2.12,"Cukier|Turbo|Górski strumyk|1":3.64,"Cukier|Turbo|Górski strumyk|2":1.39,"Cukier|Turbo|Górski strumyk|3":2.18,"Cukier|Turbo|Górski strumyk|4":2.93,"Cukier|Turbo|Górski strumyk|5":1.86,"Cukier|Turbo|Menel zdrój|1":2.63,"Cukier|Turbo|Menel zdrój|2":2.58,"Cukier|Turbo|Menel zdrój|3":2.18,"Cukier|Turbo|Menel zdrój|4":3.11,"Cukier|Turbo|Menel zdrój|5":2.42,"Cukier|Winiarskie|Kranówa|1":2.15,"Cukier|Winiarskie|Kranówa|2":0.97,"Cukier|Winiarskie|Kranówa|3":2.42,"Cukier|Winiarskie|Kranówa|4":1.76,"Cukier|Winiarskie|Kranówa|5":1.43,"Cukier|Winiarskie|Górski strumyk|1":2.31,"Cukier|Winiarskie|Górski strumyk|2":1.08,"Cukier|Winiarskie|Górski strumyk|3":1.57,"Cukier|Winiarskie|Górski strumyk|4":1.76,"Cukier|Winiarskie|Górski strumyk|5":1.26,"Cukier|Winiarskie|Menel zdrój|1":1.66,"Cukier|Winiarskie|Menel zdrój|2":1.25,"Cukier|Winiarskie|Menel zdrój|3":2.24,"Cukier|Winiarskie|Menel zdrój|4":1.63,"Cukier|Winiarskie|Menel zdrój|5":1.63,"Turbo Zacier|Babuni|Górski strumyk|1":3.81,"Turbo Zacier|Turbo|Kranówa|1":5.16,"Turbo Zacier|Turbo|Kranówa|2":4.24,"Turbo Zacier|Turbo|Kranówa|3":5.8,"Turbo Zacier|Turbo|Kranówa|4":4.92,"Turbo Zacier|Turbo|Kranówa|5":4.28,"Turbo Zacier|Turbo|Górski strumyk|1":5.56,"Turbo Zacier|Turbo|Górski strumyk|2":4.72,"Turbo Zacier|Turbo|Górski strumyk|3":3.76,"Turbo Zacier|Turbo|Górski strumyk|4":4.92,"Turbo Zacier|Turbo|Górski strumyk|5":3.76,"Turbo Zacier|Turbo|Menel zdrój|1":4,"Turbo Zacier|Turbo|Menel zdrój|2":5.48,"Turbo Zacier|Turbo|Menel zdrój|3":5.36,"Turbo Zacier|Winiarskie|Górski strumyk|1":3.53};
 
   const MAPA = [
-    ["Wilanów","⚔️ Agresywnie"],
-    ["Mokotów","🤝 Przyjacielski"],
-    ["Ursynów","🙏 Błagalny"],
-    ["Ochota","⚪ Neutralny"],
-    ["Śródmieście","⚔️ Agresywny"],
-    ["Bemowo","🤝 Przyjacielski"],
-    ["Wola","🙏 Błagalny"],
-    ["Żoliborz","⚪ Neutralny"],
-    ["Bielany","⚪ Neutralny"],
-    ["Praga","🙏 Błagalny"],
-    ["Białołęka",null],
-    ["Targówek",null]
+    ["Wilanów", "Agresywny", "⚔️"],
+    ["Mokotów", "Przyjacielski", "🤝"],
+    ["Ursynów", "Błagalny", "🙏"],
+    ["Ochota", "Neutralny", "⚪"],
+    ["Śródmieście", "Agresywny", "⚔️"],
+    ["Bemowo", "Przyjacielski", "🤝"],
+    ["Wola", "Błagalny", "🙏"],
+    ["Żoliborz", "Neutralny", "⚪"],
+    ["Bielany", "Neutralny", "⚪"],
+    ["Praga", "Błagalny", "🙏"],
+    ["Białołęka", null, "❓"],
+    ["Targówek", null, "❓"]
   ];
+
+  const MAP_POSITIONS = {
+    "Bielany":      { x: 28.7, y: 12.2 },
+    "Białołęka":    { x: 62.0, y: 16.7 },
+    "Żoliborz":     { x: 19.2, y: 29.8 },
+    "Targówek":     { x: 81.7, y: 33.6 },
+    "Bemowo":       { x: 13.5, y: 47.7 },
+    "Śródmieście":  { x: 46.8, y: 48.9 },
+    "Praga":        { x: 86.1, y: 55.2 },
+    "Wola":         { x: 22.0, y: 61.4 },
+    "Ochota":       { x: 20.2, y: 75.9 },
+    "Mokotów":      { x: 50.8, y: 73.3 },
+    "Wilanów":      { x: 77.9, y: 80.9 },
+    "Ursynów":      { x: 39.6, y: 92.4 }
+  };
+
+  const MAP_IMAGE_URL = GM_getResourceURL("MAP_IMAGE");
 
 const DISPLAY_NAMES = {
   "Ziemniak irga": 'Ziemniaki "Irga"',
@@ -73,6 +92,7 @@ function displayName(name) {
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
   const NICK_KEY = "roq_tools_submitter_nick_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
+  const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
 
   let premiumState = {};
   let remoteApproved = {};
@@ -143,6 +163,7 @@ function displayName(name) {
 	let mapPanel=null;
 	let submitPanel=null;
 	let paymentsPanel=null;
+	let adminPanel=null;
 	let currentTab="top";
 
   const CSS = `
@@ -176,8 +197,37 @@ function displayName(name) {
     .star{color:#9a6500;font-weight:700;margin-top:5px} .muted{color:#766b5e}
     .bar{height:12px;background:#ded3c0;border-radius:8px;overflow:hidden;margin:8px 0 14px}
     .bar>div{height:100%;background:#6d8c55}
-    .maprow{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-bottom:1px solid #e2d5bf}
-    .district{font-weight:700} .action{text-align:right;font-weight:700} .unknown{color:#9a6500}
+    .mapStage{position:relative;width:100%;max-width:390px;margin:0 auto}
+    .mapStage img{display:block;width:100%;height:auto;border-radius:8px}
+    .mapMarker{position:absolute;transform:translate(-50%,0);z-index:2;padding:2px 5px;border-radius:6px;
+      background:rgba(255,248,230,.92);border:1px solid rgba(95,70,40,.55);box-shadow:0 1px 3px #0005;
+      font-size:10px;font-weight:700;line-height:1.15;white-space:nowrap;color:#3d3022;pointer-events:none}
+    .mapMarker.unknown{background:rgba(255,238,238,.94);border-color:rgba(180,80,80,.65);color:#9a2f2f}
+    .mapLegend{margin-top:10px;padding:7px 9px;border-radius:8px;background:#f8f0df;border:1px solid #d8c49f;
+      font-size:11px;line-height:1.4;text-align:center}
+    .adminWrap{padding:10px 12px;max-height:70vh;overflow-y:auto;background:#fff8eb}
+    .adminTabs{display:flex;gap:5px;margin-bottom:9px}
+    .adminTabs button{flex:1;padding:7px 4px;font-size:11px}
+    .adminTabs button.active{background:#6a5136;color:#fff;border-color:#5b472f}
+    .adminBox{border:1px solid #d8c7aa;border-radius:8px;background:#fffdf8;padding:9px;margin-bottom:8px}
+    .adminGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px}
+    .adminGrid .adminBox{margin:0;min-width:0}
+    .adminLabel{font-size:11px;color:#766b5e;display:block}
+    .adminStatus{min-height:18px;text-align:center;font-weight:700;color:#4f643d;white-space:pre-wrap}
+    .adminDanger{background:#fff0f0;border-color:#d9aaaa}
+    .adminGood{background:#eaf6ea;border-color:#9fc79f}
+    .adminTextarea{width:100%;min-height:150px;resize:vertical;border:1px solid #ccb797;border-radius:7px;
+      background:#fffdf8;color:#332a20;padding:8px;font:12px monospace}
+    .adminPlayer{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;
+      margin-bottom:4px;border:1px solid #d8c7aa;border-radius:7px;background:#fffdf8}
+    .adminPlayer strong{overflow-wrap:anywhere}
+    .previewDay{margin-top:7px;border:1px solid #bad7ba;border-radius:7px;background:#eef7ee;overflow:hidden}
+    .previewDay.out{border-color:#c8c8c8;background:#f3f3f3}
+    .previewDay.bad{border-color:#e3b2b2;background:#fff1f1}
+    .previewDayHead{width:100%;border:0;border-radius:0;background:transparent;text-align:left;padding:8px}
+    .previewDetails{padding:0 8px 8px;font-size:11px}
+    .miniRow{display:flex;justify-content:space-between;gap:8px;padding:4px 6px;margin-top:3px;border-radius:5px;background:#fffdf8;border:1px solid #ddd}
+
 
 .form{
   display:grid;
@@ -350,12 +400,14 @@ function displayName(name) {
   <button id="map">🗺 Mapa</button>
   <button id="payments">💰 Wpłaty</button>
   <button id="submit">➕ Zgłoś</button>
+  <button id="admin">🛠 Admin</button>
   <button id="opt">⚗ Destylarnia</button>
 `;
     root.appendChild(bar); document.documentElement.appendChild(host);
     root.getElementById("map").onclick = openMap;
     root.getElementById("payments").onclick = openPayments;
     root.getElementById("submit").onclick = openSubmit;
+    root.getElementById("admin").onclick = openAdmin;
     root.getElementById("opt").onclick = openOptimizer;
     return true;
   }
@@ -610,6 +662,7 @@ function displayName(name) {
 }
 
   function openOptimizer() {
+    if (adminPanel) { adminPanel.remove(); adminPanel=null; }
 	if (paymentsPanel) {
   paymentsPanel.remove();
   paymentsPanel = null;
@@ -664,6 +717,11 @@ function currentKnownValue(k) {
 
 
 function openSubmit() {
+
+if (adminPanel) {
+  adminPanel.remove();
+  adminPanel = null;
+}
 
 if (paymentsPanel) {
   paymentsPanel.remove();
@@ -1071,23 +1129,55 @@ if (paymentsPanel) {
 }
 
   function openMap() {
-	if (paymentsPanel) {
-  	paymentsPanel.remove();
-  	paymentsPanel = null;
-	}
-	if (submitPanel) {
-  	submitPanel.remove();
-  	submitPanel = null;
-	}
-    if (mapPanel) { mapPanel.remove(); mapPanel=null; return; }
+    if (mapPanel) {
+      mapPanel.remove();
+      mapPanel = null;
+      return;
+    }
+
+    if (adminPanel) { adminPanel.remove(); adminPanel=null; }
+    if (submitPanel) { submitPanel.remove(); submitPanel=null; }
+    if (paymentsPanel) { paymentsPanel.remove(); paymentsPanel=null; }
     if (optPanel) { optPanel.remove(); optPanel=null; }
+
     if (!root) mount();
-    mapPanel = document.createElement("div"); mapPanel.className="panel";
-    mapPanel.innerHTML = `<div class="head"><span>🗺 Ściąga — Mapa</span><span class="close">×</span></div>
-      <div class="mapbody">${MAPA.map(([d,a])=>`<div class="maprow"><div class="district">${d}</div>
-      <div class="action ${a?"":"unknown"}">${a||"❓ Nieodkryte"}</div></div>`).join("")}</div>`;
+
+    const markers = MAPA.map(([district, action, icon]) => {
+      const p = MAP_POSITIONS[district];
+      if (!p) return "";
+
+      return `
+        <div class="mapMarker ${action ? "" : "unknown"}"
+          style="left:${p.x}%;top:${p.y}%">
+          ${icon} ${esc(action || "Nieodkryte")}
+        </div>
+      `;
+    }).join("");
+
+    mapPanel = document.createElement("div");
+    mapPanel.className = "panel";
+    mapPanel.innerHTML = `
+      <div class="head">
+        <span>🗺 Ściąga — Mapa</span>
+        <span class="close">×</span>
+      </div>
+      <div class="mapbody">
+        <div class="mapStage">
+          <img src="${MAP_IMAGE_URL}" alt="Mapa dzielnic">
+          ${markers}
+        </div>
+        <div class="mapLegend">
+          ⚪ Neutralny · 🙏 Błagalny · 🤝 Przyjacielski · ⚔️ Agresywny
+        </div>
+      </div>
+    `;
+
     root.appendChild(mapPanel);
-    mapPanel.querySelector(".close").onclick=()=>{mapPanel.remove();mapPanel=null;};
+
+    mapPanel.querySelector(".close").onclick = () => {
+      mapPanel.remove();
+      mapPanel = null;
+    };
   }
 
 // ============================================================
@@ -1673,6 +1763,11 @@ async function loadPayments() {
 
 function openPayments() {
 
+  if (adminPanel) {
+    adminPanel.remove();
+    adminPanel = null;
+  }
+
   if (paymentsPanel) {
 
     paymentsPanel.remove();
@@ -1741,6 +1836,1552 @@ function openPayments() {
     };
 
   loadPayments();
+}
+
+
+// ============================================================
+// PANEL ADMINISTRATORA — WERSJA TAMPERMONKEY
+// ============================================================
+
+function adminToken() {
+  return localStorage.getItem(ADMIN_TOKEN_KEY) || "";
+}
+
+function setAdminToken(token) {
+  if (token) {
+    localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+  }
+}
+
+function adminQ(selector) {
+  return adminPanel
+    ? adminPanel.querySelector(selector)
+    : null;
+}
+
+function adminSetStatus(message="") {
+  const box = adminQ("#adminMainStatus");
+  if (box) box.textContent = message;
+}
+
+function adminDate(value) {
+  const m =
+    /^(\d{4})-(\d{2})-(\d{2})$/
+      .exec(String(value || ""));
+  return m
+    ? `${m[3]}.${m[2]}.${m[1]}`
+    : (value || "—");
+}
+
+function adminMoney(value) {
+  return Number(value || 0)
+    .toLocaleString(
+      "pl-PL",
+      {
+        minimumFractionDigits:0,
+        maximumFractionDigits:2
+      }
+    );
+}
+
+function renderAdminLogin(message="") {
+  if (!adminPanel) return;
+
+  adminPanel.querySelector(".adminWrap").innerHTML = `
+    <form id="adminLoginForm" class="paymentsLogin">
+      <div>
+        <b>🔐 Dostęp administratora</b>
+      </div>
+
+      <div class="muted">
+        Zaloguj się hasłem administratora.
+        Sesja jest zapamiętywana na tym urządzeniu.
+      </div>
+
+      <input
+        id="adminPassword"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Hasło administratora"
+        required>
+
+      <button
+        class="sendBtn"
+        type="submit">
+        🔓 Zaloguj
+      </button>
+
+      <div class="adminStatus">
+        ${esc(message)}
+      </div>
+    </form>
+  `;
+
+  adminQ("#adminLoginForm").onsubmit =
+    loginAdmin;
+}
+
+async function loginAdmin(event) {
+  event.preventDefault();
+
+  const password =
+    adminQ("#adminPassword").value;
+
+  const status =
+    adminQ(".adminStatus");
+
+  if (!password) {
+    status.textContent =
+      "Wpisz hasło administratora.";
+    return;
+  }
+
+  const nonce =
+    makeGangNonce();
+
+  status.textContent =
+    "Sprawdzanie hasła...";
+
+  try {
+    const start =
+      await gmJsonRequest(
+        "POST",
+        BACKEND_URL,
+        {
+          action:"adminLogin",
+          nonce,
+          password
+        }
+      );
+
+    if (start && start.ok === false) {
+      throw new Error(
+        start.error ||
+        "Nie udało się rozpocząć logowania."
+      );
+    }
+
+    let result = null;
+
+    for (let i=0; i<12; i++) {
+      await new Promise(
+        resolve =>
+          setTimeout(resolve,500)
+      );
+
+      result =
+        await gmJsonRequest(
+          "GET",
+          BACKEND_URL +
+            "?action=adminLoginResult" +
+            "&nonce=" +
+            encodeURIComponent(nonce) +
+            "&_=" +
+            Date.now()
+        );
+
+      if (
+        !result ||
+        !result.pending
+      ) {
+        break;
+      }
+    }
+
+    if (!result || result.pending) {
+      throw new Error(
+        "Serwer nie zwrócił wyniku logowania."
+      );
+    }
+
+    if (!result.ok || !result.token) {
+      status.textContent =
+        result.error ||
+        "Nieprawidłowe hasło administratora.";
+      return;
+    }
+
+    setAdminToken(result.token);
+    renderAdminHome();
+    await checkAdminToken();
+
+  } catch (err) {
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się zalogować.";
+  }
+}
+
+function renderAdminHome() {
+  if (!adminPanel) return;
+
+  adminPanel.querySelector(".adminWrap").innerHTML = `
+    <div class="paymentsTop">
+      <div class="paymentsMeta">
+        <b>✅ Dostęp administratora aktywny</b>
+        <div id="adminMainStatus" class="muted"></div>
+      </div>
+
+      <div class="paymentsActions">
+        <button id="adminRefreshAll">
+          ↻ Odśwież
+        </button>
+
+        <button id="adminLogout">
+          🔒 Wyloguj
+        </button>
+      </div>
+    </div>
+
+    <div class="adminTabs">
+      <button
+        data-admin-tab="payments"
+        class="active">
+        💰 Wpłaty
+      </button>
+
+      <button
+        data-admin-tab="submissions">
+        📋 Zgłoszenia
+      </button>
+
+      <button
+        data-admin-tab="players">
+        👥 Gracze
+      </button>
+    </div>
+
+    <div id="adminSection"></div>
+  `;
+
+  adminQ("#adminLogout").onclick = () => {
+    setAdminToken("");
+    renderAdminLogin(
+      "Wylogowano administratora."
+    );
+  };
+
+  adminQ("#adminRefreshAll").onclick = () => {
+    const active =
+      adminQ("[data-admin-tab].active");
+    loadAdminTab(
+      active
+        ? active.dataset.adminTab
+        : "payments"
+    );
+  };
+
+  adminPanel
+    .querySelectorAll("[data-admin-tab]")
+    .forEach(button => {
+      button.onclick = () => {
+        adminPanel
+          .querySelectorAll(
+            "[data-admin-tab]"
+          )
+          .forEach(
+            x =>
+              x.classList.toggle(
+                "active",
+                x === button
+              )
+          );
+
+        loadAdminTab(
+          button.dataset.adminTab
+        );
+      };
+    });
+
+  loadAdminTab("payments");
+}
+
+async function checkAdminToken() {
+  const token =
+    adminToken();
+
+  if (!token) {
+    renderAdminLogin();
+    return false;
+  }
+
+  try {
+    const result =
+      await gmJsonRequest(
+        "GET",
+        BACKEND_URL +
+          "?action=adminTest" +
+          "&token=" +
+          encodeURIComponent(token) +
+          "&_=" +
+          Date.now()
+      );
+
+    if (!result || !result.ok) {
+      setAdminToken("");
+      renderAdminLogin(
+        "Sesja administratora wygasła."
+      );
+      return false;
+    }
+
+    return true;
+
+  } catch (err) {
+    adminSetStatus(
+      err && err.message
+        ? err.message
+        : "Nie udało się sprawdzić dostępu."
+    );
+    return false;
+  }
+}
+
+function loadAdminTab(tab) {
+  if (!adminPanel) return;
+
+  if (tab === "submissions") {
+    renderAdminSubmissions();
+    return;
+  }
+
+  if (tab === "players") {
+    renderAdminPlayers();
+    return;
+  }
+
+  renderAdminPayments();
+}
+
+async function renderAdminSubmissions() {
+  const section =
+    adminQ("#adminSection");
+
+  if (!section) return;
+
+  section.innerHTML = `
+    <div class="adminStatus">
+      Pobieranie zgłoszeń...
+    </div>
+  `;
+
+  try {
+    const payload =
+      await gmJsonRequest(
+        "GET",
+        BACKEND_URL +
+          "?action=adminSubmissions" +
+          "&token=" +
+          encodeURIComponent(
+            adminToken()
+          ) +
+          "&_=" +
+          Date.now()
+      );
+
+    if (!payload || !payload.ok) {
+      throw new Error(
+        payload && payload.error
+          ? payload.error
+          : "Nie udało się pobrać zgłoszeń."
+      );
+    }
+
+    const items =
+      Array.isArray(
+        payload.submissions
+      )
+        ? payload.submissions
+        : [];
+
+    section.innerHTML = `
+      <div class="adminBox">
+        Oczekujące zgłoszenia:
+        <b>${items.length}</b>
+      </div>
+
+      ${
+        items.length
+          ? items.map(item => `
+              <div
+                class="adminBox"
+                data-submission-row="${item.row}">
+
+                <div style="
+                  display:flex;
+                  justify-content:space-between;
+                  gap:8px;
+                ">
+                  <strong>
+                    ${esc(item.nick)}
+                  </strong>
+
+                  <strong>
+                    ${adminMoney(item.litry)} l
+                  </strong>
+                </div>
+
+                <div style="
+                  margin-top:4px;
+                  font-size:12px;
+                ">
+                  ${esc(displayName(item.baza))}
+                  ·
+                  ${esc(displayName(item.drozdze))}
+                  ·
+                  ${esc(displayName(item.woda))}
+                  ·
+                  P${Number(item.program) || 0}
+                </div>
+
+                <div class="muted"
+                  style="margin-top:3px">
+                  ${esc(item.date || "")}
+                </div>
+
+                ${
+                  item.uwagi
+                    ? `
+                        <div class="muted"
+                          style="margin-top:5px">
+                          💬 ${esc(item.uwagi)}
+                        </div>
+                      `
+                    : ""
+                }
+
+                <div style="
+                  display:flex;
+                  gap:6px;
+                  margin-top:8px;
+                ">
+                  <button
+                    class="adminGood"
+                    style="flex:1"
+                    data-submission-action="ZATWIERDZONE"
+                    data-row="${item.row}">
+                    ✅ Zatwierdź
+                  </button>
+
+                  <button
+                    class="adminDanger"
+                    style="flex:1"
+                    data-submission-action="ODRZUCONE"
+                    data-row="${item.row}">
+                    ❌ Odrzuć
+                  </button>
+                </div>
+              </div>
+            `).join("")
+          : `
+              <div class="adminBox adminGood">
+                ✅ Brak zgłoszeń oczekujących na weryfikację.
+              </div>
+            `
+      }
+
+      <div id="adminSubmissionsStatus"
+        class="adminStatus"></div>
+    `;
+
+    section
+      .querySelectorAll(
+        "[data-submission-action]"
+      )
+      .forEach(button => {
+        button.onclick = () =>
+          changeSubmissionStatus(
+            Number(button.dataset.row),
+            button.dataset
+              .submissionAction
+          );
+      });
+
+  } catch (err) {
+    section.innerHTML = `
+      <div class="adminBox adminDanger">
+        ${esc(
+          err && err.message
+            ? err.message
+            : "Nie udało się pobrać zgłoszeń."
+        )}
+      </div>
+    `;
+  }
+}
+
+async function changeSubmissionStatus(
+  row,
+  status
+) {
+  const approve =
+    status === "ZATWIERDZONE";
+
+  if (
+    !window.confirm(
+      approve
+        ? "Zatwierdzić tę recepturę?"
+        : "Odrzucić tę recepturę?"
+    )
+  ) {
+    return;
+  }
+
+  const box =
+    adminQ(
+      "#adminSubmissionsStatus"
+    );
+
+  if (box) {
+    box.textContent =
+      approve
+        ? "Zatwierdzanie..."
+        : "Odrzucanie...";
+  }
+
+  try {
+    const result =
+      await gmJsonRequest(
+        "POST",
+        BACKEND_URL,
+        {
+          action:
+            "adminSetSubmissionStatus",
+          token:adminToken(),
+          row,
+          status
+        }
+      );
+
+    if (!result || !result.ok) {
+      throw new Error(
+        result && result.error
+          ? result.error
+          : "Nie udało się zmienić statusu."
+      );
+    }
+
+    if (approve) {
+      fetchApproved();
+    }
+
+    await renderAdminSubmissions();
+
+  } catch (err) {
+    if (box) {
+      box.textContent =
+        err && err.message
+          ? err.message
+          : "Nie udało się zmienić statusu.";
+    }
+  }
+}
+
+async function renderAdminPlayers() {
+  const section =
+    adminQ("#adminSection");
+
+  if (!section) return;
+
+  section.innerHTML = `
+    <div class="adminBox">
+      <form id="adminAddPlayerForm"
+        class="form">
+        <label>
+          Nick nowego gracza
+          <input
+            id="adminPlayerNick"
+            type="text"
+            maxlength="50"
+            placeholder="Nick gracza"
+            required>
+        </label>
+
+        <button class="sendBtn"
+          type="submit">
+          ➕ Dodaj gracza
+        </button>
+      </form>
+    </div>
+
+    <div id="adminPlayersStatus"
+      class="adminStatus">
+      Pobieranie graczy...
+    </div>
+
+    <div id="adminPlayersList"></div>
+  `;
+
+  adminQ(
+    "#adminAddPlayerForm"
+  ).onsubmit =
+    addAdminPlayer;
+
+  await loadAdminPlayersList();
+}
+
+async function loadAdminPlayersList() {
+  const list =
+    adminQ("#adminPlayersList");
+
+  const status =
+    adminQ("#adminPlayersStatus");
+
+  if (!list || !status) return;
+
+  try {
+    const payload =
+      await gmJsonRequest(
+        "GET",
+        BACKEND_URL +
+          "?action=adminPaymentsStatus" +
+          "&token=" +
+          encodeURIComponent(
+            adminToken()
+          ) +
+          "&_=" +
+          Date.now()
+      );
+
+    if (!payload || !payload.ok) {
+      throw new Error(
+        payload && payload.error
+          ? payload.error
+          : "Nie udało się pobrać graczy."
+      );
+    }
+
+    const players =
+      Array.isArray(payload.players)
+        ? payload.players
+        : [];
+
+    list.innerHTML =
+      players.length
+        ? players.map(player => `
+            <div class="adminPlayer">
+              <strong>
+                ${esc(player.nick)}
+              </strong>
+
+              <button
+                class="adminDanger"
+                data-delete-player="${esc(player.nick)}">
+                🗑 Usuń
+              </button>
+            </div>
+          `).join("")
+        : `
+            <div class="adminBox">
+              Brak graczy.
+            </div>
+          `;
+
+    list
+      .querySelectorAll(
+        "[data-delete-player]"
+      )
+      .forEach(button => {
+        button.onclick = () =>
+          deleteAdminPlayer(
+            button.dataset
+              .deletePlayer
+          );
+      });
+
+    status.textContent = "";
+
+  } catch (err) {
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się pobrać graczy.";
+  }
+}
+
+async function addAdminPlayer(event) {
+  event.preventDefault();
+
+  const input =
+    adminQ("#adminPlayerNick");
+
+  const status =
+    adminQ("#adminPlayersStatus");
+
+  const nick =
+    String(
+      input ? input.value : ""
+    ).trim();
+
+  if (!nick) {
+    status.textContent =
+      "Podaj nick gracza.";
+    return;
+  }
+
+  status.textContent =
+    "Dodawanie gracza...";
+
+  try {
+    const result =
+      await gmJsonRequest(
+        "POST",
+        BACKEND_URL,
+        {
+          action:"adminAddPlayer",
+          token:adminToken(),
+          nick
+        }
+      );
+
+    if (!result || !result.ok) {
+      throw new Error(
+        result && result.error
+          ? result.error
+          : "Nie udało się dodać gracza."
+      );
+    }
+
+    input.value = "";
+    status.textContent =
+      result.message ||
+      `✅ Dodano gracza ${nick}.`;
+
+    await loadAdminPlayersList();
+
+  } catch (err) {
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się dodać gracza.";
+  }
+}
+
+async function deleteAdminPlayer(nick) {
+  const status =
+    adminQ("#adminPlayersStatus");
+
+  const first =
+    window.confirm(
+      `Czy na pewno chcesz usunąć gracza "${nick}"?`
+    );
+
+  if (!first) return;
+
+  const confirmation =
+    window.prompt(
+      `UWAGA!\n\n` +
+      `Usunięcie gracza "${nick}" usunie jego bieżącą historię z tabeli.\n\n` +
+      `Aby potwierdzić, wpisz dokładnie nick gracza:`
+    );
+
+  if (confirmation === null) return;
+
+  if (
+    confirmation.trim()
+      .toLocaleLowerCase("pl-PL") !==
+    nick.trim()
+      .toLocaleLowerCase("pl-PL")
+  ) {
+    status.textContent =
+      "Usuwanie anulowane — nick potwierdzający jest nieprawidłowy.";
+    return;
+  }
+
+  status.textContent =
+    `Usuwanie gracza ${nick}...`;
+
+  try {
+    const result =
+      await gmJsonRequest(
+        "POST",
+        BACKEND_URL,
+        {
+          action:"adminDeletePlayer",
+          token:adminToken(),
+          nick,
+          confirmationNick:
+            confirmation.trim()
+        }
+      );
+
+    if (!result || !result.ok) {
+      throw new Error(
+        result && result.error
+          ? result.error
+          : "Nie udało się usunąć gracza."
+      );
+    }
+
+    status.textContent =
+      result.message ||
+      `✅ Usunięto gracza ${nick}.`;
+
+    await loadAdminPlayersList();
+
+  } catch (err) {
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się usunąć gracza.";
+  }
+}
+
+function renderAdminPayments() {
+  const section =
+    adminQ("#adminSection");
+
+  if (!section) return;
+
+  section.innerHTML = `
+    <div id="adminPaymentsMeta"></div>
+
+    <div class="adminBox">
+      <b>📋 Wklej raport wpłat</b>
+
+      <div class="muted"
+        style="margin:4px 0 7px">
+        Najpierw sprawdź raport.
+        Bieżący dzień jest ignorowany.
+      </div>
+
+      <textarea
+        id="adminPaymentsReport"
+        class="adminTextarea"
+        placeholder="Wklej raport..."></textarea>
+
+      <button
+        id="adminPaymentsPreview"
+        class="sendBtn"
+        style="margin-top:7px">
+        🔍 Sprawdź dane
+      </button>
+
+      <button
+        id="adminPaymentsImport"
+        class="sendBtn"
+        style="margin-top:7px"
+        hidden>
+        ✅ Wprowadź dane
+      </button>
+
+      <div
+        id="adminPaymentsStatus"
+        class="adminStatus"
+        style="margin-top:7px">
+      </div>
+
+      <div id="adminPaymentsPreviewResult"></div>
+    </div>
+  `;
+
+  adminQ(
+    "#adminPaymentsPreview"
+  ).onclick =
+    previewAdminPayments;
+
+  adminQ(
+    "#adminPaymentsImport"
+  ).onclick =
+    importAdminPayments;
+
+  loadAdminPaymentsMeta();
+}
+
+async function loadAdminPaymentsMeta() {
+  const box =
+    adminQ("#adminPaymentsMeta");
+
+  if (!box) return;
+
+  box.innerHTML = `
+    <div class="adminStatus">
+      Pobieranie statusu wpłat...
+    </div>
+  `;
+
+  try {
+    const payload =
+      await gmJsonRequest(
+        "GET",
+        BACKEND_URL +
+          "?action=adminPaymentsStatus" +
+          "&token=" +
+          encodeURIComponent(
+            adminToken()
+          ) +
+          "&_=" +
+          Date.now()
+      );
+
+    if (!payload || !payload.ok) {
+      throw new Error(
+        payload && payload.error
+          ? payload.error
+          : "Nie udało się pobrać statusu wpłat."
+      );
+    }
+
+    const blocked =
+      Boolean(
+        payload.writeProtection &&
+        payload.writeProtection.blocked
+      );
+
+    box.innerHTML = `
+      <div class="adminGrid">
+        <div class="adminBox">
+          <span class="adminLabel">
+            Dane uwzględnione do
+          </span>
+          <strong>
+            ${esc(adminDate(payload.saldoDate))}
+          </strong>
+        </div>
+
+        <div class="adminBox">
+          <span class="adminLabel">
+            Ostatnia aktualizacja
+          </span>
+          <strong>
+            ${esc(adminDate(payload.lastClose))}
+          </strong>
+        </div>
+
+        <div class="adminBox">
+          <span class="adminLabel">
+            Graczy
+          </span>
+          <strong>
+            ${Number(payload.count) || 0}
+          </strong>
+        </div>
+      </div>
+
+      <div class="adminBox ${blocked ? "" : "adminGood"}">
+        ${
+          blocked
+            ? `
+                🌙 <b>Okres ochronny 00:00–04:00</b>
+                <div class="muted">
+                  Sprawdzanie działa, zapis jest zablokowany.
+                </div>
+              `
+            : `
+                ✅ <b>Wprowadzanie danych dostępne</b>
+              `
+        }
+      </div>
+    `;
+
+  } catch (err) {
+    box.innerHTML = `
+      <div class="adminBox adminDanger">
+        ${esc(
+          err && err.message
+            ? err.message
+            : "Nie udało się pobrać statusu."
+        )}
+      </div>
+    `;
+  }
+}
+
+function previewPlayerRows(day) {
+  const players =
+    Array.isArray(day.players)
+      ? day.players
+      : [];
+
+  const groups = [
+    ["missing","🔴 Braki"],
+    ["freshman","🟦 Świeżak"],
+    ["zero","🟡 Nie wpłacili"],
+    ["paid","✅ Wpłacili"]
+  ];
+
+  return groups.map(([status,label]) => {
+    const list =
+      players.filter(
+        p => p.status === status
+      );
+
+    if (!list.length) return "";
+
+    return `
+      <div style="margin-top:6px">
+        <b>${label} (${list.length})</b>
+
+        ${
+          list.map(player => `
+            <div class="miniRow">
+              <span>
+                ${esc(player.nick)}
+              </span>
+
+              <strong>
+                ${
+                  status === "paid"
+                    ? adminMoney(player.amount)
+                    : status === "freshman"
+                      ? "Świeżak"
+                      : status === "missing"
+                        ? "BRAK"
+                        : "0"
+                }
+              </strong>
+            </div>
+          `).join("")
+        }
+      </div>
+    `;
+  }).join("");
+}
+
+function renderPaymentsPreview(payload) {
+  const result =
+    adminQ(
+      "#adminPaymentsPreviewResult"
+    );
+
+  const importButton =
+    adminQ("#adminPaymentsImport");
+
+  if (!result || !importButton) return;
+
+  const days =
+    Array.isArray(payload.days)
+      ? payload.days
+      : [];
+
+  const ready =
+    days.filter(
+      day =>
+        day.canClose &&
+        day.canWrite
+    );
+
+  const out =
+    days.filter(
+      day =>
+        day.canClose &&
+        day.writeStatus ===
+          "out_of_range"
+    );
+
+  const bad =
+    days.filter(
+      day =>
+        !day.canClose ||
+        day.writeStatus === "gap"
+    );
+
+  importButton.hidden =
+    ready.length === 0;
+
+  result.innerHTML = `
+    <div style="
+      margin-top:8px;
+      font-size:12px;
+    ">
+      ✅ Do zapisania:
+      <b>${ready.length}</b>
+      ·
+      ⚪ Poza zakresem:
+      <b>${out.length}</b>
+      ·
+      ❌ Z błędem:
+      <b>${bad.length}</b>
+    </div>
+
+    ${
+      Number(
+        payload.ignoredTodayCount
+      ) > 0
+        ? `
+            <div class="adminBox"
+              style="
+                margin-top:7px;
+                background:#eef5fb;
+                border-color:#b8cde2;
+              ">
+              ℹ️ Pominięto bieżący dzień.
+              Wpłaty z dzisiaj mogą się jeszcze zmienić.
+            </div>
+          `
+        : ""
+    }
+
+    ${
+      days.map((day,index) => {
+        const outOfRange =
+          day.canClose &&
+          day.writeStatus ===
+            "out_of_range";
+
+        const ok =
+          day.canClose &&
+          day.canWrite;
+
+        const cls =
+          outOfRange
+            ? "out"
+            : ok
+              ? ""
+              : "bad";
+
+        const icon =
+          outOfRange
+            ? "⚪"
+            : ok
+              ? "✅"
+              : "❌";
+
+        let summary;
+
+        if (outOfRange) {
+          summary =
+            "Raport poprawny · poza zakresem tabeli";
+        } else if (ok) {
+          summary =
+            `${Number(day.paidCount)||0} wpłaciło · ` +
+            `${Number(day.zeroCount)||0} nie wpłaciło · ` +
+            `${adminMoney(day.calculatedTotal)} zł`;
+        } else if (
+          day.writeStatus === "gap"
+        ) {
+          summary =
+            "Raport poprawny · brak ciągłości dni";
+        } else {
+          summary =
+            `Raport niekompletny · błędów: ${
+              Array.isArray(day.errors)
+                ? day.errors.length
+                : 0
+            }`;
+        }
+
+        const errors =
+          Array.isArray(day.errors)
+            ? day.errors
+            : [];
+
+        const warnings =
+          Array.isArray(day.warnings)
+            ? day.warnings
+            : [];
+
+        return `
+          <div class="previewDay ${cls}">
+            <button
+              class="previewDayHead"
+              data-preview-day="${index}">
+              <b>
+                ${icon} ${esc(day.date)}
+              </b>
+
+              <div class="muted"
+                style="margin-top:2px">
+                ${esc(summary)}
+              </div>
+            </button>
+
+            <div
+              class="previewDetails"
+              data-preview-details="${index}"
+              hidden>
+
+              Suma raportu:
+              <b>
+                ${
+                  day.reportedTotal === null
+                    ? "—"
+                    : adminMoney(day.reportedTotal) + " zł"
+                }
+              </b>
+              <br>
+
+              Suma obliczona:
+              <b>
+                ${adminMoney(day.calculatedTotal)} zł
+              </b>
+
+              ${
+                errors.length
+                  ? `
+                      <div style="margin-top:6px;color:#9a2f2f">
+                        <b>❌ Błędy</b><br>
+                        ${errors.map(x=>esc(x)).join("<br>")}
+                      </div>
+                    `
+                  : ""
+              }
+
+              ${
+                warnings.length
+                  ? `
+                      <div style="margin-top:6px;color:#8a6500">
+                        <b>⚠️ Ostrzeżenia</b><br>
+                        ${warnings.map(x=>esc(x)).join("<br>")}
+                      </div>
+                    `
+                  : ""
+              }
+
+              ${previewPlayerRows(day)}
+            </div>
+          </div>
+        `;
+      }).join("")
+    }
+  `;
+
+  result
+    .querySelectorAll(
+      "[data-preview-day]"
+    )
+    .forEach(button => {
+      button.onclick = () => {
+        const details =
+          result.querySelector(
+            `[data-preview-details="${button.dataset.previewDay}"]`
+          );
+
+        if (details) {
+          details.hidden =
+            !details.hidden;
+        }
+      };
+    });
+}
+
+async function previewAdminPayments() {
+  const reportBox =
+    adminQ("#adminPaymentsReport");
+
+  const status =
+    adminQ("#adminPaymentsStatus");
+
+  const result =
+    adminQ(
+      "#adminPaymentsPreviewResult"
+    );
+
+  const importButton =
+    adminQ("#adminPaymentsImport");
+
+  if (
+    !reportBox ||
+    !status ||
+    !result ||
+    !importButton
+  ) {
+    return;
+  }
+
+  const report =
+    reportBox.value.trim();
+
+  if (!report) {
+    status.textContent =
+      "Wklej raport wpłat.";
+    result.innerHTML = "";
+    importButton.hidden = true;
+    return;
+  }
+
+  status.textContent =
+    "Sprawdzanie danych...";
+
+  result.innerHTML = "";
+  importButton.hidden = true;
+
+  const nonce =
+    makeGangNonce();
+
+  try {
+    const start =
+      await gmJsonRequest(
+        "POST",
+        BACKEND_URL,
+        {
+          action:
+            "adminPreviewPayments",
+          token:adminToken(),
+          nonce,
+          report
+        }
+      );
+
+    if (start && start.ok === false) {
+      throw new Error(
+        start.error ||
+        "Nie udało się rozpocząć sprawdzania."
+      );
+    }
+
+    let payload = null;
+
+    for (let i=0; i<20; i++) {
+      await new Promise(
+        resolve =>
+          setTimeout(resolve,500)
+      );
+
+      payload =
+        await gmJsonRequest(
+          "GET",
+          BACKEND_URL +
+            "?action=adminPreviewPaymentsResult" +
+            "&token=" +
+            encodeURIComponent(
+              adminToken()
+            ) +
+            "&nonce=" +
+            encodeURIComponent(nonce) +
+            "&_=" +
+            Date.now()
+        );
+
+      if (
+        !payload ||
+        !payload.pending
+      ) {
+        break;
+      }
+    }
+
+    if (!payload || payload.pending) {
+      throw new Error(
+        "Serwer nie zwrócił wyniku sprawdzania."
+      );
+    }
+
+    if (!payload.ok) {
+      throw new Error(
+        payload.error ||
+        "Nie udało się sprawdzić raportu."
+      );
+    }
+
+    renderPaymentsPreview(payload);
+    status.textContent = "";
+
+  } catch (err) {
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się sprawdzić danych.";
+  }
+}
+
+async function importAdminPayments() {
+  const reportBox =
+    adminQ("#adminPaymentsReport");
+
+  const status =
+    adminQ("#adminPaymentsStatus");
+
+  const button =
+    adminQ("#adminPaymentsImport");
+
+  if (
+    !reportBox ||
+    !status ||
+    !button
+  ) {
+    return;
+  }
+
+  const report =
+    reportBox.value.trim();
+
+  if (!report) {
+    status.textContent =
+      "Wklej raport wpłat.";
+    return;
+  }
+
+  if (
+    !window.confirm(
+      "Wprowadzić poprawne dni do arkusza?\n\n" +
+      "Dni z błędami i poza zakresem zostaną pominięte."
+    )
+  ) {
+    return;
+  }
+
+  const nonce =
+    makeGangNonce();
+
+  button.disabled = true;
+  status.textContent =
+    "Wprowadzanie danych...";
+
+  try {
+    const start =
+      await gmJsonRequest(
+        "POST",
+        BACKEND_URL,
+        {
+          action:
+            "adminImportPayments",
+          token:adminToken(),
+          nonce,
+          report
+        }
+      );
+
+    if (start && start.ok === false) {
+      throw new Error(
+        start.error ||
+        "Nie udało się rozpocząć zapisu."
+      );
+    }
+
+    let payload = null;
+
+    for (let i=0; i<24; i++) {
+      await new Promise(
+        resolve =>
+          setTimeout(resolve,500)
+      );
+
+      payload =
+        await gmJsonRequest(
+          "GET",
+          BACKEND_URL +
+            "?action=adminImportPaymentsResult" +
+            "&token=" +
+            encodeURIComponent(
+              adminToken()
+            ) +
+            "&nonce=" +
+            encodeURIComponent(nonce) +
+            "&_=" +
+            Date.now()
+        );
+
+      if (
+        !payload ||
+        !payload.pending
+      ) {
+        break;
+      }
+    }
+
+    if (!payload || payload.pending) {
+      throw new Error(
+        "Serwer nie zwrócił wyniku zapisu."
+      );
+    }
+
+    if (!payload.ok) {
+      throw new Error(
+        payload.error ||
+        "Nie udało się wprowadzić danych."
+      );
+    }
+
+    let message =
+      `✅ ${payload.message || "Dane zostały zapisane."}`;
+
+    if (
+      Array.isArray(payload.written) &&
+      payload.written.length
+    ) {
+      message +=
+        "\nZapisane: " +
+        payload.written
+          .map(item =>
+            `${item.date} ${
+              item.mode === "overwrite"
+                ? "(nadpisano)"
+                : "(dodano)"
+            }`
+          )
+          .join(", ");
+    }
+
+    if (
+      Array.isArray(payload.skipped) &&
+      payload.skipped.length
+    ) {
+      message +=
+        "\nPominięte: " +
+        payload.skipped
+          .map(item =>
+            `${item.date} — ${item.reason}`
+          )
+          .join("; ");
+    }
+
+    status.textContent =
+      message;
+
+    button.hidden = true;
+
+    await loadAdminPaymentsMeta();
+
+  } catch (err) {
+    status.textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się wprowadzić danych.";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function openAdmin() {
+  if (adminPanel) {
+    adminPanel.remove();
+    adminPanel = null;
+    return;
+  }
+
+  if (mapPanel) { mapPanel.remove(); mapPanel=null; }
+  if (submitPanel) { submitPanel.remove(); submitPanel=null; }
+  if (paymentsPanel) { paymentsPanel.remove(); paymentsPanel=null; }
+  if (optPanel) { optPanel.remove(); optPanel=null; }
+
+  if (!root) mount();
+
+  adminPanel =
+    document.createElement("div");
+
+  adminPanel.className =
+    "panel";
+
+  adminPanel.innerHTML = `
+    <div class="head">
+      <span>🛠 Panel administratora</span>
+      <span class="close">×</span>
+    </div>
+
+    <div class="adminWrap"></div>
+  `;
+
+  root.appendChild(
+    adminPanel
+  );
+
+  adminPanel
+    .querySelector(".close")
+    .onclick = () => {
+      adminPanel.remove();
+      adminPanel = null;
+    };
+
+  if (adminToken()) {
+    renderAdminHome();
+    checkAdminToken();
+  } else {
+    renderAdminLogin();
+  }
 }
 
   function fetchApproved() {
@@ -1832,6 +3473,7 @@ function openPayments() {
   GM_registerMenuCommand("⚗ Otwórz Destylarnię",()=>{mount();openOptimizer();});
   GM_registerMenuCommand("💰 Otwórz Wpłaty",()=>{mount();openPayments();});
   GM_registerMenuCommand("🗺 Otwórz Mapę",()=>{mount();openMap();});
+  GM_registerMenuCommand("🛠 Otwórz Admin",()=>{mount();openAdmin();});
 
   function boot() {
     if (!document.documentElement) { setTimeout(boot,50); return; }
