@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.8.0
+// @version      0.8.1
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -166,6 +166,7 @@ function displayName(name) {
 	let paymentsPanel=null;
 	let adminPanel=null;
 	let currentTab="top";
+  let adminPaymentsSnapshot = null;
 
   const CSS = `
     *{box-sizing:border-box}
@@ -2735,6 +2736,197 @@ async function deleteAdminPlayer(nick) {
   }
 }
 
+function adminReportDate(value) {
+
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/
+      .exec(
+        String(value || "")
+      );
+
+  if (!match) {
+    return String(value || "");
+  }
+
+  return (
+    match[3] +
+    "." +
+    match[2] +
+    "." +
+    match[1]
+  );
+}
+
+
+function adminReportAmount(value) {
+
+  const number =
+    Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "0";
+  }
+
+  const rounded =
+    Math.round(number);
+
+  const formatted =
+    Math.abs(rounded)
+      .toLocaleString(
+        "pl-PL",
+        {
+          maximumFractionDigits:0
+        }
+      );
+
+  if (number > 0) {
+    return "+" + formatted;
+  }
+
+  if (number < 0) {
+    return "-" + formatted;
+  }
+
+  return "0";
+}
+
+
+function adminReportNick(value) {
+
+  const nick =
+    String(value || "");
+
+  const width = 22;
+
+  if (nick.length >= width) {
+    return nick.slice(0,width);
+  }
+
+  return (
+    nick +
+    " ".repeat(
+      width - nick.length
+    )
+  );
+}
+
+
+function buildAdminDailyReport(
+  payload
+) {
+
+  const players =
+    Array.isArray(
+      payload &&
+      payload.players
+    )
+      ? payload.players
+      : [];
+
+
+  const date =
+    adminReportDate(
+      payload &&
+      payload.saldoDate
+    );
+
+
+  const rows =
+    players
+      .map(
+        player => {
+
+          return (
+            adminReportNick(
+              player.nick
+            ) +
+            adminReportAmount(
+              player.saldo
+            )
+          );
+        }
+      )
+      .join("\n");
+
+
+  return (
+`📊 Dzienne podsumowanie wpłat — ${date}
+
+🔴 wartość ujemna — kwota pozostała do nadrobienia
+🟢 0 — wszystko na bieżąco
+🔵 wartość dodatnia — wpłacone ponad wymagane minimum
+
+Saldo dodatnie działa w ramach bieżącego okresu rozliczeniowego i może pokrywać wcześniejsze niedopłaty z tego okresu.
+
+\`\`\`
+${rows}
+\`\`\`
+
+Dziękuję wszystkim za regularne wpłaty i dodatkowe wsparcie. ❤️`
+  );
+}
+
+
+async function copyAdminDailyReport() {
+
+  const status =
+    adminQ(
+      "#adminCopyDailyReportStatus"
+    );
+
+
+  if (!adminPaymentsSnapshot) {
+
+    if (status) {
+      status.textContent =
+        "Najpierw pobierz dane wpłat.";
+    }
+
+    return;
+  }
+
+
+  const report =
+    buildAdminDailyReport(
+      adminPaymentsSnapshot
+    );
+
+
+  try {
+
+    await navigator.clipboard
+      .writeText(
+        report
+      );
+
+
+    if (status) {
+
+      status.textContent =
+        "✅ Raport skopiowany do schowka.";
+
+      setTimeout(
+        () => {
+
+          if (status) {
+            status.textContent = "";
+          }
+
+        },
+        2000
+      );
+    }
+
+
+  } catch (err) {
+
+    if (status) {
+      status.textContent =
+        "Nie udało się skopiować raportu.";
+    }
+  }
+}
+
 function renderAdminPayments() {
   const section =
     adminQ("#adminSection");
@@ -2745,6 +2937,22 @@ function renderAdminPayments() {
     <div id="adminPaymentsMeta"></div>
 
     <div class="adminBox">
+
+      <button
+        id="adminCopyDailyReport"
+        class="sendBtn"
+        type="button"
+        style="margin-bottom:10px"
+      >
+        📋 Kopiuj raport dzienny
+      </button>
+
+      <div
+        id="adminCopyDailyReportStatus"
+        class="adminStatus"
+        style="margin-bottom:6px">
+      </div>
+
       <b>📋 Wklej raport wpłat</b>
 
       <div class="muted"
@@ -2793,6 +3001,11 @@ function renderAdminPayments() {
   ).onclick =
     importAdminPayments;
 
+  adminQ(
+  "#adminCopyDailyReport"
+  ).onclick =
+  copyAdminDailyReport;
+
   loadAdminPaymentsMeta();
 }
 
@@ -2829,6 +3042,8 @@ async function loadAdminPaymentsMeta() {
           : "Nie udało się pobrać statusu wpłat."
       );
     }
+
+    adminPaymentsSnapshot = payload;
 
     const blocked =
       Boolean(

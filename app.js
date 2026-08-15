@@ -1306,6 +1306,8 @@ const MAP_POSITIONS = {
 // PANEL ADMINISTRATORA
 // ============================================================
 
+let adminPaymentsSnapshot = null;
+
 function adminToken() {
   return localStorage.getItem(ADMIN_TOKEN_KEY) || "";
 }
@@ -2274,6 +2276,8 @@ async function loadAdminPaymentsStatus() {
       );
     }
 
+    adminPaymentsSnapshot = payload;
+
     const writeProtection =
       payload.writeProtection || {};
 
@@ -2407,6 +2411,190 @@ async function loadAdminPaymentsStatus() {
         )}
       </div>
     `;
+  }
+}
+
+function adminReportDate(value) {
+
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/
+      .exec(String(value || ""));
+
+  if (!match) {
+    return String(value || "");
+  }
+
+  return (
+    match[3] +
+    "." +
+    match[2] +
+    "." +
+    match[1]
+  );
+}
+
+
+function adminReportAmount(value) {
+
+  const number =
+    Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "0";
+  }
+
+  const rounded =
+    Math.round(number);
+
+  const formatted =
+    Math.abs(rounded)
+      .toLocaleString(
+        "pl-PL",
+        {
+          maximumFractionDigits: 0
+        }
+      );
+
+  if (number > 0) {
+    return "+" + formatted;
+  }
+
+  if (number < 0) {
+    return "-" + formatted;
+  }
+
+  return "0";
+}
+
+
+function adminReportNick(value) {
+
+  const nick =
+    String(value || "");
+
+  const width = 22;
+
+  if (nick.length >= width) {
+    return nick.slice(0,width);
+  }
+
+  return (
+    nick +
+    " ".repeat(
+      width - nick.length
+    )
+  );
+}
+
+
+function buildAdminDailyReport(payload) {
+
+  const players =
+    Array.isArray(
+      payload &&
+      payload.players
+    )
+      ? payload.players
+      : [];
+
+
+  const date =
+    adminReportDate(
+      payload &&
+      payload.saldoDate
+    );
+
+
+  const rows =
+    players
+      .map(
+        player => {
+
+          return (
+            adminReportNick(
+              player.nick
+            ) +
+            adminReportAmount(
+              player.saldo
+            )
+          );
+        }
+      )
+      .join("\n");
+
+
+  return (
+`📊 Dzienne podsumowanie wpłat — ${date}
+
+🔴 wartość ujemna — kwota pozostała do nadrobienia
+🟢 0 — wszystko na bieżąco
+🔵 wartość dodatnia — wpłacone ponad wymagane minimum
+
+Saldo dodatnie działa w ramach bieżącego okresu rozliczeniowego i może pokrywać wcześniejsze niedopłaty z tego okresu.
+
+\`\`\`
+${rows}
+\`\`\`
+
+Dziękuję wszystkim za regularne wpłaty i dodatkowe wsparcie. ❤️`
+  );
+}
+
+
+async function copyAdminDailyReport() {
+
+  const status =
+    el("admin-copy-daily-report-status");
+
+
+  if (!adminPaymentsSnapshot) {
+
+    if (status) {
+      status.textContent =
+        "Najpierw pobierz dane wpłat.";
+    }
+
+    return;
+  }
+
+
+  const report =
+    buildAdminDailyReport(
+      adminPaymentsSnapshot
+    );
+
+
+  try {
+
+    await navigator.clipboard.writeText(
+      report
+    );
+
+
+    if (status) {
+
+      status.textContent =
+        "✅ Raport skopiowany do schowka.";
+
+      setTimeout(
+        () => {
+
+          if (status) {
+            status.textContent = "";
+          }
+
+        },
+        2000
+      );
+    }
+
+
+  } catch (err) {
+
+    if (status) {
+      status.textContent =
+        "Nie udało się skopiować raportu.";
+    }
   }
 }
 
@@ -3546,6 +3734,12 @@ function setupAdmin() {
   ?.addEventListener(
     "click",
     importAdminPayments
+  );
+
+  el("admin-copy-daily-report")
+  ?.addEventListener(
+    "click",
+    copyAdminDailyReport
   );
 
   el("admin-payments-refresh")
