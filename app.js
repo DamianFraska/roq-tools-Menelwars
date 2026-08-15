@@ -1816,9 +1816,6 @@ async function loadAdminPaymentsStatus() {
       );
     }
 
-    const staged =
-      Boolean(payload.hasStagedData);
-
     const writeProtection =
       payload.writeProtection || {};
 
@@ -1842,7 +1839,7 @@ async function loadAdminPaymentsStatus() {
           background:#fffdf8;
         ">
           <div class="muted">
-            Stan salda
+            Dane uwzględnione do
           </div>
 
           <strong>
@@ -1862,7 +1859,7 @@ async function loadAdminPaymentsStatus() {
           background:#fffdf8;
         ">
           <div class="muted">
-            Ostatnie zamknięcie
+            Ostatnia aktualizacja
           </div>
 
           <strong>
@@ -1872,36 +1869,6 @@ async function loadAdminPaymentsStatus() {
               )
             )}
           </strong>
-        </div>
-
-
-        <div style="
-          padding:10px;
-          border:1px solid ${
-            staged
-              ? "#e0b766"
-              : "#bad7ba"
-          };
-          border-radius:8px;
-          background:${
-            staged
-              ? "#fff8e7"
-              : "#eef7ee"
-          };
-        ">
-
-          <div class="muted">
-            Dane oczekujące
-          </div>
-
-          <strong>
-            ${
-              staged
-                ? "🟡 Są dane w Dane!A1"
-                : "🟢 Brak danych oczekujących"
-            }
-          </strong>
-
         </div>
 
 
@@ -2735,11 +2702,6 @@ async function previewAdminPayments() {
         "Nie udało się sprawdzić raportu."
       );
     }
-
-
-    status.textContent =
-      `Rozpoznano dni: ${payload.dayCount}`;
-
 
     renderAdminPaymentsPreview(
       payload
