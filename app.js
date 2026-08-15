@@ -2325,14 +2325,28 @@ function renderAdminPaymentsPreview(payload) {
 
 
   const validDays =
+  days.filter(
+    day =>
+      day.canClose &&
+      day.canWrite
+  );
+
+
+  const outOfRangeDays =
     days.filter(
-      day => day.canClose
+      day =>
+        day.canClose &&
+        day.writeStatus ===
+          "out_of_range"
     );
 
 
   const invalidDays =
     days.filter(
-      day => !day.canClose
+      day =>
+        !day.canClose ||
+        day.writeStatus ===
+          "gap"
     );
 
   const importButton =
@@ -2716,24 +2730,52 @@ const freshmanPlayers =
     index
   ) {
 
-    const ok =
-      Boolean(day.canClose);
+    const reportOk =
+        Boolean(day.canClose);
 
-    const errorCount =
+
+      const outOfRange =
+        reportOk &&
+        day.writeStatus ===
+          "out_of_range";
+
+
+      const ok =
+        reportOk &&
+        Boolean(day.canWrite);
+
+
+      const errorCount =
       Array.isArray(day.errors)
         ? day.errors.length
         : 0;
 
 
     const summaryText =
-      ok
+  outOfRange
+
+    ? `
+        Raport poprawny
+        ·
+        poza zakresem tabeli
+      `
+
+    : reportOk && day.canWrite
+
+      ? `
+          ${Number(day.paidCount) || 0} wpłaciło
+          ·
+          ${Number(day.zeroCount) || 0} nie wpłaciło
+          ·
+          ${paymentPreviewMoney(day.calculatedTotal)} zł
+        `
+
+      : day.writeStatus === "gap"
 
         ? `
-            ${Number(day.paidCount) || 0} wpłaciło
+            Raport poprawny
             ·
-            ${Number(day.zeroCount) || 0} nie wpłaciło
-            ·
-            ${paymentPreviewMoney(day.calculatedTotal)} zł
+            brak ciągłości dni
           `
 
         : `
@@ -2747,16 +2789,20 @@ const freshmanPlayers =
       <div style="
         margin-top:10px;
         border:1px solid ${
-          ok
+        outOfRange
+          ? "#c8c8c8"
+          : ok
             ? "#bad7ba"
             : "#e3b2b2"
-        };
+      };
         border-radius:8px;
         background:${
-          ok
+        outOfRange
+          ? "#f3f3f3"
+          : ok
             ? "#eef7ee"
             : "#fff1f1"
-        };
+      };
         overflow:hidden;
       ">
 
@@ -2785,10 +2831,12 @@ const freshmanPlayers =
 
               <strong>
                 ${
-                  ok
+                outOfRange
+                  ? "⚪"
+                  : ok
                     ? "✅"
                     : "❌"
-                }
+              }
                 ${escapeHtml(day.date)}
               </strong>
 
@@ -2885,13 +2933,13 @@ const freshmanPlayers =
       font-size:13px;
     ">
 
-      Rozpoznano dni:
-      <b>${days.length}</b>
+      ✅ Do zapisania:
+      <b>${validDays.length}</b>
 
       ·
 
-      ✅ Poprawne:
-      <b>${validDays.length}</b>
+      ⚪ Poza zakresem:
+      <b>${outOfRangeDays.length}</b>
 
       ·
 
