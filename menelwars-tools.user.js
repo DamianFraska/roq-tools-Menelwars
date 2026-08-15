@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.7.5
+// @version      0.7.6
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -72,6 +72,7 @@ function displayName(name) {
   const PREMIUM_KEY = "roq_tools_premium_v1";
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
   const NICK_KEY = "roq_tools_submitter_nick_v1";
+  const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
 
   let premiumState = {};
   let remoteApproved = {};
@@ -141,6 +142,7 @@ function displayName(name) {
 	let optPanel=null;
 	let mapPanel=null;
 	let submitPanel=null;
+	let paymentsPanel=null;
 	let currentTab="top";
 
   const CSS = `
@@ -225,6 +227,113 @@ function displayName(name) {
   border-color:#5b472f;
   padding:10px;
 }
+
+.sendBtn{
+  width:100%;
+  background:#6a5136;
+  color:white;
+  border-color:#5b472f;
+  padding:10px;
+}
+
+.paymentsWrap{
+  padding:10px 12px;
+  max-height:68vh;
+  overflow-y:auto;
+  background:#fff8eb;
+}
+
+.paymentsLogin{
+  display:grid;
+  gap:8px;
+}
+
+.paymentsLogin input{
+  width:100%;
+  border:1px solid #ccb797;
+  border-radius:7px;
+  background:#fffdf8;
+  color:#332a20;
+  padding:8px 9px;
+  font:13px Arial,sans-serif;
+}
+
+.paymentsLogin .sendBtn{
+  margin-top:2px;
+}
+
+.paymentsStatus{
+  min-height:18px;
+  text-align:center;
+  font-weight:700;
+  color:#4f643d;
+}
+
+.paymentsTop{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  margin-bottom:8px;
+}
+
+.paymentsMeta{
+  line-height:1.35;
+}
+
+.paymentsActions{
+  display:flex;
+  gap:6px;
+}
+
+.paymentsActions button{
+  padding:6px 8px;
+  font-size:11px;
+}
+
+.paymentRow{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  align-items:center;
+  gap:7px;
+  padding:4px 7px;
+  margin-bottom:3px;
+  border:1px solid #d8c7aa;
+  border-radius:6px;
+  background:#fffdf8;
+  font-size:12px;
+}
+
+.paymentRow.debt{
+  background:#fff1f1;
+  border-color:#e3b2b2;
+}
+
+.paymentRow.ok{
+  background:#eef7ee;
+  border-color:#bad7ba;
+}
+
+.paymentRow.over{
+  background:#eef8f0;
+  border-color:#b6d9bd;
+}
+
+.paymentNick{
+  font-weight:700;
+  overflow-wrap:anywhere;
+}
+
+.paymentLabel{
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.paymentAmount{
+  font-weight:800;
+  text-align:right;
+  min-width:58px;
+}
   `;
 
   function mount() {
@@ -237,13 +346,15 @@ function displayName(name) {
     const style = document.createElement("style"); style.textContent = CSS; root.appendChild(style);
     const bar = document.createElement("div"); bar.id="bar";
     bar.innerHTML = `
-  	<span class="title">MenelWars Tools</span>
-  	<button id="map">🗺 Mapa</button>
-  	<button id="submit">➕ Zgłoś</button>
-  	<button id="opt">⚗ Destylarnia</button>
-	`;
+  <span class="title">MenelWars Tools</span>
+  <button id="map">🗺 Mapa</button>
+  <button id="payments">💰 Wpłaty</button>
+  <button id="submit">➕ Zgłoś</button>
+  <button id="opt">⚗ Destylarnia</button>
+`;
     root.appendChild(bar); document.documentElement.appendChild(host);
     root.getElementById("map").onclick = openMap;
+    root.getElementById("payments").onclick = openPayments;
     root.getElementById("submit").onclick = openSubmit;
     root.getElementById("opt").onclick = openOptimizer;
     return true;
@@ -499,6 +610,10 @@ function displayName(name) {
 }
 
   function openOptimizer() {
+	if (paymentsPanel) {
+  paymentsPanel.remove();
+  paymentsPanel = null;
+}
     if (optPanel) { optPanel.remove(); optPanel=null; return; }
     if (mapPanel) { mapPanel.remove(); mapPanel=null; }
 	if (submitPanel) {
@@ -549,6 +664,11 @@ function currentKnownValue(k) {
 
 
 function openSubmit() {
+
+if (paymentsPanel) {
+  paymentsPanel.remove();
+  paymentsPanel = null;
+}
 
   if (submitPanel) {
     submitPanel.remove();
@@ -951,6 +1071,10 @@ function openSubmit() {
 }
 
   function openMap() {
+	if (paymentsPanel) {
+  	paymentsPanel.remove();
+  	paymentsPanel = null;
+	}
 	if (submitPanel) {
   	submitPanel.remove();
   	submitPanel = null;
@@ -965,6 +1089,659 @@ function openSubmit() {
     root.appendChild(mapPanel);
     mapPanel.querySelector(".close").onclick=()=>{mapPanel.remove();mapPanel=null;};
   }
+
+// ============================================================
+// WPŁATY GANGU — LOGOWANIE + CHRONIONE DANE
+// ============================================================
+
+function gangToken() {
+  return localStorage.getItem(GANG_TOKEN_KEY) || "";
+}
+
+function setGangToken(token) {
+
+  if (token) {
+    localStorage.setItem(
+      GANG_TOKEN_KEY,
+      token
+    );
+  } else {
+    localStorage.removeItem(
+      GANG_TOKEN_KEY
+    );
+  }
+}
+
+
+function makeGangNonce() {
+
+  if (
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  const bytes =
+    new Uint8Array(24);
+
+  globalThis.crypto
+    .getRandomValues(bytes);
+
+  return Array.from(
+    bytes,
+    b =>
+      b
+        .toString(16)
+        .padStart(2,"0")
+  ).join("");
+}
+
+
+function gmJsonRequest(
+  method,
+  url,
+  body=null
+) {
+
+  return new Promise(
+    (resolve,reject) => {
+
+      GM_xmlhttpRequest({
+
+        method,
+
+        url,
+
+        headers:
+          body
+            ? {
+                "Content-Type":
+                  "text/plain;charset=UTF-8",
+
+                "Accept":
+                  "application/json"
+              }
+            : {
+                "Accept":
+                  "application/json"
+              },
+
+        data:
+          body
+            ? JSON.stringify(body)
+            : undefined,
+
+        timeout: 12000,
+
+        onload: response => {
+
+          try {
+
+            resolve(
+              JSON.parse(
+                response.responseText
+              )
+            );
+
+          } catch (err) {
+
+            reject(
+              new Error(
+                "Nieprawidłowa odpowiedź serwera."
+              )
+            );
+          }
+        },
+
+        ontimeout: () =>
+          reject(
+            new Error(
+              "Przekroczono czas odpowiedzi serwera."
+            )
+          ),
+
+        onerror: () =>
+          reject(
+            new Error(
+              "Błąd połączenia z serwerem."
+            )
+          )
+      });
+    }
+  );
+}
+
+
+function paymentsDate(value) {
+
+  const m =
+    /^(\d{4})-(\d{2})-(\d{2})$/
+      .exec(
+        String(value || "")
+      );
+
+  return m
+    ? `${m[3]}.${m[2]}.${m[1]}`
+    : "—";
+}
+
+
+function paymentAmount(value) {
+
+  return Number(value)
+    .toLocaleString(
+      "pl-PL",
+      {
+        maximumFractionDigits:2
+      }
+    );
+}
+
+
+function paymentRow(player) {
+
+  const saldo =
+    Number(player.saldo);
+
+  let cls = "ok";
+  let label = "✅ Rozliczony";
+  let amount = "0";
+
+  if (saldo < 0) {
+
+    cls = "debt";
+    label = "🔴 Dług";
+
+    amount =
+      paymentAmount(
+        Math.abs(saldo)
+      );
+  }
+
+  if (saldo > 0) {
+
+    cls = "over";
+    label = "🟢 Nadpłata";
+
+    amount =
+      paymentAmount(saldo);
+  }
+
+  return `
+    <div class="paymentRow ${cls}">
+      <div class="paymentNick">
+        ${esc(player.nick)}
+      </div>
+
+      <div class="paymentLabel">
+        ${label}
+      </div>
+
+      <div class="paymentAmount">
+        ${amount}
+      </div>
+    </div>
+  `;
+}
+
+
+function renderPaymentsLogin(
+  message=""
+) {
+
+  if (!paymentsPanel) {
+    return;
+  }
+
+  paymentsPanel
+    .querySelector(
+      ".paymentsWrap"
+    )
+    .innerHTML = `
+
+      <form
+        id="gangLoginForm"
+        class="paymentsLogin">
+
+        <div>
+          <b>
+            🔐 Dostęp tylko dla członków gangu
+          </b>
+        </div>
+
+        <div class="muted">
+          Wpisz hasło gangu.
+          Dostęp zostanie zapamiętany
+          na tym urządzeniu.
+        </div>
+
+        <input
+          id="gangPassword"
+          type="password"
+          autocomplete="current-password"
+          placeholder="Hasło gangu"
+          required>
+
+        <button
+          class="sendBtn"
+          type="submit">
+
+          Odblokuj wpłaty
+
+        </button>
+
+        <div class="paymentsStatus">
+          ${esc(message)}
+        </div>
+
+      </form>
+    `;
+
+  paymentsPanel
+    .querySelector(
+      "#gangLoginForm"
+    )
+    .onsubmit =
+      loginPayments;
+}
+
+
+function renderPaymentsData(
+  payload
+) {
+
+  if (!paymentsPanel) {
+    return;
+  }
+
+  const players =
+    Array.isArray(
+      payload.players
+    )
+      ? payload.players
+      : [];
+
+  paymentsPanel
+    .querySelector(
+      ".paymentsWrap"
+    )
+    .innerHTML = `
+
+      <div class="paymentsTop">
+
+        <div class="paymentsMeta">
+
+          <b>
+            Stan na:
+            ${paymentsDate(
+              payload.updatedAt
+            )}
+          </b>
+
+          <br>
+
+          <span class="muted">
+            Graczy:
+            ${players.length}
+          </span>
+
+        </div>
+
+        <div class="paymentsActions">
+
+          <button id="paymentsRefresh">
+            ↻ Odśwież
+          </button>
+
+          <button id="paymentsLogout">
+            🔒 Wyloguj
+          </button>
+
+        </div>
+
+      </div>
+
+      <div
+        id="paymentsStatus"
+        class="paymentsStatus">
+      </div>
+
+      <div>
+        ${
+          players.length
+            ? players
+                .map(paymentRow)
+                .join("")
+            : `
+                <div class="muted">
+                  Brak danych do wyświetlenia.
+                </div>
+              `
+        }
+      </div>
+    `;
+
+  paymentsPanel
+    .querySelector(
+      "#paymentsRefresh"
+    )
+    .onclick =
+      loadPayments;
+
+  paymentsPanel
+    .querySelector(
+      "#paymentsLogout"
+    )
+    .onclick = () => {
+
+      setGangToken("");
+
+      renderPaymentsLogin(
+        "Dostęp na tym urządzeniu został usunięty."
+      );
+    };
+}
+
+
+async function loginPayments(
+  event
+) {
+
+  event.preventDefault();
+
+  if (!paymentsPanel) {
+    return;
+  }
+
+  const password =
+    paymentsPanel
+      .querySelector(
+        "#gangPassword"
+      )
+      .value;
+
+  const status =
+    paymentsPanel
+      .querySelector(
+        ".paymentsStatus"
+      );
+
+  if (!password) {
+
+    status.textContent =
+      "Wpisz hasło gangu.";
+
+    return;
+  }
+
+  status.textContent =
+    "Sprawdzanie hasła...";
+
+  const nonce =
+    makeGangNonce();
+
+  try {
+
+    await gmJsonRequest(
+      "POST",
+      BACKEND_URL,
+      {
+        action:
+          "gangLogin",
+
+        nonce,
+
+        password
+      }
+    );
+
+    let result = null;
+
+    for (
+      let i=0;
+      i<12;
+      i++
+    ) {
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            500
+          )
+      );
+
+      result =
+        await gmJsonRequest(
+          "GET",
+
+          BACKEND_URL +
+            "?action=gangLoginResult" +
+            "&nonce=" +
+            encodeURIComponent(
+              nonce
+            ) +
+            "&_=" +
+            Date.now()
+        );
+
+      if (
+        !result ||
+        !result.pending
+      ) {
+        break;
+      }
+    }
+
+    if (
+      !result ||
+      result.pending
+    ) {
+
+      throw new Error(
+        "Serwer nie zwrócił wyniku logowania."
+      );
+    }
+
+    if (
+      !result.ok ||
+      !result.token
+    ) {
+
+      status.textContent =
+        result.error ||
+        "Nieprawidłowe hasło.";
+
+      return;
+    }
+
+    setGangToken(
+      result.token
+    );
+
+    await loadPayments();
+
+  } catch (err) {
+
+    status.textContent =
+      err &&
+      err.message
+
+        ? err.message
+
+        : "Nie udało się zalogować.";
+  }
+}
+
+
+async function loadPayments() {
+
+  if (!paymentsPanel) {
+    return;
+  }
+
+  const token =
+    gangToken();
+
+  if (!token) {
+
+    renderPaymentsLogin();
+
+    return;
+  }
+
+  paymentsPanel
+    .querySelector(
+      ".paymentsWrap"
+    )
+    .innerHTML =
+      `
+        <div class="paymentsStatus">
+          Pobieranie danych...
+        </div>
+      `;
+
+  try {
+
+    const payload =
+      await gmJsonRequest(
+        "GET",
+
+        BACKEND_URL +
+          "?action=payments" +
+          "&token=" +
+          encodeURIComponent(
+            token
+          ) +
+          "&_=" +
+          Date.now()
+      );
+
+    if (
+      !payload ||
+      !payload.ok
+    ) {
+
+      if (
+        payload &&
+        String(
+          payload.error || ""
+        )
+          .toLowerCase()
+          .includes(
+            "brak dostępu"
+          )
+      ) {
+
+        setGangToken("");
+
+        renderPaymentsLogin(
+          "Dostęp wygasł. Wpisz hasło ponownie."
+        );
+
+        return;
+      }
+
+      throw new Error(
+        payload &&
+        payload.error
+
+          ? payload.error
+
+          : "Nie udało się pobrać wpłat."
+      );
+    }
+
+    renderPaymentsData(
+      payload
+    );
+
+  } catch (err) {
+
+    renderPaymentsLogin(
+      err &&
+      err.message
+
+        ? err.message
+
+        : "Nie udało się pobrać danych."
+    );
+  }
+}
+
+
+function openPayments() {
+
+  if (paymentsPanel) {
+
+    paymentsPanel.remove();
+    paymentsPanel = null;
+
+    return;
+  }
+
+  if (optPanel) {
+    optPanel.remove();
+    optPanel = null;
+  }
+
+  if (mapPanel) {
+    mapPanel.remove();
+    mapPanel = null;
+  }
+
+  if (submitPanel) {
+    submitPanel.remove();
+    submitPanel = null;
+  }
+
+  if (!root) {
+    mount();
+  }
+
+  paymentsPanel =
+    document.createElement(
+      "div"
+    );
+
+  paymentsPanel.className =
+    "panel";
+
+  paymentsPanel.innerHTML = `
+
+    <div class="head">
+
+      <span>
+        💰 Dług / nadpłata
+      </span>
+
+      <span class="close">
+        ×
+      </span>
+
+    </div>
+
+    <div class="paymentsWrap">
+    </div>
+  `;
+
+  root.appendChild(
+    paymentsPanel
+  );
+
+  paymentsPanel
+    .querySelector(
+      ".close"
+    )
+    .onclick = () => {
+
+      paymentsPanel.remove();
+      paymentsPanel = null;
+    };
+
+  loadPayments();
+}
 
   function fetchApproved() {
 
@@ -1053,6 +1830,7 @@ function openSubmit() {
 }
 
   GM_registerMenuCommand("⚗ Otwórz Destylarnię",()=>{mount();openOptimizer();});
+  GM_registerMenuCommand("💰 Otwórz Wpłaty",()=>{mount();openPayments();});
   GM_registerMenuCommand("🗺 Otwórz Mapę",()=>{mount();openMap();});
 
   function boot() {
