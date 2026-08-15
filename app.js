@@ -1413,13 +1413,16 @@ function adminSubmissionCard(item) {
       : "";
 
   return `
-    <div style="
-      border:1px solid #d8c7aa;
-      border-radius:8px;
-      background:#fffdf8;
-      padding:9px 10px;
-      margin-bottom:6px;
-    ">
+    <div
+      data-submission-row="${item.row}"
+      style="
+        border:1px solid #d8c7aa;
+        border-radius:8px;
+        background:#fffdf8;
+        padding:9px 10px;
+        margin-bottom:6px;
+      "
+    >
 
       <div style="
         display:flex;
@@ -1461,10 +1464,155 @@ function adminSubmissionCard(item) {
 
       ${notes}
 
+      <div style="
+        display:flex;
+        gap:8px;
+        margin-top:9px;
+      ">
+
+        <button
+          type="button"
+          data-admin-action="ZATWIERDZONE"
+          data-row="${item.row}"
+          style="
+            flex:1;
+            background:#eaf6ea;
+            border-color:#9fc79f;
+          ">
+          ✅ Zatwierdź
+        </button>
+
+        <button
+          type="button"
+          data-admin-action="ODRZUCONE"
+          data-row="${item.row}"
+          style="
+            flex:1;
+            background:#fff0f0;
+            border-color:#d9aaaa;
+          ">
+          ❌ Odrzuć
+        </button>
+
+      </div>
+
     </div>
   `;
 }
 
+async function setAdminSubmissionStatus(
+  row,
+  newStatus,
+  button
+) {
+
+  const token =
+    adminToken();
+
+  if (!token) {
+    showAdminLogin();
+    return;
+  }
+
+
+  const isApprove =
+    newStatus === "ZATWIERDZONE";
+
+
+  const confirmed =
+    window.confirm(
+      isApprove
+        ? "Zatwierdzić tę recepturę?"
+        : "Odrzucić tę recepturę?"
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  const card =
+    button.closest(
+      "[data-submission-row]"
+    );
+
+
+  const buttons =
+    card
+      ? card.querySelectorAll("button")
+      : [];
+
+
+  buttons.forEach(
+    btn => btn.disabled = true
+  );
+
+
+  el("admin-status").textContent =
+    isApprove
+      ? "Zatwierdzanie receptury..."
+      : "Odrzucanie receptury...";
+
+
+  try {
+
+    await fetch(
+      BACKEND_URL,
+      {
+        method: "POST",
+        mode: "no-cors",
+
+        headers: {
+          "Content-Type":
+            "text/plain;charset=UTF-8"
+        },
+
+        body: JSON.stringify({
+          action:
+            "adminSetSubmissionStatus",
+
+          token,
+
+          row,
+
+          status:
+            newStatus
+        })
+      }
+    );
+
+
+    // Dajemy Apps Script chwilę
+    // na zapisanie zmiany w arkuszu.
+    await new Promise(
+      resolve =>
+        setTimeout(resolve, 500)
+    );
+
+
+    await loadAdminSubmissions();
+
+
+    // Odświeżamy też wspólną bazę receptur,
+    // dzięki czemu zatwierdzona receptura
+    // pojawi się od razu w PWA.
+    if (isApprove) {
+      fetchApprovedRecipes();
+    }
+
+
+  } catch (err) {
+
+    el("admin-status").textContent =
+      err && err.message
+        ? err.message
+        : "Nie udało się zmienić statusu.";
+
+    buttons.forEach(
+      btn => btn.disabled = false
+    );
+  }
+}
 
 async function loadAdminSubmissions() {
 
@@ -1554,6 +1702,33 @@ async function loadAdminSubmissions() {
               ✅ Brak zgłoszeń oczekujących na weryfikację.
             </div>
           `;
+
+	document
+  .querySelectorAll(
+    "#admin-submissions [data-admin-action]"
+  )
+  .forEach(button => {
+
+    button.addEventListener(
+      "click",
+      () => {
+
+        const row =
+          Number(
+            button.dataset.row
+          );
+
+        const newStatus =
+          button.dataset.adminAction;
+
+        setAdminSubmissionStatus(
+          row,
+          newStatus,
+          button
+        );
+      }
+    );
+  });
 
     el("admin-status").textContent =
       "";
