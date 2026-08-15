@@ -209,7 +209,39 @@
     </div>
   </section>
 
-  <div id="admin-content" hidden>
+  <p class="muted">
+          🔐 Dostęp tylko dla administratora.
+        </p>
+
+        <form id="admin-login-form" class="submit-form">
+
+          <label>
+            <span>Hasło administratora</span>
+
+            <input
+              id="admin-password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Hasło administratora"
+              required
+            >
+          </label>
+
+          <button class="primary-btn" type="submit">
+            🔓 Zaloguj
+          </button>
+
+          <div
+            id="admin-login-status"
+            class="submit-status">
+          </div>
+
+        </form>
+
+      </div>
+
+
+      <div id="admin-content" hidden>
 
         <div style="
           display:flex;
@@ -256,7 +288,6 @@
 
         </div>
 
-
         <div id="admin-submissions"></div>
 
         <div
@@ -271,28 +302,6 @@
   </div>
 
 </section>
-
-<div id="admin-submissions"></div>
-
-<div
-  id="admin-status"
-  class="submit-status">
-</div>
-
-
-        <div
-          id="admin-status"
-          class="submit-status">
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
 </main>
 
 <footer>MenelWars Tools · autor: RoQ</footer>
