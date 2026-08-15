@@ -93,6 +93,7 @@ function displayName(name) {
   const NICK_KEY = "roq_tools_submitter_nick_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
   const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
+  const BAR_COLLAPSED_KEY = "menelwars_tools_bar_collapsed_v1";
 
   let premiumState = {};
   let remoteApproved = {};
@@ -171,6 +172,29 @@ function displayName(name) {
     #bar{display:flex;gap:7px;align-items:center;padding:7px 8px;background:rgba(28,24,20,.96);
       border:1px solid #8d7657;border-radius:9px;box-shadow:0 4px 18px #0007;font:12px Arial,sans-serif}
     .title{color:#d9c5a4;font-weight:700;padding:0 3px;white-space:nowrap}
+        #barToggle{
+      border:0;
+      background:transparent;
+      color:#d9c5a4;
+      padding:0 2px;
+      margin:0;
+      min-width:0;
+      font-size:13px;
+      line-height:1;
+      box-shadow:none;
+    }
+
+    #barToggle:hover{
+      color:#fff1d6;
+    }
+
+    #bar.collapsed > button:not(#barToggle){
+      display:none;
+    }
+
+    #bar.collapsed{
+      gap:4px;
+    }
     button{border:1px solid #8d7657;border-radius:6px;background:#dfd0b6;color:#332a20;
       padding:7px 10px;font:700 12px Arial,sans-serif;cursor:pointer}
     .panel{position:fixed;right:10px;top:54px;width:430px;max-height:82vh;overflow:hidden;
@@ -396,14 +420,95 @@ function displayName(name) {
     const style = document.createElement("style"); style.textContent = CSS; root.appendChild(style);
     const bar = document.createElement("div"); bar.id="bar";
     bar.innerHTML = `
-  <span class="title">MenelWars Tools</span>
-  <button id="map">🗺 Mapa</button>
-  <button id="payments">💰 Wpłaty</button>
-  <button id="submit">➕ Zgłoś</button>
-  <button id="admin">🛠 Admin</button>
-  <button id="opt">⚗ Destylarnia</button>
-`;
+      <button
+        id="barToggle"
+        type="button"
+        title="Zwiń pasek"
+      >
+        ◀
+      </button>
+
+      <span class="title">
+        MenelWars Tools
+      </span>
+
+      <button id="map">
+        🗺 Mapa
+      </button>
+
+      <button id="payments">
+        💰 Wpłaty
+      </button>
+
+      <button id="submit">
+        ➕ Zgłoś
+      </button>
+
+      <button id="admin">
+        🛠 Admin
+      </button>
+
+      <button id="opt">
+        ⚗ Destylarnia
+      </button>
+    `;
     root.appendChild(bar); document.documentElement.appendChild(host);
+        const barToggle =
+      root.getElementById(
+        "barToggle"
+      );
+
+
+    const setBarCollapsed =
+      collapsed => {
+
+        bar.classList.toggle(
+          "collapsed",
+          collapsed
+        );
+
+        barToggle.textContent =
+          collapsed
+            ? "◀"
+            : "▶";
+
+        barToggle.title =
+          collapsed
+            ? "Rozwiń pasek"
+            : "Zwiń pasek";
+
+        localStorage.setItem(
+          BAR_COLLAPSED_KEY,
+          collapsed
+            ? "1"
+            : "0"
+        );
+      };
+
+
+    const initiallyCollapsed =
+      localStorage.getItem(
+        BAR_COLLAPSED_KEY
+      ) === "1";
+
+
+    setBarCollapsed(
+      initiallyCollapsed
+    );
+
+
+    barToggle.onclick =
+      () => {
+
+        const collapsed =
+          !bar.classList.contains(
+            "collapsed"
+          );
+
+        setBarCollapsed(
+          collapsed
+        );
+      };
     root.getElementById("map").onclick = openMap;
     root.getElementById("payments").onclick = openPayments;
     root.getElementById("submit").onclick = openSubmit;
