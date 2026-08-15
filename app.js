@@ -1225,6 +1225,7 @@ function showAdminContent() {
   el("admin-status").textContent = "";
 
   loadAdminSubmissions();	
+  loadAdminPaymentsStatus();
 }
 
 
@@ -1742,6 +1743,197 @@ async function loadAdminSubmissions() {
   }
 }
 
+function formatAdminDate(value) {
+
+  const m =
+    /^(\d{4})-(\d{2})-(\d{2})$/
+      .exec(String(value || ""));
+
+  if (!m) {
+    return value || "—";
+  }
+
+  return `${m[3]}.${m[2]}.${m[1]}`;
+}
+
+
+async function loadAdminPaymentsStatus() {
+
+  const token =
+    adminToken();
+
+  if (!token) {
+    showAdminLogin();
+    return;
+  }
+
+  const box =
+    el("admin-payments-status-box");
+
+  if (!box) {
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="muted">
+      Pobieranie statusu wpłat...
+    </div>
+  `;
+
+  try {
+
+    const payload =
+      await jsonp(
+        "adminPaymentsStatus",
+        {token}
+      );
+
+    if (
+      !payload ||
+      !payload.ok
+    ) {
+
+      if (
+        payload &&
+        String(payload.error || "")
+          .toLowerCase()
+          .includes("brak dostępu")
+      ) {
+
+        setAdminToken("");
+
+        showAdminLogin(
+          "Sesja administratora wygasła."
+        );
+
+        return;
+      }
+
+      throw new Error(
+        payload && payload.error
+          ? payload.error
+          : "Nie udało się pobrać statusu wpłat."
+      );
+    }
+
+    const staged =
+      Boolean(payload.hasStagedData);
+
+    box.innerHTML = `
+
+      <div style="
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+        gap:8px;
+      ">
+
+        <div style="
+          padding:10px;
+          border:1px solid #d8c7aa;
+          border-radius:8px;
+          background:#fffdf8;
+        ">
+          <div class="muted">
+            Stan salda
+          </div>
+
+          <strong>
+            ${escapeHtml(
+              formatAdminDate(
+                payload.saldoDate
+              )
+            )}
+          </strong>
+        </div>
+
+
+        <div style="
+          padding:10px;
+          border:1px solid #d8c7aa;
+          border-radius:8px;
+          background:#fffdf8;
+        ">
+          <div class="muted">
+            Ostatnie zamknięcie
+          </div>
+
+          <strong>
+            ${escapeHtml(
+              formatAdminDate(
+                payload.lastClose
+              )
+            )}
+          </strong>
+        </div>
+
+
+        <div style="
+          padding:10px;
+          border:1px solid ${
+            staged
+              ? "#e0b766"
+              : "#bad7ba"
+          };
+          border-radius:8px;
+          background:${
+            staged
+              ? "#fff8e7"
+              : "#eef7ee"
+          };
+        ">
+
+          <div class="muted">
+            Dane oczekujące
+          </div>
+
+          <strong>
+            ${
+              staged
+                ? "🟡 Są dane w Dane!A1"
+                : "🟢 Brak danych oczekujących"
+            }
+          </strong>
+
+        </div>
+
+
+        <div style="
+          padding:10px;
+          border:1px solid #d8c7aa;
+          border-radius:8px;
+          background:#fffdf8;
+        ">
+          <div class="muted">
+            Graczy w tabeli
+          </div>
+
+          <strong>
+            ${Number(payload.count) || 0}
+          </strong>
+        </div>
+
+      </div>
+    `;
+
+  } catch (err) {
+
+    box.innerHTML = `
+      <div style="
+        padding:10px;
+        border:1px solid #e3b2b2;
+        border-radius:8px;
+        background:#fff1f1;
+      ">
+        ${escapeHtml(
+          err && err.message
+            ? err.message
+            : "Nie udało się pobrać statusu wpłat."
+        )}
+      </div>
+    `;
+  }
+}
+
 function setupAdmin() {
 
   el("admin-login-form")
@@ -1755,6 +1947,12 @@ function setupAdmin() {
       "click",
       loadAdminSubmissions
     );
+
+  el("admin-payments-refresh")
+  .addEventListener(
+    "click",
+    loadAdminPaymentsStatus
+  );
 
   el("admin-logout")
     .addEventListener(
