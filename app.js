@@ -40,19 +40,34 @@ function displayName(name) {
 }
 
   const MAP = [
-    ["Wilanów", "Agresywnie", "⚔️"],
-    ["Mokotów", "Przyjacielski", "🤝"],
-    ["Ursynów", "Błagalny", "🙏"],
-    ["Ochota", "Neutralny", "⚪"],
-    ["Śródmieście", "Agresywny", "⚔️"],
-    ["Bemowo", "Przyjacielski", "🤝"],
-    ["Wola", "Błagalny", "🙏"],
-    ["Żoliborz", "Neutralny", "⚪"],
-    ["Bielany", "Neutralny", "⚪"],
-    ["Praga", "Błagalny", "🙏"],
-    ["Białołęka", null, "❓"],
-    ["Targówek", null, "❓"]
-  ];
+  ["Wilanów", "Agresywny", "⚔️"],
+  ["Mokotów", "Przyjacielski", "🤝"],
+  ["Ursynów", "Błagalny", "🙏"],
+  ["Ochota", "Neutralny", "⚪"],
+  ["Śródmieście", "Agresywny", "⚔️"],
+  ["Bemowo", "Przyjacielski", "🤝"],
+  ["Wola", "Błagalny", "🙏"],
+  ["Żoliborz", "Neutralny", "⚪"],
+  ["Bielany", "Neutralny", "⚪"],
+  ["Praga", "Błagalny", "🙏"],
+  ["Białołęka", null, "❓"],
+  ["Targówek", null, "❓"]
+];
+
+const MAP_POSITIONS = {
+  "Bielany":      { x: 31, y: 13 },
+  "Białołęka":    { x: 63, y: 18 },
+  "Żoliborz":     { x: 20, y: 31 },
+  "Targówek":     { x: 83, y: 35 },
+  "Bemowo":       { x: 13, y: 49 },
+  "Śródmieście":  { x: 47, y: 50 },
+  "Praga":        { x: 86, y: 57 },
+  "Wola":         { x: 23, y: 64 },
+  "Ochota":       { x: 20, y: 77 },
+  "Mokotów":      { x: 52, y: 75 },
+  "Wilanów":      { x: 77, y: 83 },
+  "Ursynów":      { x: 35, y: 94 }
+};
 
   const el = id => document.getElementById(id);
 
@@ -431,28 +446,132 @@ function displayName(name) {
 
   function renderMap() {
 
-    el("map-list").innerHTML =
-      MAP
-        .map(([district,action,icon]) => `
+  const container =
+    el("map-list");
 
-          <div class="map-row">
+  const markers =
+    MAP
+      .map(
+        ([district, action, icon]) => {
 
-            <strong>
-              ${district}
-            </strong>
+          const position =
+            MAP_POSITIONS[district];
 
-            <span class="${action ? "" : "unknown"}">
+          if (!position) {
+            return "";
+          }
 
+          const known =
+            Boolean(action);
+
+          return `
+            <div
+              style="
+                position:absolute;
+                left:${position.x}%;
+                top:${position.y}%;
+                transform:translate(-50%, 0);
+                z-index:2;
+
+                padding:2px 5px;
+                border-radius:6px;
+
+                background:${
+                  known
+                    ? "rgba(255,248,230,.92)"
+                    : "rgba(255,238,238,.94)"
+                };
+
+                border:1px solid ${
+                  known
+                    ? "rgba(95,70,40,.55)"
+                    : "rgba(180,80,80,.65)"
+                };
+
+                box-shadow:
+                  0 1px 3px rgba(0,0,0,.25);
+
+                font-size:10px;
+                font-weight:700;
+                line-height:1.15;
+                white-space:nowrap;
+
+                color:${
+                  known
+                    ? "#3d3022"
+                    : "#9a2f2f"
+                };
+
+                pointer-events:none;
+              "
+            >
               ${icon}
-              ${action ?? "Nieodkryte"}
+              ${escapeHtml(
+                action || "Nieodkryte"
+              )}
+            </div>
+          `;
+        }
+      )
+      .join("");
 
-            </span>
 
-          </div>
+  container.innerHTML = `
 
-        `)
-        .join("");
-  }
+    <div
+      style="
+        max-width:420px;
+        margin:0 auto;
+      "
+    >
+
+      <div
+        style="
+          position:relative;
+          width:100%;
+        "
+      >
+
+        <img
+          src="mapa-warszawa.png"
+          alt="Mapa dzielnic"
+          style="
+            display:block;
+            width:100%;
+            height:auto;
+            border-radius:8px;
+          "
+        >
+
+        ${markers}
+
+      </div>
+
+
+      <div
+        style="
+          margin-top:12px;
+          padding:8px 10px;
+          border-radius:8px;
+          background:#f8f0df;
+          border:1px solid #d8c49f;
+          font-size:12px;
+          line-height:1.5;
+          text-align:center;
+        "
+      >
+        ⚪ Neutralny
+        &nbsp;·&nbsp;
+        🙏 Błagalny
+        &nbsp;·&nbsp;
+        🤝 Przyjacielski
+        &nbsp;·&nbsp;
+        ⚔️ Agresywny
+      </div>
+
+    </div>
+  `;
+}
 
   function renderAll() {
 
