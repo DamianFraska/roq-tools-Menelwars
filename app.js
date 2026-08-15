@@ -14,6 +14,7 @@
   const STORAGE_KEY = "roq_tools_premium_v1";
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
   const NICK_KEY = "roq_tools_submitter_nick_v1";
+  const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
 
   const DISPLAY_NAMES = {
   "Ziemniak irga": 'Ziemniaki "Irga"',
@@ -799,6 +800,348 @@ function displayName(name) {
 
 
   // ============================================================
+  // WPŁATY GANGU — LOGOWANIE + CHRONIONE DANE
+  // ============================================================
+
+  function gangToken() {
+    return localStorage.getItem(GANG_TOKEN_KEY) || "";
+  }
+
+  function setGangToken(token) {
+    if (token) {
+      localStorage.setItem(GANG_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(GANG_TOKEN_KEY);
+    }
+  }
+
+  function makeNonce() {
+    if (crypto && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2,"0")).join("");
+  }
+
+  function jsonp(action, params={}) {
+
+    return new Promise((resolve, reject) => {
+
+      const callbackName =
+        "mwJsonp_" +
+        Date.now() +
+        "_" +
+        Math.floor(Math.random()*1000000);
+
+      const script =
+        document.createElement("script");
+
+      let done = false;
+
+      const cleanup = () => {
+        if (done) return;
+        done = true;
+
+        try {
+          delete window[callbackName];
+        } catch {}
+
+        script.remove();
+      };
+
+      const timeout =
+        setTimeout(() => {
+          cleanup();
+          reject(new Error("Przekroczono czas odpowiedzi serwera."));
+        }, 12000);
+
+      window[callbackName] = payload => {
+        clearTimeout(timeout);
+        cleanup();
+        resolve(payload);
+      };
+
+      script.onerror = () => {
+        clearTimeout(timeout);
+        cleanup();
+        reject(new Error("Błąd połączenia z serwerem."));
+      };
+
+      const query =
+        new URLSearchParams({
+          action,
+          ...params,
+          callback: callbackName,
+          _: String(Date.now())
+        });
+
+      script.src =
+        BACKEND_URL + "?" + query.toString();
+
+      document.head.appendChild(script);
+    });
+  }
+
+  function formatPaymentsDate(value) {
+
+    const m =
+      /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(value || ""));
+
+    if (!m) return "—";
+
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  }
+
+  function formatSaldo(value) {
+
+    return Number(value).toLocaleString(
+      "pl-PL",
+      {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      }
+    );
+  }
+
+  function paymentsRow(player) {
+
+    const saldo = Number(player.saldo);
+
+    let label = "✅ Rozliczony";
+    let bg = "#eef7ee";
+    let border = "#bad7ba";
+    let value = "0";
+
+    if (saldo < 0) {
+      label = "🔴 Dług";
+      bg = "#fff1f1";
+      border = "#e3b2b2";
+      value = formatSaldo(Math.abs(saldo));
+    }
+
+    if (saldo > 0) {
+      label = "🟢 Nadpłata";
+      bg = "#eef8f0";
+      border = "#b6d9bd";
+      value = formatSaldo(saldo);
+    }
+
+    return `
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;margin-bottom:8px;border:1px solid ${border};border-radius:10px;background:${bg}">
+        <strong style="overflow-wrap:anywhere">${escapeHtml(player.nick)}</strong>
+        <div style="text-align:right">
+          <div style="font-weight:700">${label}</div>
+          <div style="font-size:15px;font-weight:800">${value}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function showPaymentsLogin(message="") {
+
+    el("payments-login").hidden = false;
+    el("payments-content").hidden = true;
+    el("payments-login-status").textContent = message;
+  }
+
+  function showPaymentsContent() {
+    el("payments-login").hidden = true;
+    el("payments-content").hidden = false;
+  }
+
+  async function loadPayments() {
+
+    const token = gangToken();
+
+    if (!token) {
+      showPaymentsLogin();
+      return;
+    }
+
+    showPaymentsContent();
+
+    el("payments-status").textContent =
+      "Pobieranie danych...";
+
+    try {
+
+      const payload =
+        await jsonp(
+          "payments",
+          {token}
+        );
+
+      if (!payload || !payload.ok) {
+
+        if (
+          payload &&
+          String(payload.error || "").toLowerCase().includes("brak dostępu")
+        ) {
+          setGangToken("");
+          showPaymentsLogin(
+            "Dostęp wygasł. Wpisz hasło ponownie."
+          );
+          return;
+        }
+
+        throw new Error(
+          payload && payload.error
+            ? payload.error
+            : "Nie udało się pobrać wpłat."
+        );
+      }
+
+      const players =
+        Array.isArray(payload.players)
+          ? payload.players
+          : [];
+
+      el("payments-date").textContent =
+        "Stan na: " +
+        formatPaymentsDate(payload.updatedAt);
+
+      el("payments-count").textContent =
+        `Graczy: ${players.length}`;
+
+      el("payments-list").innerHTML =
+        players.length
+          ? players.map(paymentsRow).join("")
+          : `<div class="empty">Brak danych do wyświetlenia.</div>`;
+
+      el("payments-status").textContent = "";
+
+    } catch (err) {
+
+      el("payments-status").textContent =
+        err && err.message
+          ? err.message
+          : "Nie udało się pobrać danych.";
+    }
+  }
+
+  async function loginToPayments(event) {
+
+    event.preventDefault();
+
+    const password =
+      el("payments-password").value;
+
+    const status =
+      el("payments-login-status");
+
+    if (!password) {
+      status.textContent = "Wpisz hasło gangu.";
+      return;
+    }
+
+    if (!backendConfigured()) {
+      status.textContent = "Backend nie jest skonfigurowany.";
+      return;
+    }
+
+    const nonce = makeNonce();
+
+    status.textContent = "Sprawdzanie hasła...";
+
+    try {
+
+      await fetch(
+        BACKEND_URL,
+        {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=UTF-8"
+          },
+          body: JSON.stringify({
+            action: "gangLogin",
+            nonce,
+            password
+          })
+        }
+      );
+
+      let result = null;
+
+      for (let i=0; i<12; i++) {
+
+        await new Promise(
+          resolve => setTimeout(resolve, 500)
+        );
+
+        result =
+          await jsonp(
+            "gangLoginResult",
+            {nonce}
+          );
+
+        if (!result || !result.pending) {
+          break;
+        }
+      }
+
+      if (!result || result.pending) {
+        throw new Error(
+          "Serwer nie zwrócił wyniku logowania. Spróbuj ponownie."
+        );
+      }
+
+      if (!result.ok || !result.token) {
+        status.textContent =
+          result.error || "Nieprawidłowe hasło.";
+        return;
+      }
+
+      setGangToken(result.token);
+      el("payments-password").value = "";
+      status.textContent = "";
+
+      await loadPayments();
+
+    } catch (err) {
+
+      status.textContent =
+        err && err.message
+          ? err.message
+          : "Nie udało się zalogować.";
+    }
+  }
+
+  function setupPayments() {
+
+    el("payments-login-form")
+      .addEventListener("submit", loginToPayments);
+
+    el("payments-refresh")
+      .addEventListener("click", loadPayments);
+
+    el("payments-logout")
+      .addEventListener("click", () => {
+        setGangToken("");
+        el("payments-list").innerHTML = "";
+        showPaymentsLogin("Dostęp na tym urządzeniu został usunięty.");
+      });
+
+    if (gangToken()) {
+      showPaymentsContent();
+    } else {
+      showPaymentsLogin();
+    }
+  }
+
+
+  // ============================================================
   // TABS
   // ============================================================
 
@@ -828,6 +1171,10 @@ function displayName(name) {
                   v.id !==
                   btn.dataset.tab
             );
+
+          if (btn.dataset.tab === "payments-view") {
+            loadPayments();
+          }
         }
       );
     });
@@ -839,6 +1186,7 @@ function displayName(name) {
 
   renderMap();
   setupSubmissionForm();
+  setupPayments();
   renderAll();
   fetchApprovedRecipes();
 

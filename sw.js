@@ -1,4 +1,4 @@
-const CACHE = "menelwars-tools-0.0.4";
+const CACHE = "menelwars-tools-0.0.5";
 
 const ASSETS = [
   "./",
@@ -9,7 +9,6 @@ const ASSETS = [
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png",
-  "./roq-tools.user.js"
 ];
 
 self.addEventListener("install", event => {
