@@ -3122,6 +3122,8 @@ async function previewAdminPayments() {
       payload
     );
 
+status.textContent = "";
+
 
   } catch (err) {
 
@@ -3333,9 +3335,10 @@ async function importAdminPayments() {
     await loadAdminPaymentsStatus();
 
 
-    // Ponownie sprawdzamy raport,
-    // żeby użytkownik widział aktualny rezultat.
-    await previewAdminPayments();
+    // Raport został już wykorzystany.
+    // Ukrywamy przycisk zapisu,
+    // aby przypadkiem nie zapisać go drugi raz.
+    button.hidden = true;
 
 
   } catch (err) {
