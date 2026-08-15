@@ -55,18 +55,18 @@ function displayName(name) {
 ];
 
 const MAP_POSITIONS = {
-  "Bielany":      { x: 31, y: 13 },
-  "Białołęka":    { x: 63, y: 18 },
-  "Żoliborz":     { x: 20, y: 31 },
-  "Targówek":     { x: 83, y: 35 },
-  "Bemowo":       { x: 13, y: 49 },
-  "Śródmieście":  { x: 47, y: 50 },
-  "Praga":        { x: 86, y: 57 },
-  "Wola":         { x: 23, y: 64 },
-  "Ochota":       { x: 20, y: 77 },
-  "Mokotów":      { x: 52, y: 75 },
-  "Wilanów":      { x: 77, y: 83 },
-  "Ursynów":      { x: 35, y: 94 }
+  "Bielany":      { x: 28.7, y: 12.2 },
+  "Białołęka":    { x: 62.0, y: 16.7 },
+  "Żoliborz":     { x: 19.2, y: 29.8 },
+  "Targówek":     { x: 81.7, y: 33.6 },
+  "Bemowo":       { x: 13.5, y: 47.7 },
+  "Śródmieście":  { x: 46.8, y: 48.9 },
+  "Praga":        { x: 86.1, y: 55.2 },
+  "Wola":         { x: 22.0, y: 61.4 },
+  "Ochota":       { x: 20.2, y: 75.9 },
+  "Mokotów":      { x: 50.8, y: 73.3 },
+  "Wilanów":      { x: 77.9, y: 80.9 },
+  "Ursynów":      { x: 39.6, y: 92.4 }
 };
 
   const el = id => document.getElementById(id);
