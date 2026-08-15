@@ -1825,12 +1825,12 @@ if (btn.dataset.tab === "admin-view") {
   // START
   // ============================================================
 
-  renderMap();
+renderMap();
 setupSubmissionForm();
 setupPayments();
-setupAdmin();
 renderAll();
 fetchApprovedRecipes();
+setupAdmin();
 
   // Pobieramy nowe zatwierdzone dane także co 5 minut.
   setInterval(

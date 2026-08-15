@@ -209,92 +209,68 @@
     </div>
   </section>
 
-  <section id="admin-view" class="view" hidden>
+  <div id="admin-content" hidden>
 
-  <div class="panel">
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:8px;
+          flex-wrap:wrap;
+          margin-bottom:12px;
+        ">
 
-    <div class="panel-head">
-      🛠 Panel administratora
-    </div>
+          <div>
 
-    <div class="panel-body">
+            <strong>
+              ✅ Dostęp administratora aktywny
+            </strong>
 
-      <div id="admin-login">
+            <div
+              id="admin-submissions-count"
+              class="muted">
+              Oczekujące zgłoszenia: —
+            </div>
 
-        <p class="muted">
-          🔐 Dostęp tylko dla administratora.
-        </p>
-
-        <form id="admin-login-form" class="submit-form">
-
-          <label>
-            <span>Hasło administratora</span>
-
-            <input
-              id="admin-password"
-              type="password"
-              autocomplete="current-password"
-              placeholder="Hasło administratora"
-              required
-            >
-          </label>
-
-          <button class="primary-btn" type="submit">
-            🔓 Zaloguj
-          </button>
-
-          <div
-            id="admin-login-status"
-            class="submit-status">
           </div>
 
-        </form>
+          <div style="
+            display:flex;
+            gap:8px;
+          ">
+
+            <button
+              id="admin-refresh"
+              class="primary-btn"
+              type="button">
+              ↻ Odśwież
+            </button>
+
+            <button
+              id="admin-logout"
+              type="button">
+              🔒 Wyloguj
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div id="admin-submissions"></div>
+
+        <div
+          id="admin-status"
+          class="submit-status">
+        </div>
 
       </div>
 
-
-      <div style="
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-bottom:12px;
-">
-
-  <div>
-    <strong>
-      ✅ Dostęp administratora aktywny
-    </strong>
-
-    <div
-      id="admin-submissions-count"
-      class="muted">
-      Oczekujące zgłoszenia: —
     </div>
-  </div>
-
-  <div style="
-    display:flex;
-    gap:8px;
-  ">
-
-    <button
-      id="admin-refresh"
-      class="primary-btn"
-      type="button">
-      ↻ Odśwież
-    </button>
-
-    <button
-      id="admin-logout"
-      type="button">
-      🔒 Wyloguj
-    </button>
 
   </div>
 
-</div>
+</section>
 
 <div id="admin-submissions"></div>
 
@@ -303,11 +279,6 @@
   class="submit-status">
 </div>
 
-        <button
-          id="admin-logout"
-          type="button">
-          🔒 Wyloguj administratora
-        </button>
 
         <div
           id="admin-status"
