@@ -1751,11 +1751,10 @@ function setupAdmin() {
     );
 
   el("admin-refresh")
-  .addEventListener(
-    "click",
-    loadAdminSubmissions
-  );
-
+    .addEventListener(
+      "click",
+      loadAdminSubmissions
+    );
 
   el("admin-logout")
     .addEventListener(
@@ -1770,14 +1769,9 @@ function setupAdmin() {
       }
     );
 
-
-  if (adminToken()) {
-    checkAdminAccess();
-  } else {
-    showAdminLogin();
-  }
-}	
-
+  // Na czas testu zawsze pokaż ekran logowania.
+  showAdminLogin();
+}
   // ============================================================
   // TABS
   // ============================================================
