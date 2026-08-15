@@ -1967,46 +1967,15 @@ function renderAdminPaymentsPreview(payload) {
   }
 
 
-  const day =
-    days[0];
-
-
-  const errors =
-    Array.isArray(day.errors)
-      ? day.errors
-      : [];
-
-
-  const warnings =
-    Array.isArray(day.warnings)
-      ? day.warnings
-      : [];
-
-
-  const players =
-    Array.isArray(day.players)
-      ? day.players
-      : [];
-
-
-  const paidPlayers =
-    players.filter(
-      player =>
-        player.status === "paid"
+  const validDays =
+    days.filter(
+      day => day.canClose
     );
 
 
-  const zeroPlayers =
-    players.filter(
-      player =>
-        player.status === "zero"
-    );
-
-
-  const missingPlayers =
-    players.filter(
-      player =>
-        player.status === "missing"
+  const invalidDays =
+    days.filter(
+      day => !day.canClose
     );
 
 
@@ -2075,187 +2044,402 @@ function renderAdminPaymentsPreview(payload) {
   }
 
 
-  const errorsHtml =
-    errors.length
-      ? `
-          <div style="
-            margin-top:10px;
+  function dayDetailsHtml(
+    day,
+    index
+  ) {
+
+    const errors =
+      Array.isArray(day.errors)
+        ? day.errors
+        : [];
+
+
+    const warnings =
+      Array.isArray(day.warnings)
+        ? day.warnings
+        : [];
+
+
+    const players =
+      Array.isArray(day.players)
+        ? day.players
+        : [];
+
+
+    const paidPlayers =
+      players.filter(
+        player =>
+          player.status === "paid"
+      );
+
+
+    const zeroPlayers =
+      players.filter(
+        player =>
+          player.status === "zero"
+      );
+
+
+    const missingPlayers =
+      players.filter(
+        player =>
+          player.status === "missing"
+      );
+
+
+    const errorsHtml =
+      errors.length
+        ? `
+            <div style="
+              margin-top:10px;
+              padding:10px;
+              border:1px solid #e3b2b2;
+              border-radius:8px;
+              background:#fff1f1;
+            ">
+
+              <strong>
+                ❌ Błędy: ${errors.length}
+              </strong>
+
+              <div style="
+                margin-top:6px;
+                font-size:13px;
+              ">
+                ${
+                  errors
+                    .map(
+                      error =>
+                        `<div>• ${escapeHtml(error)}</div>`
+                    )
+                    .join("")
+                }
+              </div>
+
+            </div>
+          `
+        : "";
+
+
+    const warningsHtml =
+      warnings.length
+        ? `
+            <div style="
+              margin-top:10px;
+              padding:10px;
+              border:1px solid #e0b766;
+              border-radius:8px;
+              background:#fff8e7;
+            ">
+
+              <strong>
+                ⚠️ Ostrzeżenia: ${warnings.length}
+              </strong>
+
+              <div style="
+                margin-top:6px;
+                font-size:13px;
+              ">
+                ${
+                  warnings
+                    .map(
+                      warning =>
+                        `<div>• ${escapeHtml(warning)}</div>`
+                    )
+                    .join("")
+                }
+              </div>
+
+            </div>
+          `
+        : "";
+
+
+    const missingHtml =
+      missingPlayers.length
+        ? `
+            <div style="margin-top:10px">
+
+              <strong>
+                🔴 Braki w raporcie (${missingPlayers.length})
+              </strong>
+
+              <div style="margin-top:6px">
+                ${
+                  missingPlayers
+                    .map(
+                      player =>
+                        compactPlayerRow(
+                          player,
+                          "missing"
+                        )
+                    )
+                    .join("")
+                }
+              </div>
+
+            </div>
+          `
+        : "";
+
+
+    const zeroHtml =
+      zeroPlayers.length
+        ? `
+            <div style="margin-top:10px">
+
+              <strong>
+                🟡 Nie wpłacili (${zeroPlayers.length})
+              </strong>
+
+              <div style="margin-top:6px">
+                ${
+                  zeroPlayers
+                    .map(
+                      player =>
+                        compactPlayerRow(
+                          player,
+                          "zero"
+                        )
+                    )
+                    .join("")
+                }
+              </div>
+
+            </div>
+          `
+        : "";
+
+
+    const paidHtml =
+      paidPlayers.length
+        ? `
+            <div style="
+              margin-top:12px;
+              border-top:1px solid #d8c7aa;
+              padding-top:10px;
+            ">
+
+              <button
+                type="button"
+                data-paid-toggle="${index}"
+                style="
+                  width:100%;
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  gap:8px;
+                "
+              >
+                <span>
+                  ✅ Wpłacili (${paidPlayers.length})
+                </span>
+
+                <span data-paid-toggle-icon="${index}">
+                  Pokaż ▼
+                </span>
+              </button>
+
+              <div
+                data-paid-list="${index}"
+                hidden
+                style="margin-top:8px"
+              >
+                ${
+                  paidPlayers
+                    .map(
+                      player =>
+                        compactPlayerRow(
+                          player,
+                          "paid"
+                        )
+                    )
+                    .join("")
+                }
+              </div>
+
+            </div>
+          `
+        : "";
+
+
+    return `
+      <div style="
+        margin-top:10px;
+      ">
+        ${errorsHtml}
+        ${warningsHtml}
+        ${missingHtml}
+        ${zeroHtml}
+        ${paidHtml}
+      </div>
+    `;
+  }
+
+
+  function dayCardHtml(
+    day,
+    index
+  ) {
+
+    const ok =
+      Boolean(day.canClose);
+
+    const errorCount =
+      Array.isArray(day.errors)
+        ? day.errors.length
+        : 0;
+
+
+    const summaryText =
+      ok
+
+        ? `
+            ${Number(day.paidCount) || 0} wpłaciło
+            ·
+            ${Number(day.zeroCount) || 0} nie wpłaciło
+            ·
+            ${paymentPreviewMoney(day.calculatedTotal)} zł
+          `
+
+        : `
+            Raport niekompletny
+            ·
+            błędów: ${errorCount}
+          `;
+
+
+    return `
+      <div style="
+        margin-top:10px;
+        border:1px solid ${
+          ok
+            ? "#bad7ba"
+            : "#e3b2b2"
+        };
+        border-radius:8px;
+        background:${
+          ok
+            ? "#eef7ee"
+            : "#fff1f1"
+        };
+        overflow:hidden;
+      ">
+
+        <button
+          type="button"
+          data-day-toggle="${index}"
+          style="
+            width:100%;
+            border:0;
+            border-radius:0;
+            background:transparent;
             padding:10px;
-            border:1px solid #e3b2b2;
-            border-radius:8px;
-            background:#fff1f1;
+            text-align:left;
+            cursor:pointer;
+          "
+        >
+
+          <div style="
+            display:flex;
+            justify-content:space-between;
+            gap:10px;
+            align-items:center;
           ">
 
-            <strong>
-              ❌ Błędy: ${errors.length}
-            </strong>
+            <div>
 
-            <div style="
-              margin-top:6px;
-              font-size:13px;
-            ">
-              ${
-                errors
-                  .map(
-                    error =>
-                      `<div>• ${escapeHtml(error)}</div>`
-                  )
-                  .join("")
-              }
+              <strong>
+                ${
+                  ok
+                    ? "✅"
+                    : "❌"
+                }
+                ${escapeHtml(day.date)}
+              </strong>
+
+              <div
+                class="muted"
+                style="
+                  margin-top:3px;
+                  font-size:13px;
+                "
+              >
+                ${summaryText}
+              </div>
+
             </div>
 
-          </div>
-        `
-      : "";
-
-
-  const warningsHtml =
-    warnings.length
-      ? `
-          <div style="
-            margin-top:10px;
-            padding:10px;
-            border:1px solid #e0b766;
-            border-radius:8px;
-            background:#fff8e7;
-          ">
-
-            <strong>
-              ⚠️ Ostrzeżenia: ${warnings.length}
-            </strong>
-
-            <div style="
-              margin-top:6px;
-              font-size:13px;
-            ">
-              ${
-                warnings
-                  .map(
-                    warning =>
-                      `<div>• ${escapeHtml(warning)}</div>`
-                  )
-                  .join("")
-              }
-            </div>
-
-          </div>
-        `
-      : "";
-
-
-  const missingHtml =
-    missingPlayers.length
-      ? `
-          <div style="
-            margin-top:10px;
-          ">
-
-            <strong>
-              🔴 Braki w raporcie (${missingPlayers.length})
-            </strong>
-
-            <div style="
-              margin-top:6px;
-            ">
-              ${
-                missingPlayers
-                  .map(
-                    player =>
-                      compactPlayerRow(
-                        player,
-                        "missing"
-                      )
-                  )
-                  .join("")
-              }
-            </div>
-
-          </div>
-        `
-      : "";
-
-
-  const zeroHtml =
-    zeroPlayers.length
-      ? `
-          <div style="
-            margin-top:10px;
-          ">
-
-            <strong>
-              🟡 Nie wpłacili (${zeroPlayers.length})
-            </strong>
-
-            <div style="
-              margin-top:6px;
-            ">
-              ${
-                zeroPlayers
-                  .map(
-                    player =>
-                      compactPlayerRow(
-                        player,
-                        "zero"
-                      )
-                  )
-                  .join("")
-              }
-            </div>
-
-          </div>
-        `
-      : "";
-
-
-  const paidHtml =
-    paidPlayers.length
-      ? `
-          <div style="
-            margin-top:12px;
-            border-top:1px solid #d8c7aa;
-            padding-top:10px;
-          ">
-
-            <button
-              id="admin-payments-toggle-paid"
-              type="button"
+            <strong
+              data-day-toggle-icon="${index}"
               style="
-                width:100%;
-                display:flex;
-                justify-content:space-between;
-                align-items:center;
-                gap:8px;
+                white-space:nowrap;
               "
             >
-              <span>
-                ✅ Wpłacili (${paidPlayers.length})
-              </span>
+              Pokaż ▼
+            </strong>
 
-              <span id="admin-payments-toggle-paid-icon">
-                Pokaż ▼
-              </span>
-            </button>
+          </div>
 
-            <div
-              id="admin-payments-paid-list"
-              hidden
-              style="
-                margin-top:8px;
-              "
-            >
+        </button>
+
+
+        <div
+          data-day-details="${index}"
+          hidden
+          style="
+            padding:0 10px 10px 10px;
+          "
+        >
+
+          <div style="
+            font-size:13px;
+            padding-top:4px;
+          ">
+
+            Suma raportu:
+            <b>
               ${
-                paidPlayers
-                  .map(
-                    player =>
-                      compactPlayerRow(
-                        player,
-                        "paid"
-                      )
-                  )
-                  .join("")
+                day.reportedTotal === null
+                  ? "—"
+                  : `${paymentPreviewMoney(day.reportedTotal)} zł`
               }
-            </div>
+            </b>
 
+            <br>
+
+            Suma obliczona:
+            <b>
+              ${paymentPreviewMoney(day.calculatedTotal)} zł
+            </b>
+
+          </div>
+
+          ${dayDetailsHtml(day, index)}
+
+        </div>
+
+      </div>
+    `;
+  }
+
+
+  const ignoredTodayHtml =
+    Number(
+      payload.ignoredTodayCount
+    ) > 0
+      ? `
+          <div style="
+            margin-top:8px;
+            padding:8px 10px;
+            border:1px solid #b8cde2;
+            border-radius:8px;
+            background:#eef5fb;
+            font-size:13px;
+          ">
+            ℹ️ Pominięto bieżący dzień.
+            Wpłaty z dzisiaj mogą się jeszcze zmienić.
           </div>
         `
       : "";
@@ -2264,108 +2448,113 @@ function renderAdminPaymentsPreview(payload) {
   result.innerHTML = `
 
     <div style="
-      padding:10px;
-      border:1px solid ${
-        day.canClose
-          ? "#bad7ba"
-          : "#e3b2b2"
-      };
-      border-radius:8px;
-      background:${
-        day.canClose
-          ? "#eef7ee"
-          : "#fff1f1"
-      };
-      margin-bottom:10px;
+      margin-bottom:8px;
+      font-size:13px;
     ">
 
-      <strong>
-        ${
-          day.canClose
-            ? "✅ Raport poprawny"
-            : "❌ Raport wymaga poprawy"
-        }
-      </strong>
+      Rozpoznano dni:
+      <b>${days.length}</b>
 
-      <div style="
-        margin-top:6px;
-        font-size:13px;
-      ">
+      ·
 
-        Data:
-        <b>${escapeHtml(day.date)}</b>
+      ✅ Poprawne:
+      <b>${validDays.length}</b>
 
-        <br>
+      ·
 
-        Wpłacili:
-        <b>${Number(day.paidCount) || 0}</b>
-
-        · Nie wpłacili:
-        <b>${Number(day.zeroCount) || 0}</b>
-
-        · Braki:
-        <b>${Number(day.missingCount) || 0}</b>
-
-        <br>
-
-        Suma raportu:
-        <b>
-          ${paymentPreviewMoney(day.reportedTotal)} zł
-        </b>
-
-        <br>
-
-        Suma obliczona:
-        <b>
-          ${paymentPreviewMoney(day.calculatedTotal)} zł
-        </b>
-
-      </div>
+      ❌ Z błędem:
+      <b>${invalidDays.length}</b>
 
     </div>
 
-    ${errorsHtml}
-    ${warningsHtml}
-    ${missingHtml}
-    ${zeroHtml}
-    ${paidHtml}
+    ${ignoredTodayHtml}
+
+    ${
+      days
+        .map(
+          (day, index) =>
+            dayCardHtml(
+              day,
+              index
+            )
+        )
+        .join("")
+    }
   `;
 
 
-  const toggle =
-    el(
-      "admin-payments-toggle-paid"
-    );
+  document
+    .querySelectorAll(
+      "[data-day-toggle]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          const index =
+            button.dataset.dayToggle;
+
+          const details =
+            document.querySelector(
+              `[data-day-details="${index}"]`
+            );
+
+          const icon =
+            document.querySelector(
+              `[data-day-toggle-icon="${index}"]`
+            );
 
 
-  if (toggle) {
-
-    toggle.addEventListener(
-      "click",
-      () => {
-
-        const list =
-          el(
-            "admin-payments-paid-list"
-          );
-
-        const icon =
-          el(
-            "admin-payments-toggle-paid-icon"
-          );
+          details.hidden =
+            !details.hidden;
 
 
-        list.hidden =
-          !list.hidden;
+          icon.textContent =
+            details.hidden
+              ? "Pokaż ▼"
+              : "Ukryj ▲";
+        }
+      );
+    });
 
 
-        icon.textContent =
-          list.hidden
-            ? "Pokaż ▼"
-            : "Ukryj ▲";
-      }
-    );
-  }
+  document
+    .querySelectorAll(
+      "[data-paid-toggle]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          const index =
+            button.dataset.paidToggle;
+
+          const list =
+            document.querySelector(
+              `[data-paid-list="${index}"]`
+            );
+
+          const icon =
+            document.querySelector(
+              `[data-paid-toggle-icon="${index}"]`
+            );
+
+
+          list.hidden =
+            !list.hidden;
+
+
+          icon.textContent =
+            list.hidden
+              ? "Pokaż ▼"
+              : "Ukryj ▲";
+        }
+      );
+    });
 }
 
 
