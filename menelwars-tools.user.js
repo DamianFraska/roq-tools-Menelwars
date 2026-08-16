@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.8.1
+// @version      0.8.2
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -94,6 +94,11 @@ function displayName(name) {
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
   const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
   const BAR_COLLAPSED_KEY = "menelwars_tools_bar_collapsed_v1";
+  const COMPANY_INCOME_KEY = "menelwars_tools_company_income_v1";
+
+  const COMPANY_MIN_CONTRIBUTION = 30000;
+  const COMPANY_BASE_SALARY = 160;
+  const COMPANY_SALARY_RATIO = 0.80;
 
   let premiumState = {};
   let remoteApproved = {};
@@ -1435,10 +1440,38 @@ function paymentAmount(value) {
 }
 
 
+function paymentShare(value) {
+
+  const share =
+    Math.max(
+      0,
+      Number(value) || 0
+    );
+
+  return (share * 100)
+    .toFixed(2)
+    .replace(".", ",") + "%";
+}
+
+
 function paymentRow(player) {
 
   const saldo =
     Number(player.saldo);
+
+  const contribution =
+    Math.max(
+      0,
+      Number(player.contribution) || 0
+    );
+
+  const share =
+    contribution >= COMPANY_MIN_CONTRIBUTION
+      ? Math.max(
+          0,
+          Number(player.share) || 0
+        )
+      : 0;
 
   let cls = "ok";
   let label = "✅ Rozliczony";
@@ -1467,7 +1500,37 @@ function paymentRow(player) {
   return `
     <div class="paymentRow ${cls}">
       <div class="paymentNick">
-        ${esc(player.nick)}
+        <div>
+          ${esc(player.nick)}
+        </div>
+
+        <div
+          class="muted"
+          style="
+            margin-top:2px;
+            font-size:10px;
+            font-weight:400;
+            display:flex;
+            gap:7px;
+            flex-wrap:wrap;
+          "
+        >
+          <span>
+            🏢 Wkład w firmę:
+            <b>
+              ${paymentAmount(
+                contribution
+              )} zł
+            </b>
+          </span>
+
+          <span>
+            Udział:
+            <b>
+              ${paymentShare(share)}
+            </b>
+          </span>
+        </div>
       </div>
 
       <div class="paymentLabel">
@@ -2927,6 +2990,280 @@ async function copyAdminDailyReport() {
   }
 }
 
+
+function companyMoney(value) {
+
+  return Number(value || 0)
+    .toLocaleString(
+      "pl-PL",
+      {
+        minimumFractionDigits:0,
+        maximumFractionDigits:2
+      }
+    );
+}
+
+
+function companyPlan(
+  payload,
+  income
+) {
+
+  const players =
+    Array.isArray(
+      payload &&
+      payload.players
+    )
+      ? payload.players
+      : [];
+
+  const safeIncome =
+    Math.max(
+      0,
+      Number(income) || 0
+    );
+
+  const eligible =
+    players
+      .map(player => ({
+        nick: player.nick,
+        contribution:
+          Math.max(
+            0,
+            Number(
+              player.contribution
+            ) || 0
+          )
+      }))
+      .filter(
+        player =>
+          player.contribution >=
+          COMPANY_MIN_CONTRIBUTION
+      );
+
+  const eligibleContribution =
+    eligible.reduce(
+      (sum, player) =>
+        sum +
+        player.contribution,
+      0
+    );
+
+  const targetSalaryBudget =
+    safeIncome *
+    COMPANY_SALARY_RATIO;
+
+  const baseTotal =
+    eligible.length *
+    COMPANY_BASE_SALARY;
+
+  // Jeżeli nikt nie osiągnął progu 30k,
+  // nie ma etatowców i całość dochodu zostaje w Funduszu.
+  const salaryBudget =
+    eligible.length
+      ? targetSalaryBudget
+      : 0;
+
+  const developmentBudget =
+    safeIncome -
+    salaryBudget;
+
+  const bonusPool =
+    Math.max(
+      0,
+      salaryBudget -
+      baseTotal
+    );
+
+  const rows =
+    eligible.map(player => {
+
+      const share =
+        eligibleContribution > 0
+          ? player.contribution /
+            eligibleContribution
+          : 0;
+
+      return {
+        ...player,
+        share,
+        salary:
+          COMPANY_BASE_SALARY +
+          bonusPool * share
+      };
+    });
+
+  return {
+    income:safeIncome,
+    salaryBudget,
+    developmentBudget,
+    baseTotal,
+    bonusPool,
+    eligibleContribution,
+    rows
+  };
+}
+
+
+function renderAdminCompanyPlan(
+  payload =
+    adminPaymentsSnapshot
+) {
+
+  const result =
+    adminQ(
+      "#adminCompanyResult"
+    );
+
+  const input =
+    adminQ(
+      "#adminCompanyIncome"
+    );
+
+  if (
+    !result ||
+    !input ||
+    !payload
+  ) {
+    return;
+  }
+
+  const income =
+    Math.max(
+      0,
+      Number(
+        String(
+          input.value || ""
+        )
+          .replace(/\s+/g,"")
+          .replace(",",".")
+      ) || 0
+    );
+
+  const plan =
+    companyPlan(
+      payload,
+      income
+    );
+
+  const totalContribution =
+    (Array.isArray(payload.players)
+      ? payload.players
+      : []
+    ).reduce(
+      (sum, player) =>
+        sum +
+        Math.max(
+          0,
+          Number(
+            player.contribution
+          ) || 0
+        ),
+      0
+    );
+
+  const rows =
+    plan.rows.length
+      ? plan.rows
+          .map(player => `
+            <div class="miniRow">
+              <span>
+                <b>${esc(player.nick)}</b>
+                <span class="muted">
+                  · ${companyMoney(
+                    player.contribution
+                  )} zł
+                </span>
+              </span>
+
+              <span style="text-align:right">
+                <b>
+                  ${(
+                    player.share * 100
+                  )
+                    .toFixed(2)
+                    .replace(".",",")}%
+                </b>
+                ·
+                <b>
+                  ${companyMoney(
+                    player.salary
+                  )} zł
+                </b>
+              </span>
+            </div>
+          `)
+          .join("")
+      : `
+          <div class="muted">
+            Nikt nie osiągnął jeszcze progu
+            ${companyMoney(
+              COMPANY_MIN_CONTRIBUTION
+            )} zł.
+          </div>
+        `;
+
+  result.innerHTML = `
+    <div class="adminGrid">
+      <div class="adminBox">
+        <span class="adminLabel">
+          Łączny wkład
+        </span>
+        <strong>
+          ${companyMoney(
+            totalContribution
+          )} zł
+        </strong>
+      </div>
+
+      <div class="adminBox">
+        <span class="adminLabel">
+          Kwalifikowani
+        </span>
+        <strong>
+          ${plan.rows.length}
+        </strong>
+      </div>
+
+      <div class="adminBox">
+        <span class="adminLabel">
+          Pensje 80%
+        </span>
+        <strong>
+          ${companyMoney(
+            plan.salaryBudget
+          )} zł
+        </strong>
+      </div>
+    </div>
+
+    <div class="adminBox">
+      <span class="adminLabel">
+        Rozwój 20%
+      </span>
+      <strong>
+        ${companyMoney(
+          plan.developmentBudget
+        )} zł
+      </strong>
+    </div>
+
+    <div class="muted"
+      style="margin-bottom:6px">
+      Próg:
+      <b>
+        ${companyMoney(
+          COMPANY_MIN_CONTRIBUTION
+        )} zł
+      </b>.
+      Pensja = 160 zł +
+      udział w pozostałej puli 80%.
+    </div>
+
+    ${rows}
+  `;
+}
+
 function renderAdminPayments() {
   const section =
     adminQ("#adminSection");
@@ -2951,6 +3288,50 @@ function renderAdminPayments() {
         id="adminCopyDailyReportStatus"
         class="adminStatus"
         style="margin-bottom:6px">
+      </div>
+
+      <div
+        class="adminBox"
+        style="margin:8px 0"
+      >
+        <b>
+          🏢 Spółka gangowa
+        </b>
+
+        <div
+          class="muted"
+          style="margin:4px 0 7px"
+        >
+          Próg udziału: 30 000 zł.
+          80% dochodu na pensje,
+          20% na rozwój.
+        </div>
+
+        <label
+          style="
+            display:grid;
+            gap:4px;
+            margin-bottom:7px;
+          "
+        >
+          <b>Dzienny dochód spółki</b>
+
+          <input
+            id="adminCompanyIncome"
+            type="text"
+            inputmode="decimal"
+            style="
+              width:100%;
+              border:1px solid #ccb797;
+              border-radius:7px;
+              background:#fffdf8;
+              color:#332a20;
+              padding:8px 9px;
+            "
+          >
+        </label>
+
+        <div id="adminCompanyResult"></div>
       </div>
 
       <b>📋 Wklej raport wpłat</b>
@@ -3002,9 +3383,33 @@ function renderAdminPayments() {
     importAdminPayments;
 
   adminQ(
-  "#adminCopyDailyReport"
+    "#adminCopyDailyReport"
   ).onclick =
-  copyAdminDailyReport;
+    copyAdminDailyReport;
+
+  const companyIncome =
+    adminQ(
+      "#adminCompanyIncome"
+    );
+
+  if (companyIncome) {
+
+    companyIncome.value =
+      localStorage.getItem(
+        COMPANY_INCOME_KEY
+      ) || "25000";
+
+    companyIncome.oninput =
+      () => {
+
+        localStorage.setItem(
+          COMPANY_INCOME_KEY,
+          companyIncome.value
+        );
+
+        renderAdminCompanyPlan();
+      };
+  }
 
   loadAdminPaymentsMeta();
 }
@@ -3044,6 +3449,10 @@ async function loadAdminPaymentsMeta() {
     }
 
     adminPaymentsSnapshot = payload;
+
+    renderAdminCompanyPlan(
+      payload
+    );
 
     const blocked =
       Boolean(

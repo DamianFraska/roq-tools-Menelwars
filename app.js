@@ -16,6 +16,11 @@
   const NICK_KEY = "roq_tools_submitter_nick_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
   const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
+  const COMPANY_INCOME_KEY = "menelwars_tools_company_income_v1";
+
+  const COMPANY_MIN_CONTRIBUTION = 30000;
+  const COMPANY_BASE_SALARY = 160;
+  const COMPANY_SALARY_RATIO = 0.80;
 
   const DISPLAY_NAMES = {
   "Ziemniak irga": 'Ziemniaki "Irga"',
@@ -44,14 +49,14 @@ function displayName(name) {
   ["Mokotów", "Przyjacielski", "🤝"],
   ["Ursynów", "Błagalny", "🙏"],
   ["Ochota", "Neutralny", "⚪"],
-  ["Śródmieście", "Przyjacielski", "🤝"],
+  ["Śródmieście", "Agresywny", "⚔️"],
   ["Bemowo", "Przyjacielski", "🤝"],
   ["Wola", "Błagalny", "🙏"],
   ["Żoliborz", "Neutralny", "⚪"],
-  ["Bielany", "Błagalny", "🙏"],
+  ["Bielany", "Neutralny", "⚪"],
   ["Praga", "Błagalny", "🙏"],
-  ["Białołęka", "Neutralny", "⚪"],
-  ["Targówek", "Błagalny", "🙏"]
+  ["Białołęka", null, "❓"],
+  ["Targówek", null, "❓"]
 ];
 
 const MAP_POSITIONS = {
@@ -1025,9 +1030,35 @@ const MAP_POSITIONS = {
     );
   }
 
+  function paymentsShare(value) {
+
+    const share =
+      Math.max(
+        0,
+        Number(value) || 0
+      );
+
+    return (share * 100)
+      .toFixed(2)
+      .replace(".", ",") + "%";
+  }
+
   function paymentsRow(player) {
 
   const saldo = Number(player.saldo);
+  const contribution =
+    Math.max(
+      0,
+      Number(player.contribution) || 0
+    );
+
+  const share =
+    contribution >= COMPANY_MIN_CONTRIBUTION
+      ? Math.max(
+          0,
+          Number(player.share) || 0
+        )
+      : 0;
 
   let label = "✅ Rozliczony";
   let bg = "#eef7ee";
@@ -1055,21 +1086,48 @@ const MAP_POSITIONS = {
         grid-template-columns:minmax(0,1fr) auto;
         gap:8px;
         align-items:center;
-        padding:6px 9px;
+        padding:7px 9px;
         margin-bottom:4px;
         border:1px solid ${border};
         border-radius:7px;
         background:${bg};
       "
     >
-      <strong
-        style="
-          overflow-wrap:anywhere;
-          font-size:13px;
-        "
-      >
-        ${escapeHtml(player.nick)}
-      </strong>
+      <div style="min-width:0">
+        <strong
+          style="
+            overflow-wrap:anywhere;
+            font-size:13px;
+          "
+        >
+          ${escapeHtml(player.nick)}
+        </strong>
+
+        <div
+          class="muted"
+          style="
+            margin-top:3px;
+            font-size:11px;
+            display:flex;
+            gap:9px;
+            flex-wrap:wrap;
+          "
+        >
+          <span>
+            🏢 Wkład w firmę:
+            <strong>
+              ${formatSaldo(contribution)} zł
+            </strong>
+          </span>
+
+          <span>
+            Udział:
+            <strong>
+              ${paymentsShare(share)}
+            </strong>
+          </span>
+        </div>
+      </div>
 
       <div
         style="
@@ -2217,6 +2275,493 @@ async function deleteAdminPlayer(
   }
 }
 
+
+function adminReportDate(value) {
+
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/
+      .exec(String(value || ""));
+
+  if (!match) {
+    return String(value || "");
+  }
+
+  return (
+    match[3] +
+    "." +
+    match[2] +
+    "." +
+    match[1]
+  );
+}
+
+
+function adminReportAmount(value) {
+
+  const number =
+    Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "0";
+  }
+
+  const rounded =
+    Math.round(number);
+
+  const formatted =
+    Math.abs(rounded)
+      .toLocaleString(
+        "pl-PL",
+        {
+          maximumFractionDigits: 0
+        }
+      );
+
+  if (number > 0) {
+    return "+" + formatted;
+  }
+
+  if (number < 0) {
+    return "-" + formatted;
+  }
+
+  return "0";
+}
+
+
+function adminReportNick(value) {
+
+  const nick =
+    String(value || "");
+
+  const width = 22;
+
+  if (nick.length >= width) {
+    return nick.slice(0,width);
+  }
+
+  return (
+    nick +
+    " ".repeat(
+      width - nick.length
+    )
+  );
+}
+
+
+function buildAdminDailyReport(payload) {
+
+  const players =
+    Array.isArray(
+      payload &&
+      payload.players
+    )
+      ? payload.players
+      : [];
+
+  const date =
+    adminReportDate(
+      payload &&
+      payload.saldoDate
+    );
+
+  const rows =
+    players
+      .map(
+        player =>
+          adminReportNick(
+            player.nick
+          ) +
+          adminReportAmount(
+            player.saldo
+          )
+      )
+      .join("\n");
+
+  return (
+`📊 Dzienne podsumowanie wpłat — ${date}
+
+🔴 wartość ujemna — kwota pozostała do nadrobienia
+🟢 0 — wszystko na bieżąco
+🔵 wartość dodatnia — wpłacone ponad wymagane minimum
+
+Saldo dodatnie działa w ramach bieżącego okresu rozliczeniowego i może pokrywać wcześniejsze niedopłaty z tego okresu.
+
+\`\`\`
+${rows}
+\`\`\`
+
+Dziękuję wszystkim za regularne wpłaty i dodatkowe wsparcie. ❤️`
+  );
+}
+
+
+async function copyAdminDailyReport() {
+
+  const status =
+    el(
+      "admin-copy-daily-report-status"
+    );
+
+  if (!adminPaymentsSnapshot) {
+
+    if (status) {
+      status.textContent =
+        "Najpierw pobierz dane wpłat.";
+    }
+
+    return;
+  }
+
+  const report =
+    buildAdminDailyReport(
+      adminPaymentsSnapshot
+    );
+
+  try {
+
+    await navigator.clipboard.writeText(
+      report
+    );
+
+    if (status) {
+
+      status.textContent =
+        "✅ Raport skopiowany do schowka.";
+
+      setTimeout(
+        () => {
+          if (status) {
+            status.textContent = "";
+          }
+        },
+        2000
+      );
+    }
+
+  } catch (err) {
+
+    if (status) {
+      status.textContent =
+        "Nie udało się skopiować raportu.";
+    }
+  }
+}
+
+
+function companyMoney(value) {
+
+  return Number(value || 0)
+    .toLocaleString(
+      "pl-PL",
+      {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      }
+    );
+}
+
+
+function companyPlan(
+  payload,
+  income
+) {
+
+  const players =
+    Array.isArray(
+      payload &&
+      payload.players
+    )
+      ? payload.players
+      : [];
+
+  const safeIncome =
+    Math.max(
+      0,
+      Number(income) || 0
+    );
+
+  const eligible =
+    players
+      .map(player => ({
+        nick: player.nick,
+        contribution:
+          Math.max(
+            0,
+            Number(
+              player.contribution
+            ) || 0
+          )
+      }))
+      .filter(
+        player =>
+          player.contribution >=
+          COMPANY_MIN_CONTRIBUTION
+      );
+
+  const eligibleContribution =
+    eligible.reduce(
+      (sum, player) =>
+        sum +
+        player.contribution,
+      0
+    );
+
+  const targetSalaryBudget =
+    safeIncome *
+    COMPANY_SALARY_RATIO;
+
+  const baseTotal =
+    eligible.length *
+    COMPANY_BASE_SALARY;
+
+  // Jeżeli nikt nie osiągnął progu 30k,
+  // nie ma etatowców i całość dochodu zostaje w Funduszu.
+  const salaryBudget =
+    eligible.length
+      ? targetSalaryBudget
+      : 0;
+
+  const developmentBudget =
+    safeIncome -
+    salaryBudget;
+
+  const bonusPool =
+    Math.max(
+      0,
+      salaryBudget -
+      baseTotal
+    );
+
+  const rows =
+    eligible.map(player => {
+
+      const share =
+        eligibleContribution > 0
+          ? player.contribution /
+            eligibleContribution
+          : 0;
+
+      const salary =
+        COMPANY_BASE_SALARY +
+        bonusPool * share;
+
+      return {
+        ...player,
+        share,
+        salary
+      };
+    });
+
+  return {
+    income: safeIncome,
+    salaryBudget,
+    developmentBudget,
+    baseTotal,
+    bonusPool,
+    eligibleContribution,
+    rows
+  };
+}
+
+
+function renderAdminCompanyPlan(
+  payload =
+    adminPaymentsSnapshot
+) {
+
+  const result =
+    el(
+      "admin-company-result"
+    );
+
+  const input =
+    el(
+      "admin-company-income"
+    );
+
+  if (
+    !result ||
+    !input ||
+    !payload
+  ) {
+    return;
+  }
+
+  const income =
+    Math.max(
+      0,
+      Number(
+        String(
+          input.value || ""
+        )
+          .replace(/\s+/g, "")
+          .replace(",", ".")
+      ) || 0
+    );
+
+  const plan =
+    companyPlan(
+      payload,
+      income
+    );
+
+  const totalContribution =
+    (Array.isArray(payload.players)
+      ? payload.players
+      : []
+    ).reduce(
+      (sum, player) =>
+        sum +
+        Math.max(
+          0,
+          Number(
+            player.contribution
+          ) || 0
+        ),
+      0
+    );
+
+  const rowsHtml =
+    plan.rows.length
+      ? plan.rows
+          .map(player => `
+            <div style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto auto;
+              gap:8px;
+              align-items:center;
+              padding:6px 7px;
+              margin-top:4px;
+              border:1px solid #d8c7aa;
+              border-radius:7px;
+              background:#fffdf8;
+              font-size:12px;
+            ">
+              <div>
+                <strong>
+                  ${escapeHtml(player.nick)}
+                </strong>
+                <div class="muted">
+                  Wkład:
+                  ${companyMoney(
+                    player.contribution
+                  )} zł
+                </div>
+              </div>
+
+              <strong>
+                ${(
+                  player.share * 100
+                )
+                  .toFixed(2)
+                  .replace(".",",")}%
+              </strong>
+
+              <strong>
+                ${companyMoney(
+                  player.salary
+                )} zł
+              </strong>
+            </div>
+          `)
+          .join("")
+      : `
+          <div class="empty">
+            Nikt nie osiągnął jeszcze progu
+            ${companyMoney(
+              COMPANY_MIN_CONTRIBUTION
+            )} zł.
+          </div>
+        `;
+
+  result.innerHTML = `
+    <div style="
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(135px,1fr));
+      gap:6px;
+      margin-bottom:8px;
+    ">
+      <div style="
+        padding:8px;
+        border:1px solid #d8c7aa;
+        border-radius:7px;
+        background:#fffdf8;
+      ">
+        <div class="muted">
+          Łączny wkład
+        </div>
+        <strong>
+          ${companyMoney(
+            totalContribution
+          )} zł
+        </strong>
+      </div>
+
+      <div style="
+        padding:8px;
+        border:1px solid #d8c7aa;
+        border-radius:7px;
+        background:#fffdf8;
+      ">
+        <div class="muted">
+          Kwalifikowani
+        </div>
+        <strong>
+          ${plan.rows.length}
+        </strong>
+      </div>
+
+      <div style="
+        padding:8px;
+        border:1px solid #d8c7aa;
+        border-radius:7px;
+        background:#fffdf8;
+      ">
+        <div class="muted">
+          Pensje 80%
+        </div>
+        <strong>
+          ${companyMoney(
+            plan.salaryBudget
+          )} zł
+        </strong>
+      </div>
+
+      <div style="
+        padding:8px;
+        border:1px solid #d8c7aa;
+        border-radius:7px;
+        background:#fffdf8;
+      ">
+        <div class="muted">
+          Rozwój 20%
+        </div>
+        <strong>
+          ${companyMoney(
+            plan.developmentBudget
+          )} zł
+        </strong>
+      </div>
+    </div>
+
+    <div class="muted" style="margin-bottom:6px">
+      Próg zatrudnienia:
+      <b>
+        ${companyMoney(
+          COMPANY_MIN_CONTRIBUTION
+        )} zł
+      </b>.
+      Każdy zakwalifikowany dostaje najpierw
+      <b>${COMPANY_BASE_SALARY} zł</b>,
+      a pozostała część 80% dochodu jest
+      dzielona proporcjonalnie do wkładu.
+    </div>
+
+    ${rowsHtml}
+  `;
+}
+
 async function loadAdminPaymentsStatus() {
 
   const token =
@@ -2276,7 +2821,12 @@ async function loadAdminPaymentsStatus() {
       );
     }
 
-    adminPaymentsSnapshot = payload;
+    adminPaymentsSnapshot =
+      payload;
+
+    renderAdminCompanyPlan(
+      payload
+    );
 
     const writeProtection =
       payload.writeProtection || {};
@@ -2411,190 +2961,6 @@ async function loadAdminPaymentsStatus() {
         )}
       </div>
     `;
-  }
-}
-
-function adminReportDate(value) {
-
-  const match =
-    /^(\d{4})-(\d{2})-(\d{2})$/
-      .exec(String(value || ""));
-
-  if (!match) {
-    return String(value || "");
-  }
-
-  return (
-    match[3] +
-    "." +
-    match[2] +
-    "." +
-    match[1]
-  );
-}
-
-
-function adminReportAmount(value) {
-
-  const number =
-    Number(value);
-
-  if (!Number.isFinite(number)) {
-    return "0";
-  }
-
-  const rounded =
-    Math.round(number);
-
-  const formatted =
-    Math.abs(rounded)
-      .toLocaleString(
-        "pl-PL",
-        {
-          maximumFractionDigits: 0
-        }
-      );
-
-  if (number > 0) {
-    return "+" + formatted;
-  }
-
-  if (number < 0) {
-    return "-" + formatted;
-  }
-
-  return "0";
-}
-
-
-function adminReportNick(value) {
-
-  const nick =
-    String(value || "");
-
-  const width = 22;
-
-  if (nick.length >= width) {
-    return nick.slice(0,width);
-  }
-
-  return (
-    nick +
-    " ".repeat(
-      width - nick.length
-    )
-  );
-}
-
-
-function buildAdminDailyReport(payload) {
-
-  const players =
-    Array.isArray(
-      payload &&
-      payload.players
-    )
-      ? payload.players
-      : [];
-
-
-  const date =
-    adminReportDate(
-      payload &&
-      payload.saldoDate
-    );
-
-
-  const rows =
-    players
-      .map(
-        player => {
-
-          return (
-            adminReportNick(
-              player.nick
-            ) +
-            adminReportAmount(
-              player.saldo
-            )
-          );
-        }
-      )
-      .join("\n");
-
-
-  return (
-`📊 Dzienne podsumowanie wpłat — ${date}
-
-🔴 wartość ujemna — kwota pozostała do nadrobienia
-🟢 0 — wszystko na bieżąco
-🔵 wartość dodatnia — wpłacone ponad wymagane minimum
-
-Saldo dodatnie działa w ramach bieżącego okresu rozliczeniowego i może pokrywać wcześniejsze niedopłaty z tego okresu.
-
-\`\`\`
-${rows}
-\`\`\`
-
-Dziękuję wszystkim za regularne wpłaty i dodatkowe wsparcie. ❤️`
-  );
-}
-
-
-async function copyAdminDailyReport() {
-
-  const status =
-    el("admin-copy-daily-report-status");
-
-
-  if (!adminPaymentsSnapshot) {
-
-    if (status) {
-      status.textContent =
-        "Najpierw pobierz dane wpłat.";
-    }
-
-    return;
-  }
-
-
-  const report =
-    buildAdminDailyReport(
-      adminPaymentsSnapshot
-    );
-
-
-  try {
-
-    await navigator.clipboard.writeText(
-      report
-    );
-
-
-    if (status) {
-
-      status.textContent =
-        "✅ Raport skopiowany do schowka.";
-
-      setTimeout(
-        () => {
-
-          if (status) {
-            status.textContent = "";
-          }
-
-        },
-        2000
-      );
-    }
-
-
-  } catch (err) {
-
-    if (status) {
-      status.textContent =
-        "Nie udało się skopiować raportu.";
-    }
   }
 }
 
@@ -3737,10 +4103,24 @@ function setupAdmin() {
   );
 
   el("admin-copy-daily-report")
-  ?.addEventListener(
-    "click",
-    copyAdminDailyReport
-  );
+    ?.addEventListener(
+      "click",
+      copyAdminDailyReport
+    );
+
+  el("admin-company-income")
+    ?.addEventListener(
+      "input",
+      event => {
+
+        localStorage.setItem(
+          COMPANY_INCOME_KEY,
+          event.target.value
+        );
+
+        renderAdminCompanyPlan();
+      }
+    );
 
   el("admin-payments-refresh")
   .addEventListener(
@@ -3766,6 +4146,17 @@ function setupAdmin() {
         );
       }
     );
+
+  const companyIncomeInput =
+    el("admin-company-income");
+
+  if (companyIncomeInput) {
+
+    companyIncomeInput.value =
+      localStorage.getItem(
+        COMPANY_INCOME_KEY
+      ) || "25000";
+  }
 
   // Na czas testu zawsze pokaż ekran logowania.
   showAdminLogin();

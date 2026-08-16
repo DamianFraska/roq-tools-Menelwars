@@ -339,29 +339,64 @@
   </div>
 
   <div style="
-  margin-top:12px;
-">
+    margin-top:12px;
+  ">
 
-  <button
-    id="admin-copy-daily-report"
-    class="primary-btn"
-    type="button"
-    style="
-      width:100%;
-    "
-  >
-    📋 Kopiuj raport dzienny
-  </button>
+    <button
+      id="admin-copy-daily-report"
+      class="primary-btn"
+      type="button"
+      style="width:100%"
+    >
+      📋 Kopiuj raport dzienny
+    </button>
 
-  <div
-    id="admin-copy-daily-report-status"
-    class="submit-status"
-    style="
-      margin-top:6px;
-    "
-  ></div>
+    <div
+      id="admin-copy-daily-report-status"
+      class="submit-status"
+      style="margin-top:6px"
+    ></div>
 
-</div>
+  </div>
+
+  <div style="
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid #d8c7aa;
+  ">
+
+    <strong>
+      🏢 Spółka gangowa — udziały i pensje
+    </strong>
+
+    <div
+      class="muted"
+      style="margin-top:4px;margin-bottom:8px"
+    >
+      Do udziału kwalifikuje się gracz z wkładem co najmniej 30 000 zł.
+      80% dochodu przeznaczamy na pensje, 20% pozostaje na rozwój.
+    </div>
+
+    <label style="display:block;margin-bottom:8px">
+      <span style="display:block;font-weight:700;margin-bottom:4px">
+        Dzienny dochód spółki
+      </span>
+
+      <input
+        id="admin-company-income"
+        type="text"
+        inputmode="decimal"
+        value="25000"
+        style="
+          width:100%;
+          box-sizing:border-box;
+        "
+      >
+    </label>
+
+    <div id="admin-company-result"></div>
+
+  </div>
 
   <div style="
   margin-top:14px;
