@@ -45,19 +45,19 @@ function displayName(name) {
 }
 
   const MAP = [
-  ["Wilanów", "Agresywny", "⚔️"],
-  ["Mokotów", "Przyjacielski", "🤝"],
-  ["Ursynów", "Błagalny", "🙏"],
-  ["Ochota", "Neutralny", "⚪"],
-  ["Śródmieście", "Przyjacielski", "🤝"],
-  ["Bemowo", "Przyjacielski", "🤝"],
-  ["Wola", "Błagalny", "🙏"],
-  ["Żoliborz", "Neutralny", "⚪"],
-  ["Bielany", "Błagalny", "🙏"],
-  ["Praga", "Błagalny", "🙏"],
-  ["Białołęka", "Neutralny", "⚪"],
-  ["Targówek", "Błagalny", "🙏"]
-];
+    ["Wilanów", "Agresywny", "⚔️"],
+    ["Mokotów", "Przyjacielski", "🤝"],
+    ["Ursynów", "Błagalny", "🙏"],
+    ["Ochota", "Neutralny", "⚪"],
+    ["Śródmieście", "Przyjacielski", "🤝"],
+    ["Bemowo", "Przyjacielski", "🤝"],
+    ["Wola", "Błagalny", "🙏"],
+    ["Żoliborz", "Neutralny", "⚪"],
+    ["Bielany", "Błagalny", "🙏"],
+    ["Praga", "Błagalny", "🙏"],
+    ["Białołęka", "Neutralny", "⚪"],
+    ["Targówek", "Błagalny", "🙏"]
+  ];
 
 const MAP_POSITIONS = {
   "Bielany":      { x: 28.7, y: 12.2 },
@@ -2390,15 +2390,22 @@ function buildAdminDailyReport(payload) {
   return (
 `📊 Dzienne podsumowanie wpłat — ${date}
 
-🔴 wartość ujemna — kwota pozostała do nadrobienia
+🔴 wartość ujemna — dług do nadrobienia
 🟢 0 — wszystko na bieżąco
-🔵 wartość dodatnia — wpłacone ponad wymagane minimum
+🔵 wartość dodatnia — wkład w firmę
 
-Saldo dodatnie działa w ramach bieżącego okresu rozliczeniowego i może pokrywać wcześniejsze niedopłaty z tego okresu.
+Każdego dnia naliczany jest wymóg 2 000 zł.
+Nadpłata przechodzi na kolejne dni i jednocześnie stanowi wkład w firmę.
+
+🏢 Od 30 000 zł wkładu gracz kwalifikuje się do udziału w spółce.
 
 \`\`\`
 ${rows}
 \`\`\`
+
+🔎 MenelWars Tools
+https://roq665.github.io/Menelwars-Tools/
+(Hasło do wpłat: 6N4X38)
 
 Dziękuję wszystkim za regularne wpłaty i dodatkowe wsparcie. ❤️`
   );
