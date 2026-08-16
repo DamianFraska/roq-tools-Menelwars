@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.8.2
+// @version      0.8.3
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -1528,6 +1528,15 @@ function paymentRow(player) {
             Udział:
             <b>
               ${paymentShare(share)}
+            </b>
+          </span>
+
+          <span>
+            💰 Pensja:
+            <b>
+              ${paymentAmount(
+                Number(player.salary) || 0
+              )} zł
             </b>
           </span>
         </div>
@@ -3057,16 +3066,14 @@ function companyPlan(
     eligible.length *
     COMPANY_BASE_SALARY;
 
-  // Jeżeli nikt nie osiągnął progu 30k,
-  // nie ma etatowców i całość dochodu zostaje w Funduszu.
+  // Budżet 80/20 wynika z dochodu spółki
+  // niezależnie od liczby zatrudnionych.
   const salaryBudget =
-    eligible.length
-      ? targetSalaryBudget
-      : 0;
+    targetSalaryBudget;
 
   const developmentBudget =
-    safeIncome -
-    salaryBudget;
+    safeIncome *
+    (1 - COMPANY_SALARY_RATIO);
 
   const bonusPool =
     Math.max(
@@ -3093,10 +3100,19 @@ function companyPlan(
       };
     });
 
+  const actualSalaryTotal =
+    rows.reduce(
+      (sum, player) =>
+        sum +
+        Number(player.salary || 0),
+      0
+    );
+
   return {
     income:safeIncome,
     salaryBudget,
     developmentBudget,
+    actualSalaryTotal,
     baseTotal,
     bonusPool,
     eligibleContribution,
@@ -3132,6 +3148,7 @@ function renderAdminCompanyPlan(
     Math.max(
       0,
       Number(
+        payload.companyIncome ??
         String(
           input.value || ""
         )
@@ -3139,6 +3156,9 @@ function renderAdminCompanyPlan(
           .replace(",",".")
       ) || 0
     );
+
+  input.value =
+    String(income);
 
   const plan =
     companyPlan(
@@ -3227,7 +3247,7 @@ function renderAdminCompanyPlan(
 
       <div class="adminBox">
         <span class="adminLabel">
-          Pensje 80%
+          Budżet pensji 80%
         </span>
         <strong>
           ${companyMoney(
@@ -3235,6 +3255,17 @@ function renderAdminCompanyPlan(
           )} zł
         </strong>
       </div>
+    </div>
+
+    <div class="adminBox">
+      <span class="adminLabel">
+        Do wypłaty
+      </span>
+      <strong>
+        ${companyMoney(
+          plan.actualSalaryTotal
+        )} zł
+      </strong>
     </div>
 
     <div class="adminBox">
@@ -3395,19 +3426,74 @@ function renderAdminPayments() {
   if (companyIncome) {
 
     companyIncome.value =
-      localStorage.getItem(
-        COMPANY_INCOME_KEY
-      ) || "25000";
+      "25000";
 
-    companyIncome.oninput =
-      () => {
+    companyIncome.onchange =
+      async () => {
 
-        localStorage.setItem(
-          COMPANY_INCOME_KEY,
-          companyIncome.value
-        );
+        const income =
+          Math.max(
+            0,
+            Number(
+              String(
+                companyIncome.value || ""
+              )
+                .replace(/\s+/g,"")
+                .replace(",",".")
+            ) || 0
+          );
 
-        renderAdminCompanyPlan();
+        companyIncome.disabled = true;
+
+        try {
+
+          const query =
+            new URLSearchParams({
+              action:
+                "adminSetCompanyIncome",
+              token:
+                adminToken(),
+              income:
+                String(income),
+              _:
+                String(Date.now())
+            });
+
+          const payload =
+            await gmJsonRequest(
+              "GET",
+              BACKEND_URL +
+              "?" +
+              query.toString()
+            );
+
+          if (!payload || !payload.ok) {
+            throw new Error(
+              payload && payload.error
+                ? payload.error
+                : "Nie udało się zapisać dochodu spółki."
+            );
+          }
+
+          await loadAdminPaymentsMeta();
+
+        } catch (err) {
+
+          const status =
+            adminQ(
+              "#adminPaymentsStatus"
+            );
+
+          if (status) {
+            status.textContent =
+              err && err.message
+                ? err.message
+                : "Nie udało się zapisać dochodu spółki.";
+          }
+
+        } finally {
+          companyIncome.disabled = false;
+        }
       };
   }
 

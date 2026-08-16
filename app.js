@@ -1126,6 +1126,15 @@ const MAP_POSITIONS = {
               ${paymentsShare(share)}
             </strong>
           </span>
+
+          <span>
+            💰 Pensja:
+            <strong>
+              ${formatSaldo(
+                Number(player.salary) || 0
+              )} zł
+            </strong>
+          </span>
         </div>
       </div>
 
@@ -2515,16 +2524,14 @@ function companyPlan(
     eligible.length *
     COMPANY_BASE_SALARY;
 
-  // Jeżeli nikt nie osiągnął progu 30k,
-  // nie ma etatowców i całość dochodu zostaje w Funduszu.
+  // Budżet 80/20 wynika z dochodu spółki
+  // niezależnie od liczby zatrudnionych.
   const salaryBudget =
-    eligible.length
-      ? targetSalaryBudget
-      : 0;
+    targetSalaryBudget;
 
   const developmentBudget =
-    safeIncome -
-    salaryBudget;
+    safeIncome *
+    (1 - COMPANY_SALARY_RATIO);
 
   const bonusPool =
     Math.max(
@@ -2553,10 +2560,19 @@ function companyPlan(
       };
     });
 
+  const actualSalaryTotal =
+    rows.reduce(
+      (sum, player) =>
+        sum +
+        Number(player.salary || 0),
+      0
+    );
+
   return {
     income: safeIncome,
     salaryBudget,
     developmentBudget,
+    actualSalaryTotal,
     baseTotal,
     bonusPool,
     eligibleContribution,
@@ -2592,6 +2608,7 @@ function renderAdminCompanyPlan(
     Math.max(
       0,
       Number(
+        payload.companyIncome ??
         String(
           input.value || ""
         )
@@ -2599,6 +2616,9 @@ function renderAdminCompanyPlan(
           .replace(",", ".")
       ) || 0
     );
+
+  input.value =
+    String(income);
 
   const plan =
     companyPlan(
@@ -2719,11 +2739,27 @@ function renderAdminCompanyPlan(
         background:#fffdf8;
       ">
         <div class="muted">
-          Pensje 80%
+          Budżet pensji 80%
         </div>
         <strong>
           ${companyMoney(
             plan.salaryBudget
+          )} zł
+        </strong>
+      </div>
+
+      <div style="
+        padding:8px;
+        border:1px solid #d8c7aa;
+        border-radius:7px;
+        background:#fffdf8;
+      ">
+        <div class="muted">
+          Do wypłaty
+        </div>
+        <strong>
+          ${companyMoney(
+            plan.actualSalaryTotal
           )} zł
         </strong>
       </div>
@@ -4110,15 +4146,64 @@ function setupAdmin() {
 
   el("admin-company-income")
     ?.addEventListener(
-      "input",
-      event => {
+      "change",
+      async event => {
 
-        localStorage.setItem(
-          COMPANY_INCOME_KEY,
-          event.target.value
-        );
+        const input =
+          event.target;
 
-        renderAdminCompanyPlan();
+        const income =
+          Math.max(
+            0,
+            Number(
+              String(
+                input.value || ""
+              )
+                .replace(/\s+/g, "")
+                .replace(",", ".")
+            ) || 0
+          );
+
+        input.disabled = true;
+
+        try {
+
+          const payload =
+            await jsonp(
+              "adminSetCompanyIncome",
+              {
+                token:
+                  adminToken(),
+                income:
+                  String(income)
+              }
+            );
+
+          if (!payload || !payload.ok) {
+            throw new Error(
+              payload && payload.error
+                ? payload.error
+                : "Nie udało się zapisać dochodu spółki."
+            );
+          }
+
+          await loadAdminPaymentsStatus();
+
+        } catch (err) {
+
+          const status =
+            el("admin-status");
+
+          if (status) {
+            status.textContent =
+              err && err.message
+                ? err.message
+                : "Nie udało się zapisać dochodu spółki.";
+          }
+
+        } finally {
+          input.disabled = false;
+        }
       }
     );
 
@@ -4151,11 +4236,8 @@ function setupAdmin() {
     el("admin-company-income");
 
   if (companyIncomeInput) {
-
     companyIncomeInput.value =
-      localStorage.getItem(
-        COMPANY_INCOME_KEY
-      ) || "25000";
+      "25000";
   }
 
   // Na czas testu zawsze pokaż ekran logowania.
