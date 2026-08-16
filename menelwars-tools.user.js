@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.8.3
+// @version      0.9.1
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -1491,7 +1491,7 @@ function paymentRow(player) {
   if (saldo > 0) {
 
     cls = "over";
-    label = "🟢 Nadpłata";
+    label = "🏢 Wkład";
 
     amount =
       paymentAmount(saldo);
@@ -1643,7 +1643,7 @@ function renderPaymentsData(
           <b>
             Stan na:
             ${paymentsDate(
-              payload.updatedAt
+              payload.saldoDate || payload.updatedAt
             )}
           </b>
 
@@ -3365,7 +3365,7 @@ function renderAdminPayments() {
         <div id="adminCompanyResult"></div>
       </div>
 
-      <b>📋 Wklej raport wpłat</b>
+      <b>📋 Wklej ranking wpłat</b>
 
       <div class="muted"
         style="margin:4px 0 7px">
@@ -3376,7 +3376,7 @@ function renderAdminPayments() {
       <textarea
         id="adminPaymentsReport"
         class="adminTextarea"
-        placeholder="Wklej raport..."></textarea>
+        placeholder="Wklej pełny ranking łącznych wpłat..."></textarea>
 
       <button
         id="adminPaymentsPreview"
@@ -3550,7 +3550,7 @@ async function loadAdminPaymentsMeta() {
       <div class="adminGrid">
         <div class="adminBox">
           <span class="adminLabel">
-            Dane uwzględnione do
+            Snapshot rankingu do
           </span>
           <strong>
             ${esc(adminDate(payload.saldoDate))}
@@ -3657,220 +3657,47 @@ function previewPlayerRows(day) {
 }
 
 function renderPaymentsPreview(payload) {
-  const result =
-    adminQ(
-      "#adminPaymentsPreviewResult"
-    );
 
-  const importButton =
-    adminQ("#adminPaymentsImport");
-
+  const result = adminQ("#adminPaymentsPreviewResult");
+  const importButton = adminQ("#adminPaymentsImport");
   if (!result || !importButton) return;
 
-  const days =
-    Array.isArray(payload.days)
-      ? payload.days
-      : [];
+  const players = Array.isArray(payload.players) ? payload.players : [];
+  const errors = Array.isArray(payload.errors) ? payload.errors : [];
+  const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
 
-  const ready =
-    days.filter(
-      day =>
-        day.canClose &&
-        day.canWrite
-    );
+  importButton.hidden = !payload.canWrite;
+  importButton.disabled = false;
 
-  const out =
-    days.filter(
-      day =>
-        day.canClose &&
-        day.writeStatus ===
-          "out_of_range"
-    );
+  const messageHtml = [
+    ...errors.map(x => `<div style="color:#9b2d2d;margin:4px 0">❌ ${esc(x)}</div>`),
+    ...warnings.map(x => `<div style="color:#8a6500;margin:4px 0">⚠️ ${esc(x)}</div>`)
+  ].join("");
 
-  const bad =
-    days.filter(
-      day =>
-        !day.canClose ||
-        day.writeStatus === "gap"
-    );
-
-  importButton.hidden =
-    ready.length === 0;
+  const rows = players.map(player => {
+    const baseline = player.status === "baseline";
+    const waiting = player.status === "waiting_baseline";
+    const bad = player.status === "error";
+    return `
+      <div class="previewDay ${bad ? "bad" : waiting ? "out" : ""}">
+        <div style="padding:8px">
+          <div style="display:flex;justify-content:space-between;gap:8px"><strong>${esc(player.nick)}</strong><strong>${adminMoney(player.newBalance)} zł</strong></div>
+          <div class="muted" style="margin-top:3px;font-size:11px">
+            ${baseline ? "Pierwszy odczyt · delta 0 zł" : waiting ? "Oczekiwanie na pierwszy odczyt" : `Nowe wpłaty: +${adminMoney(player.delta)} zł · Obowiązek: -${adminMoney(player.obligation)} zł (${Number(player.chargedDays)||0} dni)`}
+          </div>
+          ${player.previousTotal != null ? `<div class="muted" style="font-size:11px">Suma: ${adminMoney(player.previousTotal)} → ${adminMoney(player.currentTotal)} zł · wpłaty: ${Number(player.previousCount)||0} → ${Number(player.currentCount)||0}</div>` : ""}
+        </div>
+      </div>`;
+  }).join("");
 
   result.innerHTML = `
-    <div style="
-      margin-top:8px;
-      font-size:12px;
-    ">
-      ✅ Do zapisania:
-      <b>${ready.length}</b>
-      ·
-      ⚪ Poza zakresem:
-      <b>${out.length}</b>
-      ·
-      ❌ Z błędem:
-      <b>${bad.length}</b>
+    <div class="adminBox">
+      <b>${payload.mode === "initialize" ? "🧭 Pierwszy snapshot" : "✅ Rozliczenie do zapisania"}</b><br>
+      Stan rankingu: <b>${esc(adminDate(payload.closeDate))}</b><br>
+      Aktywni: <b>${Number(payload.rosterCount)||0}</b> · znalezieni: <b>${Number(payload.matchedCount)||0}</b> · poza rosterem: <b>${Number(payload.ignoredCount)||0}</b>
     </div>
-
-    ${
-      Number(
-        payload.ignoredTodayCount
-      ) > 0
-        ? `
-            <div class="adminBox"
-              style="
-                margin-top:7px;
-                background:#eef5fb;
-                border-color:#b8cde2;
-              ">
-              ℹ️ Pominięto bieżący dzień.
-              Wpłaty z dzisiaj mogą się jeszcze zmienić.
-            </div>
-          `
-        : ""
-    }
-
-    ${
-      days.map((day,index) => {
-        const outOfRange =
-          day.canClose &&
-          day.writeStatus ===
-            "out_of_range";
-
-        const ok =
-          day.canClose &&
-          day.canWrite;
-
-        const cls =
-          outOfRange
-            ? "out"
-            : ok
-              ? ""
-              : "bad";
-
-        const icon =
-          outOfRange
-            ? "⚪"
-            : ok
-              ? "✅"
-              : "❌";
-
-        let summary;
-
-        if (outOfRange) {
-          summary =
-            "Raport poprawny · poza zakresem tabeli";
-        } else if (ok) {
-          summary =
-            `${Number(day.paidCount)||0} wpłaciło · ` +
-            `${Number(day.zeroCount)||0} nie wpłaciło · ` +
-            `${adminMoney(day.calculatedTotal)} zł`;
-        } else if (
-          day.writeStatus === "gap"
-        ) {
-          summary =
-            "Raport poprawny · brak ciągłości dni";
-        } else {
-          summary =
-            `Raport niekompletny · błędów: ${
-              Array.isArray(day.errors)
-                ? day.errors.length
-                : 0
-            }`;
-        }
-
-        const errors =
-          Array.isArray(day.errors)
-            ? day.errors
-            : [];
-
-        const warnings =
-          Array.isArray(day.warnings)
-            ? day.warnings
-            : [];
-
-        return `
-          <div class="previewDay ${cls}">
-            <button
-              class="previewDayHead"
-              data-preview-day="${index}">
-              <b>
-                ${icon} ${esc(day.date)}
-              </b>
-
-              <div class="muted"
-                style="margin-top:2px">
-                ${esc(summary)}
-              </div>
-            </button>
-
-            <div
-              class="previewDetails"
-              data-preview-details="${index}"
-              hidden>
-
-              Suma raportu:
-              <b>
-                ${
-                  day.reportedTotal === null
-                    ? "—"
-                    : adminMoney(day.reportedTotal) + " zł"
-                }
-              </b>
-              <br>
-
-              Suma obliczona:
-              <b>
-                ${adminMoney(day.calculatedTotal)} zł
-              </b>
-
-              ${
-                errors.length
-                  ? `
-                      <div style="margin-top:6px;color:#9a2f2f">
-                        <b>❌ Błędy</b><br>
-                        ${errors.map(x=>esc(x)).join("<br>")}
-                      </div>
-                    `
-                  : ""
-              }
-
-              ${
-                warnings.length
-                  ? `
-                      <div style="margin-top:6px;color:#8a6500">
-                        <b>⚠️ Ostrzeżenia</b><br>
-                        ${warnings.map(x=>esc(x)).join("<br>")}
-                      </div>
-                    `
-                  : ""
-              }
-
-              ${previewPlayerRows(day)}
-            </div>
-          </div>
-        `;
-      }).join("")
-    }
-  `;
-
-  result
-    .querySelectorAll(
-      "[data-preview-day]"
-    )
-    .forEach(button => {
-      button.onclick = () => {
-        const details =
-          result.querySelector(
-            `[data-preview-details="${button.dataset.previewDay}"]`
-          );
-
-        if (details) {
-          details.hidden =
-            !details.hidden;
-        }
-      };
-    });
+    ${messageHtml}
+    ${rows}`;
 }
 
 async function previewAdminPayments() {
@@ -3902,7 +3729,7 @@ async function previewAdminPayments() {
 
   if (!report) {
     status.textContent =
-      "Wklej raport wpłat.";
+      "Wklej ranking wpłat.";
     result.innerHTML = "";
     importButton.hidden = true;
     return;
@@ -4016,7 +3843,7 @@ async function importAdminPayments() {
 
   if (!report) {
     status.textContent =
-      "Wklej raport wpłat.";
+      "Wklej ranking wpłat.";
     return;
   }
 

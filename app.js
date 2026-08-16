@@ -1073,7 +1073,7 @@ const MAP_POSITIONS = {
   }
 
   if (saldo > 0) {
-    label = "🟢 Nadpłata";
+    label = "🏢 Wkład";
     bg = "#eef8f0";
     border = "#b6d9bd";
     value = formatSaldo(saldo);
@@ -1238,7 +1238,7 @@ const MAP_POSITIONS = {
 
       el("payments-date").textContent =
         "Stan na: " +
-        formatPaymentsDate(payload.updatedAt);
+        formatPaymentsDate(payload.saldoDate || payload.updatedAt);
 
       el("payments-count").textContent =
         `Graczy: ${players.length}`;
@@ -2887,7 +2887,7 @@ async function loadAdminPaymentsStatus() {
           background:#fffdf8;
         ">
           <div class="muted">
-            Dane uwzględnione do
+            Snapshot rankingu do
           </div>
 
           <strong>
@@ -3013,738 +3013,51 @@ function paymentPreviewMoney(value) {
 
 function renderAdminPaymentsPreview(payload) {
 
-  const result =
-    el("admin-payments-preview-result");
+  const result = el("admin-payments-preview-result");
+  const importButton = el("admin-payments-import");
+  const players = Array.isArray(payload.players) ? payload.players : [];
+  const errors = Array.isArray(payload.errors) ? payload.errors : [];
+  const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
 
-  const days =
-    Array.isArray(payload.days)
-      ? payload.days
-      : [];
-
-  if (!days.length) {
-
-    result.innerHTML = `
-      <div class="empty">
-        Nie znaleziono danych do wyświetlenia.
-      </div>
-    `;
-
-    return;
+  if (importButton) {
+    importButton.hidden = !payload.canWrite;
+    importButton.disabled = false;
   }
 
+  const summary = `
+    <div class="panel" style="margin-bottom:10px">
+      <div class="panel-body">
+        <b>${payload.mode === "initialize" ? "🧭 Pierwszy snapshot" : "✅ Rozliczenie do zapisania"}</b><br>
+        Stan rankingu: <b>${escapeHtml(formatAdminDate(payload.closeDate))}</b><br>
+        Aktywni w rosterze: <b>${Number(payload.rosterCount)||0}</b> ·
+        znalezieni: <b>${Number(payload.matchedCount)||0}</b> ·
+        zignorowani spoza gangu: <b>${Number(payload.ignoredCount)||0}</b>
+      </div>
+    </div>`;
 
-  const validDays =
-  days.filter(
-    day =>
-      day.canClose &&
-      day.canWrite
-  );
+  const messages = [
+    ...errors.map(x => `<div style="color:#9b2d2d;margin:4px 0">❌ ${escapeHtml(x)}</div>`),
+    ...warnings.map(x => `<div style="color:#8a6500;margin:4px 0">⚠️ ${escapeHtml(x)}</div>`)
+  ].join("");
 
-
-  const outOfRangeDays =
-    days.filter(
-      day =>
-        day.canClose &&
-        day.writeStatus ===
-          "out_of_range"
-    );
-
-
-  const invalidDays =
-    days.filter(
-      day =>
-        !day.canClose ||
-        day.writeStatus ===
-          "gap"
-    );
-
-  const importButton =
-  el("admin-payments-import");
-
-
-if (importButton) {
-
-  importButton.hidden =
-    validDays.length === 0;
-
-  importButton.disabled =
-    false;
-}
-
-  function compactPlayerRow(
-    player,
-    type
-  ) {
-
-    let icon = "🟢";
-    let bg = "#eef7ee";
-    let border = "#bad7ba";
-    let value =
-      paymentPreviewMoney(
-        player.amount
-      );
-
-
-    if (type === "zero") {
-
-      icon = "🟡";
-      bg = "#fff8e7";
-      border = "#e0b766";
-      value = "0";
-    }
-
-
-    if (type === "missing") {
-
-      icon = "🔴";
-      bg = "#fff1f1";
-      border = "#e3b2b2";
-      value = "BRAK";
-    }
-
+  const rows = players.map(player => {
+    const baseline = player.status === "baseline";
+    const waiting = player.status === "waiting_baseline";
+    const bad = player.status === "error";
+    const bg = bad ? "#fff1f1" : waiting ? "#f3f3f3" : baseline ? "#eef4ff" : "#eef7ee";
+    const border = bad ? "#e3b2b2" : waiting ? "#c8c8c8" : baseline ? "#b7c8e8" : "#bad7ba";
 
     return `
-      <div style="
-        display:grid;
-        grid-template-columns:1fr auto;
-        align-items:center;
-        gap:8px;
-        padding:6px 8px;
-        margin-bottom:4px;
-        border:1px solid ${border};
-        border-radius:7px;
-        background:${bg};
-      ">
-
-        <strong style="
-          font-size:13px;
-          overflow-wrap:anywhere;
-        ">
-          ${icon}
-          ${escapeHtml(player.nick)}
-        </strong>
-
-        <strong style="
-          font-size:13px;
-          text-align:right;
-        ">
-          ${escapeHtml(value)}
-        </strong>
-
-      </div>
-    `;
-  }
-
-
-  function dayDetailsHtml(
-    day,
-    index
-  ) {
-
-    const errors =
-      Array.isArray(day.errors)
-        ? day.errors
-        : [];
-
-
-    const warnings =
-      Array.isArray(day.warnings)
-        ? day.warnings
-        : [];
-
-
-    const players =
-      Array.isArray(day.players)
-        ? day.players
-        : [];
-
-
-    const paidPlayers =
-  players.filter(
-    player =>
-      player.status === "paid"
-  );
-
-
-const zeroPlayers =
-  players.filter(
-    player =>
-      player.status === "zero"
-  );
-
-
-const missingPlayers =
-  players.filter(
-    player =>
-      player.status === "missing"
-  );
-
-
-const freshmanPlayers =
-  players.filter(
-    player =>
-      player.status === "freshman"
-  );
-
-
-// "before_join" celowo nie trafia
-// do żadnej listy.
-// Taki gracz nie należał jeszcze
-// do gangu w tym dniu.
-
-
-    const errorsHtml =
-      errors.length
-        ? `
-            <div style="
-              margin-top:10px;
-              padding:10px;
-              border:1px solid #e3b2b2;
-              border-radius:8px;
-              background:#fff1f1;
-            ">
-
-              <strong>
-                ❌ Błędy: ${errors.length}
-              </strong>
-
-              <div style="
-                margin-top:6px;
-                font-size:13px;
-              ">
-                ${
-                  errors
-                    .map(
-                      error =>
-                        `<div>• ${escapeHtml(error)}</div>`
-                    )
-                    .join("")
-                }
-              </div>
-
-            </div>
-          `
-        : "";
-
-
-    const warningsHtml =
-      warnings.length
-        ? `
-            <div style="
-              margin-top:10px;
-              padding:10px;
-              border:1px solid #e0b766;
-              border-radius:8px;
-              background:#fff8e7;
-            ">
-
-              <strong>
-                ⚠️ Ostrzeżenia: ${warnings.length}
-              </strong>
-
-              <div style="
-                margin-top:6px;
-                font-size:13px;
-              ">
-                ${
-                  warnings
-                    .map(
-                      warning =>
-                        `<div>• ${escapeHtml(warning)}</div>`
-                    )
-                    .join("")
-                }
-              </div>
-
-            </div>
-          `
-        : "";
-
-
-    const missingHtml =
-      missingPlayers.length
-        ? `
-            <div style="margin-top:10px">
-
-              <strong>
-                🔴 Braki w raporcie (${missingPlayers.length})
-              </strong>
-
-              <div style="margin-top:6px">
-                ${
-                  missingPlayers
-                    .map(
-                      player =>
-                        compactPlayerRow(
-                          player,
-                          "missing"
-                        )
-                    )
-                    .join("")
-                }
-              </div>
-
-            </div>
-          `
-        : "";
-    
-    const freshmanHtml =
-  freshmanPlayers.length
-    ? `
-        <div style="margin-top:10px">
-
-          <strong>
-            🟦 Świeżak (${freshmanPlayers.length})
-          </strong>
-
-          <div style="margin-top:6px">
-            ${
-              freshmanPlayers
-                .map(
-                  player =>
-                    `
-                      <div style="
-                        display:grid;
-                        grid-template-columns:1fr auto;
-                        align-items:center;
-                        gap:8px;
-                        padding:6px 8px;
-                        margin-bottom:4px;
-                        border:1px solid #b8cde2;
-                        border-radius:7px;
-                        background:#eef5fb;
-                      ">
-
-                        <strong style="
-                          font-size:13px;
-                          overflow-wrap:anywhere;
-                        ">
-                          🟦 ${escapeHtml(player.nick)}
-                        </strong>
-
-                        <strong style="
-                          font-size:13px;
-                          text-align:right;
-                        ">
-                          Świeżak
-                        </strong>
-
-                      </div>
-                    `
-                )
-                .join("")
-            }
-          </div>
-
+      <div style="border:1px solid ${border};background:${bg};border-radius:8px;padding:8px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><strong>${escapeHtml(player.nick)}</strong><strong>${paymentPreviewMoney(player.newBalance)} zł</strong></div>
+        <div class="muted" style="margin-top:3px">
+          ${baseline ? "Pierwszy odczyt · delta 0 zł" : waiting ? "Oczekiwanie na pierwszy odczyt" : `Nowe wpłaty: +${paymentPreviewMoney(player.delta)} zł · Obowiązek: -${paymentPreviewMoney(player.obligation)} zł (${Number(player.chargedDays)||0} dni)`}
         </div>
-      `
-    : "";
-
-    const zeroHtml =
-      zeroPlayers.length
-        ? `
-            <div style="margin-top:10px">
-
-              <strong>
-                🟡 Nie wpłacili (${zeroPlayers.length})
-              </strong>
-
-              <div style="margin-top:6px">
-                ${
-                  zeroPlayers
-                    .map(
-                      player =>
-                        compactPlayerRow(
-                          player,
-                          "zero"
-                        )
-                    )
-                    .join("")
-                }
-              </div>
-
-            </div>
-          `
-        : "";
-
-
-    const paidHtml =
-      paidPlayers.length
-        ? `
-            <div style="
-              margin-top:12px;
-              border-top:1px solid #d8c7aa;
-              padding-top:10px;
-            ">
-
-              <button
-                type="button"
-                data-paid-toggle="${index}"
-                style="
-                  width:100%;
-                  display:flex;
-                  justify-content:space-between;
-                  align-items:center;
-                  gap:8px;
-                "
-              >
-                <span>
-                  ✅ Wpłacili (${paidPlayers.length})
-                </span>
-
-                <span data-paid-toggle-icon="${index}">
-                  Pokaż ▼
-                </span>
-              </button>
-
-              <div
-                data-paid-list="${index}"
-                hidden
-                style="margin-top:8px"
-              >
-                ${
-                  paidPlayers
-                    .map(
-                      player =>
-                        compactPlayerRow(
-                          player,
-                          "paid"
-                        )
-                    )
-                    .join("")
-                }
-              </div>
-
-            </div>
-          `
-        : "";
-
-
-    return `
-  <div style="
-    margin-top:10px;
-  ">
-    ${errorsHtml}
-    ${warningsHtml}
-    ${missingHtml}
-    ${freshmanHtml}
-    ${zeroHtml}
-    ${paidHtml}
-  </div>
-`;
-}
-
-  function dayCardHtml(
-    day,
-    index
-  ) {
-
-    const reportOk =
-        Boolean(day.canClose);
-
-
-      const outOfRange =
-        reportOk &&
-        day.writeStatus ===
-          "out_of_range";
-
-
-      const ok =
-        reportOk &&
-        Boolean(day.canWrite);
-
-
-      const errorCount =
-      Array.isArray(day.errors)
-        ? day.errors.length
-        : 0;
-
-
-    const summaryText =
-  outOfRange
-
-    ? `
-        Raport poprawny
-        ·
-        poza zakresem tabeli
-      `
-
-    : reportOk && day.canWrite
-
-      ? `
-          ${Number(day.paidCount) || 0} wpłaciło
-          ·
-          ${Number(day.zeroCount) || 0} nie wpłaciło
-          ·
-          ${paymentPreviewMoney(day.calculatedTotal)} zł
-        `
-
-      : day.writeStatus === "gap"
-
-        ? `
-            Raport poprawny
-            ·
-            brak ciągłości dni
-          `
-
-        : `
-            Raport niekompletny
-            ·
-            błędów: ${errorCount}
-          `;
-
-
-    return `
-      <div style="
-        margin-top:10px;
-        border:1px solid ${
-        outOfRange
-          ? "#c8c8c8"
-          : ok
-            ? "#bad7ba"
-            : "#e3b2b2"
-      };
-        border-radius:8px;
-        background:${
-        outOfRange
-          ? "#f3f3f3"
-          : ok
-            ? "#eef7ee"
-            : "#fff1f1"
-      };
-        overflow:hidden;
-      ">
-
-        <button
-          type="button"
-          data-day-toggle="${index}"
-          style="
-            width:100%;
-            border:0;
-            border-radius:0;
-            background:transparent;
-            padding:10px;
-            text-align:left;
-            cursor:pointer;
-          "
-        >
-
-          <div style="
-            display:flex;
-            justify-content:space-between;
-            gap:10px;
-            align-items:center;
-          ">
-
-            <div>
-
-              <strong>
-                ${
-                outOfRange
-                  ? "⚪"
-                  : ok
-                    ? "✅"
-                    : "❌"
-              }
-                ${escapeHtml(day.date)}
-              </strong>
-
-              <div
-                class="muted"
-                style="
-                  margin-top:3px;
-                  font-size:13px;
-                "
-              >
-                ${summaryText}
-              </div>
-
-            </div>
-
-            <strong
-              data-day-toggle-icon="${index}"
-              style="
-                white-space:nowrap;
-              "
-            >
-              Pokaż ▼
-            </strong>
-
-          </div>
-
-        </button>
-
-
-        <div
-          data-day-details="${index}"
-          hidden
-          style="
-            padding:0 10px 10px 10px;
-          "
-        >
-
-          <div style="
-            font-size:13px;
-            padding-top:4px;
-          ">
-
-            Suma raportu:
-            <b>
-              ${
-                day.reportedTotal === null
-                  ? "—"
-                  : `${paymentPreviewMoney(day.reportedTotal)} zł`
-              }
-            </b>
-
-            <br>
-
-            Suma obliczona:
-            <b>
-              ${paymentPreviewMoney(day.calculatedTotal)} zł
-            </b>
-
-          </div>
-
-          ${dayDetailsHtml(day, index)}
-
-        </div>
-
-      </div>
-    `;
-  }
-
-
-  const ignoredTodayHtml =
-    Number(
-      payload.ignoredTodayCount
-    ) > 0
-      ? `
-          <div style="
-            margin-top:8px;
-            padding:8px 10px;
-            border:1px solid #b8cde2;
-            border-radius:8px;
-            background:#eef5fb;
-            font-size:13px;
-          ">
-            ℹ️ Pominięto bieżący dzień.
-            Wpłaty z dzisiaj mogą się jeszcze zmienić.
-          </div>
-        `
-      : "";
-
-
-  result.innerHTML = `
-
-    <div style="
-      margin-bottom:8px;
-      font-size:13px;
-    ">
-
-      ✅ Do zapisania:
-      <b>${validDays.length}</b>
-
-      ·
-
-      ⚪ Poza zakresem:
-      <b>${outOfRangeDays.length}</b>
-
-      ·
-
-      ❌ Z błędem:
-      <b>${invalidDays.length}</b>
-
-    </div>
-
-    ${ignoredTodayHtml}
-
-    ${
-      days
-        .map(
-          (day, index) =>
-            dayCardHtml(
-              day,
-              index
-            )
-        )
-        .join("")
-    }
-  `;
-
-
-  document
-    .querySelectorAll(
-      "[data-day-toggle]"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const index =
-            button.dataset.dayToggle;
-
-          const details =
-            document.querySelector(
-              `[data-day-details="${index}"]`
-            );
-
-          const icon =
-            document.querySelector(
-              `[data-day-toggle-icon="${index}"]`
-            );
-
-
-          details.hidden =
-            !details.hidden;
-
-
-          icon.textContent =
-            details.hidden
-              ? "Pokaż ▼"
-              : "Ukryj ▲";
-        }
-      );
-    });
-
-
-  document
-    .querySelectorAll(
-      "[data-paid-toggle]"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const index =
-            button.dataset.paidToggle;
-
-          const list =
-            document.querySelector(
-              `[data-paid-list="${index}"]`
-            );
-
-          const icon =
-            document.querySelector(
-              `[data-paid-toggle-icon="${index}"]`
-            );
-
-
-          list.hidden =
-            !list.hidden;
-
-
-          icon.textContent =
-            list.hidden
-              ? "Pokaż ▼"
-              : "Ukryj ▲";
-        }
-      );
-    });
+        ${player.previousTotal != null ? `<div class="muted">Suma: ${paymentPreviewMoney(player.previousTotal)} → ${paymentPreviewMoney(player.currentTotal)} zł · wpłaty: ${Number(player.previousCount)||0} → ${Number(player.currentCount)||0}</div>` : ""}
+      </div>`;
+  }).join("");
+
+  result.innerHTML = summary + messages + rows;
 }
 
 
@@ -3776,7 +3089,7 @@ async function previewAdminPayments() {
   if (!report) {
 
     status.textContent =
-      "Wklej raport wpłat.";
+      "Wklej pełny ranking łącznych wpłat.";
 
     result.innerHTML = "";
 
@@ -3926,7 +3239,7 @@ async function importAdminPayments() {
   if (!report) {
 
     status.textContent =
-      "Wklej raport wpłat.";
+      "Wklej pełny ranking łącznych wpłat.";
 
     return;
   }
@@ -3934,8 +3247,7 @@ async function importAdminPayments() {
 
   const confirmed =
     window.confirm(
-      "Wprowadzić poprawne dni do arkusza?\n\n" +
-      "Dni zawierające błędy zostaną pominięte."
+      "Zapisać ten stan rankingu i przeliczyć dożywotnie salda?"
     );
 
 
