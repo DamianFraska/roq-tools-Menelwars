@@ -49,14 +49,14 @@ function displayName(name) {
   ["Mokotów", "Przyjacielski", "🤝"],
   ["Ursynów", "Błagalny", "🙏"],
   ["Ochota", "Neutralny", "⚪"],
-  ["Śródmieście", "Agresywny", "⚔️"],
+  ["Śródmieście", "Przyjacielski", "🤝"],
   ["Bemowo", "Przyjacielski", "🤝"],
   ["Wola", "Błagalny", "🙏"],
   ["Żoliborz", "Neutralny", "⚪"],
-  ["Bielany", "Neutralny", "⚪"],
+  ["Bielany", "Błagalny", "🙏"],
   ["Praga", "Błagalny", "🙏"],
-  ["Białołęka", null, "❓"],
-  ["Targówek", null, "❓"]
+  ["Białołęka", "Neutralny", "⚪"],
+  ["Targówek", "Błagalny", "🙏"]
 ];
 
 const MAP_POSITIONS = {
