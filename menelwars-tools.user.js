@@ -1248,7 +1248,7 @@ if (paymentsPanel) {
 
     if (!root) mount();
 
-    const markers = MAPA.map(([district, action, icon]) => {
+    const markers = MAP.map(([district, action, icon]) => {
       const p = MAP_POSITIONS[district];
       if (!p) return "";
 
