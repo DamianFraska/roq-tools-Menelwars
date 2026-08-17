@@ -308,11 +308,72 @@ const MAP_POSITIONS = {
     `;
   }
 
+  function fillAvailableFilter(id, values, allLabel) {
+    const select = el(id);
+    if (!select || select.dataset.ready === "1") return;
+
+    select.innerHTML =
+      `<option value="">${allLabel}</option>` +
+      values
+        .map(value =>
+          `<option value="${escapeHtml(String(value))}">${escapeHtml(displayName(String(value)))}</option>`
+        )
+        .join("");
+
+    select.dataset.ready = "1";
+    select.addEventListener("change", renderAll);
+  }
+
+  function setupAvailableRecipeFilters() {
+    fillAvailableFilter("available-filter-base", D.bases, "Wszystkie bazy");
+    fillAvailableFilter("available-filter-yeast", D.yeasts, "Wszystkie drożdże");
+    fillAvailableFilter("available-filter-water", D.waters, "Wszystkie wody");
+    fillAvailableFilter("available-filter-program", PROGRAMS.map(String), "Wszystkie programy");
+  }
+
+  function setupUnknownRecipeFilters() {
+    fillAvailableFilter("unknown-filter-base", D.bases, "Wszystkie bazy");
+    fillAvailableFilter("unknown-filter-yeast", D.yeasts, "Wszystkie drożdże");
+    fillAvailableFilter("unknown-filter-water", D.waters, "Wszystkie wody");
+    fillAvailableFilter("unknown-filter-program", PROGRAMS.map(String), "Wszystkie programy");
+  }
+
+  function renderAllAvailableRecipes(data) {
+    setupAvailableRecipeFilters();
+
+    const base = el("available-filter-base")?.value || "";
+    const yeast = el("available-filter-yeast")?.value || "";
+    const water = el("available-filter-water")?.value || "";
+    const program = el("available-filter-program")?.value || "";
+
+    const filtered = data.known.filter(recipe =>
+      (!base || recipe.baza === base) &&
+      (!yeast || recipe.drozdze === yeast) &&
+      (!water || recipe.woda === water) &&
+      (!program || String(recipe.program) === program)
+    );
+
+    const list = el("available-list");
+    const summary = el("available-filter-summary");
+
+    if (summary) {
+      summary.textContent =
+        `Pokazano ${filtered.length} z ${data.known.length} dostępnych recept.`;
+    }
+
+    if (list) {
+      list.innerHTML =
+        filtered.length
+          ? filtered.map(recipeCard).join("")
+          : `<div class="empty">Brak recept spełniających wybrane filtry.</div>`;
+    }
+  }
+
   function renderTop(data) {
 
     el("top-list").innerHTML =
       data.known
-        .slice(0,10)
+        .slice(0,3)
         .map(recipeCard)
         .join("")
       ||
@@ -388,69 +449,136 @@ const MAP_POSITIONS = {
 
   function renderUnknown(data) {
 
-    const list = data.unknown;
+    const allUnknown = data.unknown;
 
-    el("unknown-list").innerHTML =
-      list
-        .map((r,index) => {
-          const reservation = recipeReservationFor(r);
+    const inProgress = allUnknown
+      .filter(recipe => Boolean(recipeReservationFor(recipe)));
 
-          return `
-          <article
-            class="unknown-card ${r.interesting ? "interesting" : ""}"
-            data-reserve-index="${index}"
-            style="cursor:pointer"
-            title="Kliknij, aby zarezerwować recepturę na 12 godzin">
+    const freeAll = allUnknown
+      .filter(recipe => !recipeReservationFor(recipe));
 
-            <div>
-              <strong>${displayName(r.baza)}</strong>
-              <small>
-                ${displayName(r.drozdze)} ·
-                ${displayName(r.woda)} ·
-                P${r.program}
-              </small>
-            </div>
+    setupUnknownRecipeFilters();
 
-            ${
-              r.interesting
-                ? `
-                  <div class="hint">
-                    ⭐ Interesująca do zbadania
-                    <br>
-                    <span>
-                      Inny program tej trójki:
-                      do ${fmt(r.trioMax)} l
-                    </span>
+    const unknownBase =
+      el("unknown-filter-base")?.value || "";
+    const unknownYeast =
+      el("unknown-filter-yeast")?.value || "";
+    const unknownWater =
+      el("unknown-filter-water")?.value || "";
+    const unknownProgram =
+      el("unknown-filter-program")?.value || "";
+
+    const free = freeAll.filter(recipe =>
+      (!unknownBase || recipe.baza === unknownBase) &&
+      (!unknownYeast || recipe.drozdze === unknownYeast) &&
+      (!unknownWater || recipe.woda === unknownWater) &&
+      (!unknownProgram || String(recipe.program) === unknownProgram)
+    );
+
+    const unknownSummary =
+      el("unknown-filter-summary");
+
+    if (unknownSummary) {
+      unknownSummary.textContent =
+        `Pokazano ${free.length} z ${freeAll.length} wolnych nieodkrytych recept.`;
+    }
+
+    const researchList = el("research-list");
+
+    if (researchList) {
+      researchList.innerHTML =
+        inProgress.length
+          ? inProgress.map(recipe => {
+              const reservation = recipeReservationFor(recipe);
+
+              return `
+                <article class="unknown-card research-card">
+                  <div>
+                    <strong>${displayName(recipe.baza)}</strong>
+                    <small>
+                      ${displayName(recipe.drozdze)} ·
+                      ${displayName(recipe.woda)} ·
+                      P${recipe.program}
+                    </small>
                   </div>
-                `
-                : ""
-            }
 
-            <div class="muted" style="margin-top:7px">
-              ${
-                reservation
-                  ? `🔒 <b>${escapeHtml(reservation.nick)}</b> robi tę recepturę · do ${reservationClock(reservation.expiresAt)}`
-                  : "🔓 Wolna · kliknij, aby zaklepać na 12 h"
-              }
-            </div>
+                  ${
+                    recipe.interesting
+                      ? `
+                          <div class="hint">
+                            ⭐ Interesująca do zbadania
+                            <br>
+                            <span>
+                              Inny program tej trójki:
+                              do ${fmt(recipe.trioMax)} l
+                            </span>
+                          </div>
+                        `
+                      : ""
+                  }
 
-          </article>
-        `;
-        })
-        .join("")
-      ||
-      `<div class="empty">
-        Brak nieodkrytych receptur dla wybranych składników.
-      </div>`;
+                  <div class="research-status">
+                    🔒 <b>${escapeHtml(reservation.nick)}</b>
+                    bada tę recepturę · do ${reservationClock(reservation.expiresAt)}
+                  </div>
+                </article>
+              `;
+            }).join("")
+          : `<div class="empty">Aktualnie żadna receptura nie jest zarezerwowana.</div>`;
+    }
 
-    el("unknown-list")
-      .querySelectorAll("[data-reserve-index]")
-      .forEach(card => {
-        card.addEventListener("click", () => {
-          const recipe = list[Number(card.dataset.reserveIndex)];
-          if (recipe) reserveUnknownRecipe(recipe);
+    const unknownList = el("unknown-list");
+
+    if (unknownList) {
+      unknownList.innerHTML =
+        free.length
+          ? free.map((recipe,index) => `
+              <article
+                class="unknown-card ${recipe.interesting ? "interesting" : ""}"
+                data-reserve-index="${index}"
+                style="cursor:pointer"
+                title="Kliknij, aby zarezerwować recepturę na 12 godzin">
+
+                <div>
+                  <strong>${displayName(recipe.baza)}</strong>
+                  <small>
+                    ${displayName(recipe.drozdze)} ·
+                    ${displayName(recipe.woda)} ·
+                    P${recipe.program}
+                  </small>
+                </div>
+
+                ${
+                  recipe.interesting
+                    ? `
+                        <div class="hint">
+                          ⭐ Interesująca do zbadania
+                          <br>
+                          <span>
+                            Inny program tej trójki:
+                            do ${fmt(recipe.trioMax)} l
+                          </span>
+                        </div>
+                      `
+                    : ""
+                }
+
+                <div class="muted" style="margin-top:7px">
+                  🔓 Wolna · kliknij, aby zaklepać na 12 h
+                </div>
+              </article>
+            `).join("")
+          : `<div class="empty">Brak wolnych nieodkrytych receptur dla wybranych składników.</div>`;
+
+      unknownList
+        .querySelectorAll("[data-reserve-index]")
+        .forEach(card => {
+          card.addEventListener("click", () => {
+            const recipe = free[Number(card.dataset.reserveIndex)];
+            if (recipe) reserveUnknownRecipe(recipe);
+          });
         });
-      });
+    }
   }
 
   function renderProgress(data) {
@@ -700,6 +828,7 @@ const MAP_POSITIONS = {
     const data = compute();
 
     renderTop(data);
+    renderAllAvailableRecipes(data);
     renderUnknown(data);
     renderProgress(data);
     updateSubmissionInfo();
@@ -3449,7 +3578,7 @@ async function loadAdminPaymentsStatus() {
     );
 
     const writeProtection =
-      payload.writeProtection || {};
+      {blocked:false};
 
     const writeBlocked =
       Boolean(

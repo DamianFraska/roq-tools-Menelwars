@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.16.0
+// @version      0.17.1
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -773,43 +773,47 @@ function displayName(name) {
 
   if (currentTab === "top") {
 
-    body =
-      known
-        .slice(0,10)
-        .map((r,i) => `
+    const filterBase = optPanel.dataset.filterBase || "";
+    const filterYeast = optPanel.dataset.filterYeast || "";
+    const filterWater = optPanel.dataset.filterWater || "";
+    const filterProgram = optPanel.dataset.filterProgram || "";
 
-          <div class="card">
+    const filteredKnown = known.filter(r =>
+      (!filterBase || r.baza === filterBase) &&
+      (!filterYeast || r.drozdze === filterYeast) &&
+      (!filterWater || r.woda === filterWater) &&
+      (!filterProgram || String(r.program) === filterProgram)
+    );
 
-            <span class="rank">
-              ${i+1}.
-            </span>
-
-            <span class="liters">
-              ${fmt(r.litry)} l
-            </span>
-
-            <div>
-              <b>
-                ${esc(displayName(r.baza))}
-              </b>
-            </div>
-
-            <div>
-              ${esc(displayName(r.drozdze))}
-              ·
-              ${esc(displayName(r.woda))}
-              ·
-              P${r.program}
-            </div>
-
-          </div>
-
-        `)
-        .join("")
-      ||
-      `<div class="muted">
-        Brak znanych receptur.
+    const cardHtml = (r,i) => `
+      <div class="card">
+        <span class="rank">${i+1}.</span>
+        <span class="liters">${fmt(r.litry)} l</span>
+        <div><b>${esc(displayName(r.baza))}</b></div>
+        <div>${esc(displayName(r.drozdze))} · ${esc(displayName(r.woda))} · P${r.program}</div>
       </div>`;
+
+    body = `
+      <details open style="margin-bottom:8px">
+        <summary style="font-weight:800;cursor:pointer">🏆 Top 3 dostępnych recept</summary>
+        <div style="margin-top:7px">
+          ${known.slice(0,3).map(cardHtml).join("") || `<div class="muted">Brak znanych receptur.</div>`}
+        </div>
+      </details>
+
+      <details open>
+        <summary style="font-weight:800;cursor:pointer">📚 Wszystkie dostępne recepty</summary>
+        <div style="margin-top:7px">
+          <div class="form" style="grid-template-columns:1fr 1fr;display:grid;gap:5px;margin-bottom:7px">
+            <select id="tmFilterBase"><option value="">Wszystkie bazy</option>${BASES.map(x=>`<option value="${esc(x)}" ${filterBase===x?"selected":""}>${esc(displayName(x))}</option>`).join("")}</select>
+            <select id="tmFilterYeast"><option value="">Wszystkie drożdże</option>${YEASTS.map(x=>`<option value="${esc(x)}" ${filterYeast===x?"selected":""}>${esc(displayName(x))}</option>`).join("")}</select>
+            <select id="tmFilterWater"><option value="">Wszystkie wody</option>${WATERS.map(x=>`<option value="${esc(x)}" ${filterWater===x?"selected":""}>${esc(displayName(x))}</option>`).join("")}</select>
+            <select id="tmFilterProgram"><option value="">Wszystkie programy</option>${PROGRAMS.map(x=>`<option value="${x}" ${filterProgram===String(x)?"selected":""}>P${x}</option>`).join("")}</select>
+          </div>
+          <div class="muted" style="margin-bottom:6px">Pokazano ${filteredKnown.length} z ${known.length} recept.</div>
+          ${filteredKnown.map(cardHtml).join("") || `<div class="muted">Brak recept dla wybranych filtrów.</div>`}
+        </div>
+      </details>`;
   }
 
 
@@ -819,65 +823,79 @@ function displayName(name) {
 
   if (currentTab === "unknown") {
 
-    const ranked =
-      unknown
-        .map(r => ({
-          ...r,
-          trioMax: maxForTrio(r)
-        }))
-        .sort(
-          (a,b) =>
-            (b.trioMax ?? -1) -
-            (a.trioMax ?? -1)
-            ||
-            a.baza.localeCompare(b.baza)
-            ||
-            a.program - b.program
-        );
+    const ranked = unknown
+      .map(r => ({...r,trioMax:maxForTrio(r)}))
+      .sort((a,b) =>
+        (b.trioMax ?? -1) - (a.trioMax ?? -1) ||
+        a.baza.localeCompare(b.baza) ||
+        a.program - b.program
+      );
 
-    body =
-      ranked
-        .map((r,index) => {
-          const reservation = recipeReservationFor(r);
+    const active = ranked.filter(r => Boolean(recipeReservationFor(r)));
+    const freeAll = ranked.filter(r => !recipeReservationFor(r));
 
-          return `
-          <div
-            class="card"
-            data-reserve-index="${index}"
-            style="cursor:pointer"
-            title="Kliknij, aby zarezerwować recepturę na 12 godzin">
+    const unknownFilterBase =
+      optPanel.dataset.unknownFilterBase || "";
+    const unknownFilterYeast =
+      optPanel.dataset.unknownFilterYeast || "";
+    const unknownFilterWater =
+      optPanel.dataset.unknownFilterWater || "";
+    const unknownFilterProgram =
+      optPanel.dataset.unknownFilterProgram || "";
 
-            <div><b>${esc(displayName(r.baza))}</b></div>
+    const free = freeAll.filter(r =>
+      (!unknownFilterBase || r.baza === unknownFilterBase) &&
+      (!unknownFilterYeast || r.drozdze === unknownFilterYeast) &&
+      (!unknownFilterWater || r.woda === unknownFilterWater) &&
+      (!unknownFilterProgram || String(r.program) === unknownFilterProgram)
+    );
 
-            <div>
-              ${esc(displayName(r.drozdze))}
-              · ${esc(displayName(r.woda))}
-              · P${r.program}
-            </div>
+    const recipeHtml = (r,reservation,index,clickable) => `
+      <div class="card" ${clickable ? `data-reserve-index="${index}" style="cursor:pointer"` : `style="background:#fff6dc;border-color:#d7b768"`}>
+        <div><b>${esc(displayName(r.baza))}</b></div>
+        <div>${esc(displayName(r.drozdze))} · ${esc(displayName(r.woda))} · P${r.program}</div>
+        ${r.trioMax !== null && r.trioMax >= th ? `<div class="star">⭐ Interesująca do zbadania</div><div class="muted">Inny program tej trójki: do ${fmt(r.trioMax)} l.</div>` : ""}
+        <div class="muted" style="margin-top:6px">
+          ${reservation ? `🔒 <b>${esc(reservation.nick)}</b> bada tę recepturę · do ${reservationClock(reservation.expiresAt)}` : "🔓 Wolna · kliknij, aby zaklepać na 12 h"}
+        </div>
+      </div>`;
 
-            ${
-              r.trioMax !== null && r.trioMax >= th
-                ? `
-                    <div class="star">⭐ Interesująca do zbadania</div>
-                    <div class="muted">
-                      Inny program tej trójki: do ${fmt(r.trioMax)} l.
-                    </div>
-                  `
-                : ""
-            }
+    body = `
+      <details open style="margin-bottom:8px">
+        <summary style="font-weight:800;cursor:pointer">🧪 W trakcie badania (${active.length})</summary>
+        <div style="margin-top:7px">
+          ${active.length ? active.map(r=>recipeHtml(r,recipeReservationFor(r),0,false)).join("") : `<div class="muted">Brak aktywnych rezerwacji.</div>`}
+        </div>
+      </details>
+      <details open>
+        <summary style="font-weight:800;cursor:pointer">🔬 Nieodkryte (${free.length})</summary>
+        <div style="margin-top:7px">
+          <div class="form" style="grid-template-columns:1fr 1fr;display:grid;gap:5px;margin-bottom:7px">
+            <select id="tmUnknownFilterBase">
+              <option value="">Wszystkie bazy</option>
+              ${BASES.map(x=>`<option value="${esc(x)}" ${unknownFilterBase===x?"selected":""}>${esc(displayName(x))}</option>`).join("")}
+            </select>
+            <select id="tmUnknownFilterYeast">
+              <option value="">Wszystkie drożdże</option>
+              ${YEASTS.map(x=>`<option value="${esc(x)}" ${unknownFilterYeast===x?"selected":""}>${esc(displayName(x))}</option>`).join("")}
+            </select>
+            <select id="tmUnknownFilterWater">
+              <option value="">Wszystkie wody</option>
+              ${WATERS.map(x=>`<option value="${esc(x)}" ${unknownFilterWater===x?"selected":""}>${esc(displayName(x))}</option>`).join("")}
+            </select>
+            <select id="tmUnknownFilterProgram">
+              <option value="">Wszystkie programy</option>
+              ${PROGRAMS.map(x=>`<option value="${x}" ${unknownFilterProgram===String(x)?"selected":""}>P${x}</option>`).join("")}
+            </select>
+          </div>
+          <div class="muted" style="margin-bottom:6px">
+            Pokazano ${free.length} z ${freeAll.length} wolnych recept.
+          </div>
+          ${free.length ? free.map((r,i)=>recipeHtml(r,null,i,true)).join("") : `<div class="muted">Brak wolnych recept dla wybranych filtrów.</div>`}
+        </div>
+      </details>`;
 
-            <div class="muted" style="margin-top:6px">
-              ${
-                reservation
-                  ? `🔒 <b>${esc(reservation.nick)}</b> robi tę recepturę · do ${reservationClock(reservation.expiresAt)}`
-                  : "🔓 Wolna · kliknij, aby zaklepać na 12 h"
-              }
-            </div>
-          </div>`;
-        })
-        .join("")
-      ||
-      `<div class="muted">Brak nieodkrytych receptur.</div>`;
+    optPanel.dataset.freeUnknown = JSON.stringify(free.map(r => key(r.baza,r.drozdze,r.woda,r.program)));
   }
 
 
@@ -1056,6 +1074,26 @@ function displayName(name) {
     .querySelector(".body")
     .innerHTML = body;
 
+  if (currentTab === "unknown") {
+    [
+      ["#tmUnknownFilterBase","unknownFilterBase"],
+      ["#tmUnknownFilterYeast","unknownFilterYeast"],
+      ["#tmUnknownFilterWater","unknownFilterWater"],
+      ["#tmUnknownFilterProgram","unknownFilterProgram"]
+    ].forEach(([selector,keyName]) => {
+      const select =
+        optPanel.querySelector(selector);
+
+      if (select) {
+        select.onchange = () => {
+          optPanel.dataset[keyName] =
+            select.value;
+          renderOptimizer();
+        };
+      }
+    });
+  }
+
   if (currentTab === "submit") {
     const form = optPanel.querySelector("#inlineRecipeForm");
 
@@ -1166,6 +1204,10 @@ function displayName(name) {
 
 
   if (currentTab === "unknown") {
+    const freeKeys = (() => {
+      try { return JSON.parse(optPanel.dataset.freeUnknown || "[]"); }
+      catch { return []; }
+    })();
     const ranked = unknown
       .map(r => ({...r,trioMax:maxForTrio(r)}))
       .sort((a,b) =>
@@ -1178,7 +1220,8 @@ function displayName(name) {
       .querySelectorAll("[data-reserve-index]")
       .forEach(card => {
         card.onclick = () => {
-          const recipe = ranked[Number(card.dataset.reserveIndex)];
+          const selectedKey = freeKeys[Number(card.dataset.reserveIndex)];
+          const recipe = ranked.find(r => key(r.baza,r.drozdze,r.woda,r.program) === selectedKey);
           if (recipe) reserveUnknownRecipe(recipe);
         };
       });

@@ -130,3 +130,73 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
 #gang-tabs[hidden]{
   display:none!important;
 }
+
+
+/* =========================================================
+   v15 — zwijane sekcje receptur i filtry
+   ========================================================= */
+.content-accordion{
+  margin-bottom:12px;
+  border:1px solid #ccb797;
+  border-radius:14px;
+  background:#fff8eb;
+  overflow:hidden;
+  box-shadow:0 5px 18px #5a402019;
+}
+.content-accordion>summary{
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px 12px;
+  background:#dfd0b6;
+  font-weight:800;
+  cursor:pointer;
+  user-select:none;
+}
+.content-accordion>summary::-webkit-details-marker{display:none}
+.content-accordion[open]>summary{border-bottom:1px solid #ccb797}
+.content-accordion[open] .accordion-chevron{transform:rotate(180deg)}
+.content-accordion-body{padding:11px}
+.research-accordion>summary{background:#ead7ae}
+
+.recipe-filter-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:7px;
+  margin-bottom:8px;
+}
+.recipe-filter-grid label{display:grid;gap:4px}
+.recipe-filter-grid label>span{font-size:11px;font-weight:700;color:#6b5b47}
+.recipe-filter-grid select{
+  width:100%;
+  border:1px solid #ccb797;
+  border-radius:8px;
+  background:#fffdf8;
+  color:#332a20;
+  padding:8px 7px;
+  font-size:12px;
+}
+.filter-summary{
+  color:#786b5c;
+  font-size:11px;
+  margin:3px 0 8px;
+}
+.research-card{
+  background:#fff6dc!important;
+  border-color:#d7b768!important;
+}
+.research-card .research-status{
+  margin-top:6px;
+  color:#765b2d;
+  font-weight:700;
+}
+
+@media(max-width:600px){
+  .content-accordion{margin-bottom:8px;border-radius:10px}
+  .content-accordion>summary{padding:8px 9px;font-size:12px}
+  .content-accordion-body{padding:8px}
+  .recipe-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+  .recipe-filter-grid select{padding:7px 6px;font-size:11px}
+}

@@ -701,21 +701,79 @@
   </nav>
 
   <section id="optimizer-view" class="view">
-    <div class="panel" style="margin-bottom:12px">
-      <div class="panel-head">🎒 Posiadane składniki premium</div>
-      <div class="panel-body"><div id="premium-grid" class="check-grid"></div></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head">📖 Dostępne recepty — najlepsze wyniki</div>
-      <div class="panel-body" id="top-list"></div>
-    </div>
+    <details class="content-accordion" open>
+      <summary>
+        <span>🎒 Posiadane składniki premium</span>
+        <span class="accordion-chevron">⌄</span>
+      </summary>
+      <div class="content-accordion-body">
+        <div id="premium-grid" class="check-grid"></div>
+      </div>
+    </details>
+
+    <details class="content-accordion" open>
+      <summary>
+        <span>🏆 Top 3 dostępnych recept</span>
+        <span class="accordion-chevron">⌄</span>
+      </summary>
+      <div class="content-accordion-body" id="top-list"></div>
+    </details>
+
+    <details class="content-accordion" open>
+      <summary>
+        <span>📚 Wszystkie dostępne recepty</span>
+        <span class="accordion-chevron">⌄</span>
+      </summary>
+      <div class="content-accordion-body">
+        <div class="recipe-filter-grid">
+          <label>
+            <span>Baza</span>
+            <select id="available-filter-base"></select>
+          </label>
+          <label>
+            <span>Drożdże</span>
+            <select id="available-filter-yeast"></select>
+          </label>
+          <label>
+            <span>Woda</span>
+            <select id="available-filter-water"></select>
+          </label>
+          <label>
+            <span>Program</span>
+            <select id="available-filter-program"></select>
+          </label>
+        </div>
+        <div class="filter-summary" id="available-filter-summary"></div>
+        <div id="available-list"></div>
+      </div>
+    </details>
   </section>
 
   <section id="unknown-view" class="view" hidden>
-    <div class="panel">
-      <div class="panel-head">🔬 Nieodkryte dla Twoich składników</div>
-      <div class="panel-body" id="unknown-list"></div>
-    </div>
+    <details class="content-accordion research-accordion" open>
+      <summary>
+        <span>🧪 W trakcie badania</span>
+        <span class="accordion-chevron">⌄</span>
+      </summary>
+      <div class="content-accordion-body" id="research-list"></div>
+    </details>
+
+    <details class="content-accordion" open>
+      <summary>
+        <span>🔬 Nieodkryte dla Twoich składników</span>
+        <span class="accordion-chevron">⌄</span>
+      </summary>
+      <div class="content-accordion-body">
+        <div class="recipe-filter-grid">
+          <label><span>Baza</span><select id="unknown-filter-base"></select></label>
+          <label><span>Drożdże</span><select id="unknown-filter-yeast"></select></label>
+          <label><span>Woda</span><select id="unknown-filter-water"></select></label>
+          <label><span>Program</span><select id="unknown-filter-program"></select></label>
+        </div>
+        <div class="filter-summary" id="unknown-filter-summary"></div>
+        <div id="unknown-list"></div>
+      </div>
+    </details>
   </section>
 
 
