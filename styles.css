@@ -123,3 +123,10 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
 @media(max-width:380px){
   #gang-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* FIX v14.1 — ukryte podmenu musi pozostać ukryte także na mobile */
+#distillery-tabs[hidden],
+#gang-tabs[hidden]{
+  display:none!important;
+}
