@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.17.1
+// @version      0.17.2
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -213,8 +213,10 @@ function displayName(name) {
     .close{cursor:pointer;font-size:19px;padding:0 3px}
     .premium{padding:10px 14px;border-bottom:1px solid #d1c1a7}
     .ptitle{font-weight:700;margin-bottom:7px}
-    .checks{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}
-    .checks label{display:flex;align-items:center;gap:6px}
+    .checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+    .checks label{display:flex;align-items:center;gap:6px;border:1px solid #d8c7aa;border-radius:7px;padding:6px 7px;background:#fffdf8;cursor:pointer;font-weight:700;font-size:11px}
+    .checks label:has(input:checked){background:#edf7ee;border-color:#9ec5a4;color:#315f38}
+    .checks input{accent-color:#4f8b59}
     .tabs{display:flex;border-bottom:1px solid #d1c1a7}
     .tab{flex:1;text-align:center;padding:9px 5px;cursor:pointer;font-weight:700;background:#eee3cf}
     .tab.active{background:#fff8eb}
@@ -481,8 +483,14 @@ function displayName(name) {
       }
 
       .checks{
-        gap:4px 7px;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:4px;
         font-size:10px;
+      }
+
+      .checks label{
+        padding:5px 6px;
+        font-size:9.5px;
       }
 
       .tab{
@@ -793,11 +801,53 @@ function displayName(name) {
         <div>${esc(displayName(r.drozdze))} · ${esc(displayName(r.woda))} · P${r.program}</div>
       </div>`;
 
+    const podiumHtml =
+      known.slice(0,3).length
+        ? `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+              ${known.slice(0,3).map((r,i) => `
+                <div
+                  class="card"
+                  style="
+                    ${i===0
+                      ? 'grid-column:1/-1;background:#fff7d8;border-color:#d2aa45'
+                      : i===1
+                        ? 'background:#f5f5f3;border-color:#c9c9c9'
+                        : 'background:#f7e5d8;border-color:#c99a73'};
+                    margin-bottom:0
+                  ">
+                  <div style="display:flex;justify-content:space-between;gap:6px;align-items:center">
+                    <b>
+                      ${['🥇','🥈','🥉'][i]}
+                      ${esc(displayName(r.baza))}
+                    </b>
+
+                    <strong
+                      style="
+                        font-size:${i===0 ? '17px' : '15px'};
+                        color:${i===0 ? '#8a6200' : '#356a3c'};
+                        white-space:nowrap
+                      ">
+                      ${fmt(r.litry)} l
+                    </strong>
+                  </div>
+
+                  <div class="muted" style="margin-top:4px">
+                    ${esc(displayName(r.drozdze))} ·
+                    ${esc(displayName(r.woda))} ·
+                    P${r.program}
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          `
+        : `<div class="muted">Brak znanych receptur.</div>`;
+
     body = `
       <details open style="margin-bottom:8px">
-        <summary style="font-weight:800;cursor:pointer">🏆 Top 3 dostępnych recept</summary>
+        <summary style="font-weight:800;cursor:pointer">🏆 Podium dostępnych recept</summary>
         <div style="margin-top:7px">
-          ${known.slice(0,3).map(cardHtml).join("") || `<div class="muted">Brak znanych receptur.</div>`}
+          ${podiumHtml}
         </div>
       </details>
 

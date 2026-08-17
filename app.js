@@ -246,7 +246,7 @@ const MAP_POSITIONS = {
               ${premium[name] ? "checked" : ""}
             >
 
-            <span>${displayName(name)}</span>
+            <span class="premium-name">${displayName(name)}</span>
 
           </label>
 
@@ -371,15 +371,47 @@ const MAP_POSITIONS = {
 
   function renderTop(data) {
 
+    const top = data.known.slice(0,3);
+
+    const medal = ["🥇","🥈","🥉"];
+    const place = ["1. miejsce","2. miejsce","3. miejsce"];
+    const tone = ["gold","silver","bronze"];
+
     el("top-list").innerHTML =
-      data.known
-        .slice(0,3)
-        .map(recipeCard)
-        .join("")
-      ||
-      `<div class="empty">
-        Brak znanych receptur dla wybranych składników.
-      </div>`;
+      top.length
+        ? `
+            <div class="recipe-podium">
+              ${top.map((recipe,index) => `
+                <article class="podium-card ${tone[index] || ""}">
+                  <div class="podium-head">
+                    <span class="podium-medal">${medal[index] || "🏅"}</span>
+                    <span class="podium-place">${place[index] || `${index+1}. miejsce`}</span>
+                  </div>
+
+                  <div class="podium-base">
+                    ${escapeHtml(displayName(recipe.baza))}
+                  </div>
+
+                  <div class="podium-combo">
+                    ${escapeHtml(displayName(recipe.drozdze))}
+                    <span>·</span>
+                    ${escapeHtml(displayName(recipe.woda))}
+                    <span>·</span>
+                    P${recipe.program}
+                  </div>
+
+                  <div class="podium-result">
+                    ${fmt(recipe.litry)} l
+                  </div>
+                </article>
+              `).join("")}
+            </div>
+          `
+        : `
+            <div class="empty">
+              Brak znanych receptur dla wybranych składników.
+            </div>
+          `;
   }
 
   function recipeReservationFor(r) {
