@@ -430,7 +430,7 @@ const MAP_POSITIONS = {
               ${
                 reservation
                   ? `🔒 <b>${escapeHtml(reservation.nick)}</b> robi tę recepturę · do ${reservationClock(reservation.expiresAt)}`
-                  : "🕒 Kliknij kafelek, aby zarezerwować na 12 h"
+                  : "🔓 Wolna · kliknij, aby zaklepać na 12 h"
               }
             </div>
 
@@ -1362,7 +1362,138 @@ const MAP_POSITIONS = {
     `;
   }
 
-  async function loadPayments() {
+  function gangFormatNumber(value) {
+    return (Number(value) || 0).toLocaleString(
+      "pl-PL",
+      {maximumFractionDigits:2}
+    );
+  }
+
+  function renderGangGoal(payload) {
+    const box = el("gang-goal-content");
+    if (!box) return;
+
+    const goal = payload && payload.goal;
+
+    if (!goal) {
+      box.innerHTML = `
+        <div class="empty">
+          🎯 Administrator nie ustawił jeszcze aktywnego celu gangu.
+        </div>
+      `;
+      return;
+    }
+
+    const current = Math.max(0, Number(goal.current) || 0);
+    const target = Math.max(0, Number(goal.target) || 0);
+    const percent = target > 0
+      ? Math.max(0, Math.min(100, current / target * 100))
+      : 0;
+    const unit = String(goal.unit || "").trim();
+    const suffix = unit ? ` ${escapeHtml(unit)}` : "";
+
+    box.innerHTML = `
+      <div class="gang-goal-card">
+        <div class="muted">🎯 Aktualny cel</div>
+        <h3 style="margin:4px 0 6px">
+          ${escapeHtml(goal.title)}
+        </h3>
+
+        <div>
+          <b>${gangFormatNumber(current)}${suffix}</b>
+          /
+          ${gangFormatNumber(target)}${suffix}
+        </div>
+
+        <div class="gang-progress-track">
+          <div
+            class="gang-progress-fill"
+            style="width:${percent}%">
+          </div>
+        </div>
+
+        <div class="muted">
+          ${percent.toFixed(1).replace(".",",")}% ukończone
+          ${current < target
+            ? ` · brakuje ${gangFormatNumber(target-current)}${suffix}`
+            : " · ✅ cel osiągnięty"}
+        </div>
+      </div>
+    `;
+  }
+
+  function gangAnnouncementDate(timestamp) {
+    const date = new Date(Number(timestamp));
+    if (!Number.isFinite(date.getTime())) return "";
+
+    return date.toLocaleString(
+      "pl-PL",
+      {
+        day:"2-digit",
+        month:"2-digit",
+        year:"numeric",
+        hour:"2-digit",
+        minute:"2-digit"
+      }
+    );
+  }
+
+  function renderGangAnnouncements(payload) {
+    const box = el("gang-announcements-content");
+    if (!box) return;
+
+    const announcements =
+      Array.isArray(payload && payload.announcements)
+        ? payload.announcements
+        : [];
+
+    box.innerHTML = announcements.length
+      ? announcements.map(item => `
+          <article class="announcement-card ${item.important ? "important" : ""}">
+            <div class="announcement-meta">
+              <span>
+                ${item.important ? "📌 Ważne" : "📢 Ogłoszenie"}
+              </span>
+              <span>${escapeHtml(gangAnnouncementDate(item.createdAt))}</span>
+            </div>
+            <div style="white-space:pre-wrap">
+              ${escapeHtml(item.text)}
+            </div>
+          </article>
+        `).join("")
+      : `
+          <div class="empty">
+            📢 Brak aktywnych ogłoszeń.
+          </div>
+        `;
+  }
+
+  function renderGangPayload(payload) {
+    if (!payload) return;
+
+    renderCompanySummary(payload);
+    renderGangGoal(payload);
+    renderGangAnnouncements(payload);
+
+    const players =
+      Array.isArray(payload.players)
+        ? payload.players
+        : [];
+
+    el("payments-date").textContent =
+      "Stan na: " +
+      formatPaymentsDate(payload.saldoDate || payload.updatedAt);
+
+    el("payments-count").textContent =
+      `Graczy: ${players.length}`;
+
+    el("payments-list").innerHTML =
+      players.length
+        ? players.map(paymentsRow).join("")
+        : `<div class="empty">Brak danych do wyświetlenia.</div>`;
+  }
+
+  async function loadPayments(options={}) {
 
     const token = gangToken();
 
@@ -1371,10 +1502,22 @@ const MAP_POSITIONS = {
       return;
     }
 
-    showPaymentsContent();
+    const background = Boolean(options.background);
 
-    el("payments-status").textContent =
-      "Pobieranie danych...";
+    if (!background) {
+      showPaymentsContent();
+    }
+
+    if (latestGangPayload) {
+      renderGangPayload(latestGangPayload);
+    }
+
+    if (!background) {
+      el("payments-status").textContent =
+        latestGangPayload
+          ? ""
+          : "Pobieranie danych...";
+    }
 
     try {
 
@@ -1405,33 +1548,20 @@ const MAP_POSITIONS = {
       }
 
       latestGangPayload = payload;
-      renderCompanySummary(payload);
+      renderGangPayload(payload);
 
-      const players =
-        Array.isArray(payload.players)
-          ? payload.players
-          : [];
-
-      el("payments-date").textContent =
-        "Stan na: " +
-        formatPaymentsDate(payload.saldoDate || payload.updatedAt);
-
-      el("payments-count").textContent =
-        `Graczy: ${players.length}`;
-
-      el("payments-list").innerHTML =
-        players.length
-          ? players.map(paymentsRow).join("")
-          : `<div class="empty">Brak danych do wyświetlenia.</div>`;
-
-      el("payments-status").textContent = "";
+      if (!background) {
+        el("payments-status").textContent = "";
+      }
 
     } catch (err) {
 
-      el("payments-status").textContent =
-        err && err.message
-          ? err.message
-          : "Nie udało się pobrać danych.";
+      if (!background) {
+        el("payments-status").textContent =
+          err && err.message
+            ? err.message
+            : "Nie udało się pobrać danych.";
+      }
     }
   }
 
@@ -1580,6 +1710,238 @@ function showAdminLogin(message="") {
 }
 
 
+async function adminPostAction(action, data={}) {
+  const token = adminToken();
+
+  if (!token) {
+    showAdminLogin();
+    throw new Error("Brak sesji administratora.");
+  }
+
+  await fetch(
+    BACKEND_URL,
+    {
+      method:"POST",
+      mode:"no-cors",
+      headers:{
+        "Content-Type":"text/plain;charset=UTF-8"
+      },
+      body:JSON.stringify({
+        action,
+        token,
+        ...data
+      })
+    }
+  );
+
+  // Apps Script + no-cors: wynik odczytujemy przez odświeżenie GET.
+  await new Promise(resolve => setTimeout(resolve, 350));
+}
+
+function adminRecipeLabel(item) {
+  return [
+    item.baza,
+    item.drozdze,
+    item.woda,
+    `P${Number(item.program) || 0}`
+  ].filter(Boolean).join(" · ");
+}
+
+function renderAdminGangTools(payload) {
+  const reservations =
+    Array.isArray(payload && payload.reservations)
+      ? payload.reservations
+      : [];
+
+  const reservationsBox =
+    el("admin-reservations-list");
+
+  if (reservationsBox) {
+    reservationsBox.innerHTML =
+      reservations.length
+        ? reservations.map(item => `
+            <div class="reservation-admin-row">
+              <div>
+                <b>${escapeHtml(item.nick)}</b>
+                <div class="muted">
+                  ${escapeHtml(adminRecipeLabel(item))}
+                  · do ${escapeHtml(
+                    new Date(Number(item.expiresAt))
+                      .toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"})
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                data-clear-reservation="${escapeHtml(item.recipeKey)}">
+                🗑 Zwolnij
+              </button>
+            </div>
+          `).join("")
+        : `<div class="empty">Brak aktywnych rezerwacji.</div>`;
+
+    reservationsBox
+      .querySelectorAll("[data-clear-reservation]")
+      .forEach(button => {
+        button.onclick = async () => {
+          if (!window.confirm("Usunąć tę rezerwację?")) return;
+
+          button.disabled = true;
+
+          try {
+            await adminPostAction(
+              "adminClearReservation",
+              {recipeKey:button.dataset.clearReservation}
+            );
+            await loadAdminGangTools();
+            fetchApprovedRecipes();
+          } catch (err) {
+            el("admin-gang-tools-status").textContent =
+              err.message || "Nie udało się usunąć rezerwacji.";
+          } finally {
+            button.disabled = false;
+          }
+        };
+      });
+  }
+
+  const goal = payload && payload.goal;
+
+  if (el("admin-goal-title")) {
+    el("admin-goal-title").value =
+      goal ? String(goal.title || "") : "";
+    el("admin-goal-current").value =
+      goal ? String(goal.current ?? "") : "";
+    el("admin-goal-target").value =
+      goal ? String(goal.target ?? "") : "";
+    el("admin-goal-unit").value =
+      goal ? String(goal.unit || "") : "";
+  }
+
+  const announcements =
+    Array.isArray(payload && payload.announcements)
+      ? payload.announcements
+      : [];
+
+  const announcementsBox =
+    el("admin-announcements-list");
+
+  if (announcementsBox) {
+    announcementsBox.innerHTML =
+      announcements.length
+        ? announcements.map(item => `
+            <div class="announcement-card ${item.important ? "important" : ""}">
+              <div class="announcement-meta">
+                <span>${item.important ? "📌 Ważne" : "📢 Ogłoszenie"}</span>
+                <span>${escapeHtml(gangAnnouncementDate(item.createdAt))}</span>
+              </div>
+
+              <div style="white-space:pre-wrap;margin-bottom:8px">
+                ${escapeHtml(item.text)}
+              </div>
+
+              <div class="admin-actions-row">
+                <button
+                  type="button"
+                  data-toggle-important="${escapeHtml(item.id)}"
+                  data-important="${item.important ? "1" : "0"}">
+                  ${item.important ? "📌 Odepnij" : "📌 Oznacz Ważne"}
+                </button>
+
+                <button
+                  type="button"
+                  data-delete-announcement="${escapeHtml(item.id)}">
+                  🗑 Usuń
+                </button>
+              </div>
+            </div>
+          `).join("")
+        : `<div class="empty">Brak ogłoszeń.</div>`;
+
+    announcementsBox
+      .querySelectorAll("[data-toggle-important]")
+      .forEach(button => {
+        button.onclick = async () => {
+          const important =
+            button.dataset.important !== "1";
+
+          button.disabled = true;
+
+          try {
+            await adminPostAction(
+              "adminSetAnnouncementImportant",
+              {
+                id:button.dataset.toggleImportant,
+                important
+              }
+            );
+            await loadAdminGangTools();
+            await loadPayments({background:true});
+          } catch (err) {
+            el("admin-gang-tools-status").textContent =
+              err.message || "Nie udało się zmienić przypięcia.";
+          }
+        };
+      });
+
+    announcementsBox
+      .querySelectorAll("[data-delete-announcement]")
+      .forEach(button => {
+        button.onclick = async () => {
+          if (!window.confirm("Usunąć to ogłoszenie?")) return;
+
+          button.disabled = true;
+
+          try {
+            await adminPostAction(
+              "adminDeleteAnnouncement",
+              {id:button.dataset.deleteAnnouncement}
+            );
+            await loadAdminGangTools();
+            await loadPayments({background:true});
+          } catch (err) {
+            el("admin-gang-tools-status").textContent =
+              err.message || "Nie udało się usunąć ogłoszenia.";
+          }
+        };
+      });
+  }
+}
+
+async function loadAdminGangTools() {
+  const token = adminToken();
+
+  if (!token) return;
+
+  const status = el("admin-gang-tools-status");
+
+  try {
+    const payload =
+      await jsonp("adminGangTools",{token});
+
+    if (!payload || !payload.ok) {
+      throw new Error(
+        payload && payload.error
+          ? payload.error
+          : "Nie udało się pobrać narzędzi gangu."
+      );
+    }
+
+    renderAdminGangTools(payload);
+
+    if (status) status.textContent = "";
+
+  } catch (err) {
+    if (status) {
+      status.textContent =
+        err && err.message
+          ? err.message
+          : "Nie udało się pobrać narzędzi gangu.";
+    }
+  }
+}
+
 function showAdminContent() {
 
   el("admin-login").hidden = true;
@@ -1590,6 +1952,7 @@ function showAdminContent() {
   loadAdminSubmissions();	
   loadAdminPaymentsStatus();
   loadAdminPlayers();
+  loadAdminGangTools();
 }
 
 
@@ -1914,9 +2277,15 @@ async function setAdminSubmissionStatus(
 
   const confirmed =
     window.confirm(
-      isApprove
-        ? "Zatwierdzić tę recepturę?"
-        : "Odrzucić tę recepturę?"
+      isDuplicate
+        ? "Oznaczyć to zgłoszenie jako duplikat?"
+        : isApprove
+          ? (
+              correction
+                ? "Zatwierdzić ten wynik jako korektę istniejącej receptury?"
+                : "Zatwierdzić tę recepturę?"
+            )
+          : "Odrzucić tę recepturę?"
     );
 
   if (!confirmed) {
@@ -2120,7 +2489,8 @@ async function loadAdminSubmissions() {
         setAdminSubmissionStatus(
           row,
           newStatus,
-          button
+          button,
+          button.dataset.correction === "1"
         );
       }
     );
@@ -3648,7 +4018,12 @@ function setupAdmin() {
   el("admin-refresh")
     .addEventListener(
       "click",
-      loadAdminSubmissions
+      () => {
+        loadAdminSubmissions();
+        loadAdminPaymentsStatus();
+        loadAdminPlayers();
+        loadAdminGangTools();
+      }
     );
 
   el("admin-payments-preview")
@@ -3738,6 +4113,137 @@ function setupAdmin() {
     loadAdminPaymentsStatus
   );
 
+  el("admin-clear-all-reservations")
+    ?.addEventListener(
+      "click",
+      async event => {
+        if (!window.confirm(
+          "Wyczyścić WSZYSTKIE aktywne rezerwacje receptur?"
+        )) return;
+
+        const button = event.currentTarget;
+        button.disabled = true;
+
+        try {
+          await adminPostAction(
+            "adminClearAllReservations"
+          );
+          await loadAdminGangTools();
+          fetchApprovedRecipes();
+        } catch (err) {
+          el("admin-gang-tools-status").textContent =
+            err.message || "Nie udało się wyczyścić rezerwacji.";
+        } finally {
+          button.disabled = false;
+        }
+      }
+    );
+
+  el("admin-goal-form")
+    ?.addEventListener(
+      "submit",
+      async event => {
+        event.preventDefault();
+
+        const current = Number(
+          String(el("admin-goal-current").value || "")
+            .replace(/\s+/g,"")
+            .replace(",",".")
+        );
+
+        const target = Number(
+          String(el("admin-goal-target").value || "")
+            .replace(/\s+/g,"")
+            .replace(",",".")
+        );
+
+        try {
+          await adminPostAction(
+            "adminSaveGoal",
+            {
+              title:el("admin-goal-title").value.trim(),
+              current,
+              target,
+              unit:el("admin-goal-unit").value.trim()
+            }
+          );
+
+          await loadAdminGangTools();
+          await loadPayments({background:true});
+
+          el("admin-gang-tools-status").textContent =
+            "✅ Cel gangu zapisany.";
+
+        } catch (err) {
+          el("admin-gang-tools-status").textContent =
+            err.message || "Nie udało się zapisać celu.";
+        }
+      }
+    );
+
+  el("admin-goal-delete")
+    ?.addEventListener(
+      "click",
+      async () => {
+        if (!window.confirm("Usunąć aktywny cel gangu?")) return;
+
+        try {
+          await adminPostAction("adminDeleteGoal");
+          await loadAdminGangTools();
+          await loadPayments({background:true});
+
+          el("admin-gang-tools-status").textContent =
+            "✅ Cel został usunięty.";
+
+        } catch (err) {
+          el("admin-gang-tools-status").textContent =
+            err.message || "Nie udało się usunąć celu.";
+        }
+      }
+    );
+
+  el("admin-announcement-form")
+    ?.addEventListener(
+      "submit",
+      async event => {
+        event.preventDefault();
+
+        const text =
+          el("admin-announcement-text").value.trim();
+
+        if (!text) {
+          el("admin-gang-tools-status").textContent =
+            "Wpisz treść ogłoszenia.";
+          return;
+        }
+
+        try {
+          await adminPostAction(
+            "adminAddAnnouncement",
+            {
+              text,
+              important:
+                el("admin-announcement-important").checked
+            }
+          );
+
+          el("admin-announcement-text").value = "";
+          el("admin-announcement-important").checked = false;
+
+          await loadAdminGangTools();
+          await loadPayments({background:true});
+
+          el("admin-gang-tools-status").textContent =
+            "✅ Ogłoszenie dodane.";
+
+        } catch (err) {
+          el("admin-gang-tools-status").textContent =
+            err.message || "Nie udało się dodać ogłoszenia.";
+        }
+      }
+    );
+
+
   el("admin-player-add-form")
     ?.addEventListener(
       "submit",
@@ -3823,15 +4329,15 @@ function setupAdmin() {
       return;
     }
 
+    // Widok przełączamy natychmiast.
     showToolView(target, "gang");
 
-    if (target === "payments-view" || target === "company-view") {
-      await loadPayments();
-      if (target === "company-view") {
-        showToolView("company-view", "gang");
-        if (latestGangPayload) renderCompanySummary(latestGangPayload);
-      }
+    if (latestGangPayload) {
+      renderGangPayload(latestGangPayload);
     }
+
+    // Backend odświeża się w tle — bez blokowania kliknięcia.
+    loadPayments({background:true});
   }
 
   document

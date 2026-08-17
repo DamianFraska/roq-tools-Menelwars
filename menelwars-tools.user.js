@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.11.0
+// @version      0.12.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -716,7 +716,7 @@ function displayName(name) {
               ${
                 reservation
                   ? `🔒 <b>${esc(reservation.nick)}</b> robi tę recepturę · do ${reservationClock(reservation.expiresAt)}`
-                  : "🕒 Kliknij kafelek, aby zarezerwować na 12 h"
+                  : "🔓 Wolna · kliknij, aby zaklepać na 12 h"
               }
             </div>
           </div>`;
@@ -724,6 +724,78 @@ function displayName(name) {
         .join("")
       ||
       `<div class="muted">Brak nieodkrytych receptur.</div>`;
+  }
+
+
+  // =========================================================
+  // DODAJ — FORMULARZ WEWNĄTRZ DESTYLARNI
+  // =========================================================
+
+  if (currentTab === "submit") {
+    const savedNick =
+      localStorage.getItem(NICK_KEY) || "";
+
+    body = `
+      <div class="card" style="padding:10px">
+        <b>➕ Dodaj recepturę</b>
+        <div class="muted" style="margin:4px 0 10px">
+          Wyślij wynik do wspólnej bazy do weryfikacji administratora.
+        </div>
+
+        <form id="inlineRecipeForm" class="form">
+          <label>
+            Nick
+            <input id="inlineRecipeNick" type="text" maxlength="40" value="${esc(savedNick)}" required>
+          </label>
+
+          <label>
+            Baza
+            <select id="inlineRecipeBase">
+              ${BASES.map(x => `<option value="${esc(x)}">${esc(displayName(x))}</option>`).join("")}
+            </select>
+          </label>
+
+          <label>
+            Drożdże
+            <select id="inlineRecipeYeast">
+              ${YEASTS.map(x => `<option value="${esc(x)}">${esc(displayName(x))}</option>`).join("")}
+            </select>
+          </label>
+
+          <label>
+            Woda
+            <select id="inlineRecipeWater">
+              ${WATERS.map(x => `<option value="${esc(x)}">${esc(displayName(x))}</option>`).join("")}
+            </select>
+          </label>
+
+          <label>
+            Program
+            <select id="inlineRecipeProgram">
+              ${PROGRAMS.map(x => `<option value="${x}">P${x}</option>`).join("")}
+            </select>
+          </label>
+
+          <label>
+            Wynik w litrach
+            <input id="inlineRecipeLiters" type="text" inputmode="decimal" placeholder="np. 4,18" required>
+          </label>
+
+          <label>
+            Uwagi
+            <textarea id="inlineRecipeNotes" rows="3" maxlength="250" placeholder="opcjonalnie"></textarea>
+          </label>
+
+          <div id="inlineRecipeInfo" class="submitInfo"></div>
+
+          <button type="submit" class="sendBtn">
+            Wyślij do weryfikacji
+          </button>
+
+          <div id="inlineRecipeStatus" class="submitStatus"></div>
+        </form>
+      </div>
+    `;
   }
 
 
@@ -830,6 +902,115 @@ function displayName(name) {
     .querySelector(".body")
     .innerHTML = body;
 
+  if (currentTab === "submit") {
+    const form = optPanel.querySelector("#inlineRecipeForm");
+
+    if (form) {
+      const submissionKey = () =>
+        key(
+          optPanel.querySelector("#inlineRecipeBase").value,
+          optPanel.querySelector("#inlineRecipeYeast").value,
+          optPanel.querySelector("#inlineRecipeWater").value,
+          Number(optPanel.querySelector("#inlineRecipeProgram").value)
+        );
+
+      const updateInfo = () => {
+        const known = currentKnownValue(submissionKey());
+        const info = optPanel.querySelector("#inlineRecipeInfo");
+
+        info.innerHTML =
+          known === null
+            ? "🔬 Ta receptura jest obecnie <b>nieodkryta</b>."
+            : `ℹ️ Aktualny znany wynik: <b>${fmt(known)} l</b>. Możesz wysłać korektę.`;
+      };
+
+      [
+        "#inlineRecipeBase",
+        "#inlineRecipeYeast",
+        "#inlineRecipeWater",
+        "#inlineRecipeProgram"
+      ].forEach(selector => {
+        optPanel
+          .querySelector(selector)
+          .addEventListener("change", updateInfo);
+      });
+
+      form.addEventListener("submit", event => {
+        event.preventDefault();
+
+        const status =
+          optPanel.querySelector("#inlineRecipeStatus");
+
+        const nick =
+          optPanel.querySelector("#inlineRecipeNick").value.trim();
+
+        const litry =
+          Number(
+            optPanel.querySelector("#inlineRecipeLiters")
+              .value.trim()
+              .replace(/\s+/g,"")
+              .replace(",",".")
+          );
+
+        if (!nick) {
+          status.textContent = "Podaj nick.";
+          return;
+        }
+
+        if (!Number.isFinite(litry) || litry <= 0) {
+          status.textContent = "Podaj poprawny wynik.";
+          return;
+        }
+
+        localStorage.setItem(NICK_KEY,nick);
+
+        status.textContent = "Wysyłanie...";
+
+        GM_xmlhttpRequest({
+          method:"POST",
+          url:BACKEND_URL,
+          headers:{
+            "Content-Type":"text/plain;charset=UTF-8"
+          },
+          data:JSON.stringify({
+            nick,
+            baza:optPanel.querySelector("#inlineRecipeBase").value,
+            drozdze:optPanel.querySelector("#inlineRecipeYeast").value,
+            woda:optPanel.querySelector("#inlineRecipeWater").value,
+            program:Number(optPanel.querySelector("#inlineRecipeProgram").value),
+            litry,
+            uwagi:optPanel.querySelector("#inlineRecipeNotes").value.trim()
+          }),
+          onload:response => {
+            try {
+              const result = JSON.parse(response.responseText);
+
+              if (result.ok) {
+                status.textContent =
+                  "✅ Zgłoszenie wysłane do weryfikacji.";
+                optPanel.querySelector("#inlineRecipeLiters").value = "";
+                optPanel.querySelector("#inlineRecipeNotes").value = "";
+              } else {
+                status.textContent =
+                  "⚠️ " + (result.error || "Nie udało się wysłać.");
+              }
+            } catch {
+              status.textContent =
+                "⚠️ Nieprawidłowa odpowiedź serwera.";
+            }
+          },
+          onerror:() => {
+            status.textContent =
+              "⚠️ Błąd połączenia z serwerem.";
+          }
+        });
+      });
+
+      updateInfo();
+    }
+  }
+
+
   if (currentTab === "unknown") {
     const ranked = unknown
       .map(r => ({...r,trioMax:maxForTrio(r)}))
@@ -886,10 +1067,6 @@ function displayName(name) {
     root.appendChild(optPanel);
     optPanel.querySelector(".close").onclick=()=>{optPanel.remove();optPanel=null;};
     optPanel.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
-      if (t.dataset.tab === "submit") {
-        openSubmit();
-        return;
-      }
       currentTab=t.dataset.tab;
       renderOptimizer();
     });
@@ -1725,7 +1902,7 @@ function renderGangSection(section="payments") {
     (Number(value) || 0).toLocaleString("pl-PL", {maximumFractionDigits:2}) + " zł";
 
   const nav = `
-    <div class="tabs" style="margin-bottom:10px">
+    <div class="tabs" style="margin-bottom:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">
       <div class="tab ${section === "payments" ? "active" : ""}" data-gang-tab="payments">Wpłaty</div>
       <div class="tab ${section === "company" ? "active" : ""}" data-gang-tab="company">Spółka</div>
       <div class="tab ${section === "goals" ? "active" : ""}" data-gang-tab="goals">Cele</div>
@@ -1777,11 +1954,56 @@ function renderGangSection(section="payments") {
   }
 
   if (section === "goals") {
-    body = `<div class="card"><b>🎯 Cele gangu</b><div class="muted" style="margin-top:6px">Miejsce na wspólne cele, inwestycje i zadania. Zarządzanie celami dodamy w kolejnym etapie.</div></div>`;
+    const goal = payload.goal;
+
+    if (!goal) {
+      body = `<div class="card"><b>🎯 Cele gangu</b><div class="muted" style="margin-top:6px">Administrator nie ustawił jeszcze aktywnego celu.</div></div>`;
+    } else {
+      const current = Math.max(0,Number(goal.current) || 0);
+      const target = Math.max(0,Number(goal.target) || 0);
+      const percent = target > 0
+        ? Math.max(0,Math.min(100,current/target*100))
+        : 0;
+      const unit = String(goal.unit || "").trim();
+      const suffix = unit ? " " + esc(unit) : "";
+
+      body = `
+        <div class="card">
+          <b>🎯 ${esc(goal.title)}</b>
+          <div style="margin-top:7px">
+            <b>${current.toLocaleString("pl-PL")}${suffix}</b>
+            / ${target.toLocaleString("pl-PL")}${suffix}
+          </div>
+          <div class="bar"><div style="width:${percent}%"></div></div>
+          <div class="muted">
+            ${percent.toFixed(1).replace(".",",")}% ukończone
+            ${current < target
+              ? ` · brakuje ${(target-current).toLocaleString("pl-PL")}${suffix}`
+              : " · ✅ cel osiągnięty"}
+          </div>
+        </div>`;
+    }
   }
 
   if (section === "announcements") {
-    body = `<div class="card"><b>📢 Ogłoszenia</b><div class="muted" style="margin-top:6px">Tutaj będą przypięte komunikaty widoczne wyłącznie dla członków gangu.</div></div>`;
+    const announcements =
+      Array.isArray(payload.announcements)
+        ? payload.announcements
+        : [];
+
+    body = announcements.length
+      ? announcements.map(item => `
+          <div class="card" style="${item.important ? "background:#fff2c7;border-color:#c3923f;" : ""}">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:5px">
+              <b>${item.important ? "📌 Ważne" : "📢 Ogłoszenie"}</b>
+              <span class="muted">
+                ${new Date(Number(item.createdAt)).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}
+              </span>
+            </div>
+            <div style="white-space:pre-wrap">${esc(item.text)}</div>
+          </div>
+        `).join("")
+      : `<div class="card"><b>📢 Ogłoszenia</b><div class="muted" style="margin-top:6px">Brak aktywnych ogłoszeń.</div></div>`;
   }
 
   wrap.innerHTML = nav + body;
@@ -2332,6 +2554,18 @@ function renderAdminHome() {
         data-admin-tab="players">
         👥 Gracze
       </button>
+
+      <button data-admin-tab="reservations">
+        🔒 Rezerwacje
+      </button>
+
+      <button data-admin-tab="goal">
+        🎯 Cel
+      </button>
+
+      <button data-admin-tab="announcements">
+        📢 Ogłoszenia
+      </button>
     </div>
 
     <div id="adminSection"></div>
@@ -2433,7 +2667,292 @@ function loadAdminTab(tab) {
     return;
   }
 
+  if (tab === "reservations") {
+    renderAdminReservations();
+    return;
+  }
+
+  if (tab === "goal") {
+    renderAdminGoal();
+    return;
+  }
+
+  if (tab === "announcements") {
+    renderAdminAnnouncements();
+    return;
+  }
+
   renderAdminPayments();
+}
+
+async function adminGangToolsData() {
+  return gmJsonRequest(
+    "GET",
+    BACKEND_URL +
+      "?action=adminGangTools" +
+      "&token=" +
+      encodeURIComponent(adminToken()) +
+      "&_=" +
+      Date.now()
+  );
+}
+
+async function adminGangPost(action,data={}) {
+  return gmJsonRequest(
+    "POST",
+    BACKEND_URL,
+    {
+      action,
+      token:adminToken(),
+      ...data
+    }
+  );
+}
+
+function adminRecipeText(item) {
+  return [
+    item.baza,
+    item.drozdze,
+    item.woda,
+    "P" + (Number(item.program) || 0)
+  ].filter(Boolean).join(" · ");
+}
+
+async function renderAdminReservations() {
+  const section = adminQ("#adminSection");
+  if (!section) return;
+
+  section.innerHTML =
+    `<div class="adminStatus">Pobieranie rezerwacji...</div>`;
+
+  try {
+    const payload = await adminGangToolsData();
+
+    if (!payload || !payload.ok) {
+      throw new Error(payload && payload.error || "Nie udało się pobrać rezerwacji.");
+    }
+
+    const list = Array.isArray(payload.reservations) ? payload.reservations : [];
+
+    section.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px">
+        <b>🔒 Aktywne rezerwacje (${list.length})</b>
+        <button id="adminClearAllReservations">🧹 Wyczyść wszystkie</button>
+      </div>
+
+      ${list.length
+        ? list.map(item => `
+            <div class="card">
+              <b>${esc(item.nick)}</b>
+              <div class="muted">${esc(adminRecipeText(item))}</div>
+              <div class="muted">
+                Do ${new Date(Number(item.expiresAt)).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"})}
+              </div>
+              <button
+                data-clear-reservation="${esc(item.recipeKey)}"
+                style="margin-top:6px">
+                🗑 Zwolnij
+              </button>
+            </div>
+          `).join("")
+        : `<div class="muted">Brak aktywnych rezerwacji.</div>`}
+    `;
+
+    const clearAll = adminQ("#adminClearAllReservations");
+    if (clearAll) {
+      clearAll.onclick = async () => {
+        if (!confirm("Wyczyścić WSZYSTKIE aktywne rezerwacje?")) return;
+        await adminGangPost("adminClearAllReservations");
+        renderAdminReservations();
+        fetchApproved();
+      };
+    }
+
+    section
+      .querySelectorAll("[data-clear-reservation]")
+      .forEach(button => {
+        button.onclick = async () => {
+          if (!confirm("Usunąć tę rezerwację?")) return;
+          await adminGangPost(
+            "adminClearReservation",
+            {recipeKey:button.dataset.clearReservation}
+          );
+          renderAdminReservations();
+          fetchApproved();
+        };
+      });
+
+  } catch (err) {
+    section.innerHTML =
+      `<div class="adminStatus">${esc(err.message || "Błąd.")}</div>`;
+  }
+}
+
+async function renderAdminGoal() {
+  const section = adminQ("#adminSection");
+  if (!section) return;
+
+  const payload = await adminGangToolsData();
+  const goal = payload && payload.goal;
+
+  section.innerHTML = `
+    <div class="card">
+      <b>🎯 Cel gangu</b>
+
+      <form id="adminGoalForm" class="form" style="margin-top:8px">
+        <label>
+          Tytuł
+          <input id="adminGoalTitle" type="text" maxlength="120" value="${esc(goal ? goal.title : "")}" placeholder="np. Budowa spółki">
+        </label>
+
+        <label>
+          Aktualnie
+          <input id="adminGoalCurrent" type="text" inputmode="decimal" value="${goal ? esc(String(goal.current)) : ""}">
+        </label>
+
+        <label>
+          Cel
+          <input id="adminGoalTarget" type="text" inputmode="decimal" value="${goal ? esc(String(goal.target)) : ""}">
+        </label>
+
+        <label>
+          Jednostka
+          <input id="adminGoalUnit" type="text" maxlength="20" value="${esc(goal ? goal.unit || "" : "")}" placeholder="np. zł">
+        </label>
+
+        <button type="submit" class="sendBtn">💾 Zapisz cel</button>
+        <button id="adminGoalDelete" type="button">🗑 Usuń cel</button>
+
+        <div id="adminGoalStatus" class="submitStatus"></div>
+      </form>
+    </div>
+  `;
+
+  adminQ("#adminGoalForm").onsubmit = async event => {
+    event.preventDefault();
+
+    const current = Number(
+      adminQ("#adminGoalCurrent").value.replace(/\s+/g,"").replace(",",".")
+    );
+    const target = Number(
+      adminQ("#adminGoalTarget").value.replace(/\s+/g,"").replace(",",".")
+    );
+
+    const result = await adminGangPost(
+      "adminSaveGoal",
+      {
+        title:adminQ("#adminGoalTitle").value.trim(),
+        current,
+        target,
+        unit:adminQ("#adminGoalUnit").value.trim()
+      }
+    );
+
+    adminQ("#adminGoalStatus").textContent =
+      result && result.ok
+        ? "✅ Cel zapisany."
+        : "⚠️ " + (result && result.error || "Nie udało się zapisać.");
+  };
+
+  adminQ("#adminGoalDelete").onclick = async () => {
+    if (!confirm("Usunąć cel gangu?")) return;
+    await adminGangPost("adminDeleteGoal");
+    renderAdminGoal();
+  };
+}
+
+async function renderAdminAnnouncements() {
+  const section = adminQ("#adminSection");
+  if (!section) return;
+
+  const payload = await adminGangToolsData();
+  const list = Array.isArray(payload && payload.announcements)
+    ? payload.announcements
+    : [];
+
+  section.innerHTML = `
+    <div class="card">
+      <b>📢 Dodaj ogłoszenie</b>
+
+      <form id="adminAnnouncementForm" class="form" style="margin-top:8px">
+        <textarea id="adminAnnouncementText" rows="4" maxlength="1200" placeholder="Treść ogłoszenia..."></textarea>
+
+        <label style="display:flex;gap:6px;align-items:center">
+          <input id="adminAnnouncementImportant" type="checkbox" style="width:auto">
+          📌 Ważne
+        </label>
+
+        <button type="submit" class="sendBtn">➕ Dodaj ogłoszenie</button>
+      </form>
+    </div>
+
+    ${list.length
+      ? list.map(item => `
+          <div class="card" style="${item.important ? "background:#fff2c7;border-color:#c3923f" : ""}">
+            <b>${item.important ? "📌 Ważne" : "📢 Ogłoszenie"}</b>
+            <div class="muted">
+              ${new Date(Number(item.createdAt)).toLocaleString("pl-PL")}
+            </div>
+            <div style="white-space:pre-wrap;margin:7px 0">${esc(item.text)}</div>
+
+            <button
+              data-toggle-announcement="${esc(item.id)}"
+              data-important="${item.important ? "1" : "0"}">
+              ${item.important ? "📌 Odepnij" : "📌 Oznacz Ważne"}
+            </button>
+
+            <button data-delete-announcement="${esc(item.id)}">
+              🗑 Usuń
+            </button>
+          </div>
+        `).join("")
+      : `<div class="muted">Brak ogłoszeń.</div>`}
+  `;
+
+  adminQ("#adminAnnouncementForm").onsubmit = async event => {
+    event.preventDefault();
+
+    const text = adminQ("#adminAnnouncementText").value.trim();
+    if (!text) return;
+
+    await adminGangPost(
+      "adminAddAnnouncement",
+      {
+        text,
+        important:adminQ("#adminAnnouncementImportant").checked
+      }
+    );
+
+    renderAdminAnnouncements();
+  };
+
+  section
+    .querySelectorAll("[data-toggle-announcement]")
+    .forEach(button => {
+      button.onclick = async () => {
+        await adminGangPost(
+          "adminSetAnnouncementImportant",
+          {
+            id:button.dataset.toggleAnnouncement,
+            important:button.dataset.important !== "1"
+          }
+        );
+        renderAdminAnnouncements();
+      };
+    });
+
+  section
+    .querySelectorAll("[data-delete-announcement]")
+    .forEach(button => {
+      button.onclick = async () => {
+        if (!confirm("Usunąć to ogłoszenie?")) return;
+        await adminGangPost(
+          "adminDeleteAnnouncement",
+          {id:button.dataset.deleteAnnouncement}
+        );
+        renderAdminAnnouncements();
+      };
+    });
 }
 
 async function renderAdminSubmissions() {

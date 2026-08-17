@@ -22,6 +22,152 @@
     .company-stat small{display:block;color:#786a56;margin-bottom:3px}
     .company-list{display:grid;gap:6px}
     .company-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px;border:1px solid #e4d8c5;border-radius:8px;background:#fff}
+  
+    .module-utility{
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      margin-top:10px;
+      padding:7px 12px;
+      border:1px solid rgba(122,91,55,.26);
+      border-radius:999px;
+      background:linear-gradient(#fffaf0,#efe0c7);
+      color:#4a3826;
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 2px 7px rgba(70,45,20,.10);
+      transition:transform .12s ease,box-shadow .12s ease,background .12s ease;
+    }
+    .module-utility:hover{
+      transform:translateY(-1px);
+      box-shadow:0 4px 10px rgba(70,45,20,.14);
+      background:linear-gradient(#fffdf8,#ead7b8);
+    }
+    .module-utility:active{transform:translateY(0)}
+    #gang-tabs{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(105px,1fr));
+      gap:7px;
+    }
+    #gang-tabs[hidden]{display:none!important}
+    #gang-tabs button{
+      min-height:44px;
+      padding:8px 7px;
+      line-height:1.15;
+      touch-action:manipulation;
+    }
+    .gang-goal-card{
+      padding:14px;
+      border:1px solid #d8c7aa;
+      border-radius:11px;
+      background:#fffaf1;
+    }
+    .gang-progress-track{
+      height:16px;
+      border-radius:999px;
+      overflow:hidden;
+      background:#e5d8c4;
+      box-shadow:inset 0 1px 3px rgba(60,40,20,.12);
+      margin:10px 0 6px;
+    }
+    .gang-progress-fill{
+      height:100%;
+      min-width:0;
+      background:linear-gradient(90deg,#92713f,#b89050);
+      border-radius:999px;
+      transition:width .25s ease;
+    }
+    .announcement-card{
+      padding:12px;
+      border:1px solid #ded0ba;
+      border-radius:10px;
+      background:#fffdf8;
+      margin-bottom:8px;
+    }
+    .announcement-card.important{
+      border-color:#c39746;
+      background:#fff6d9;
+      box-shadow:0 2px 8px rgba(150,105,25,.10);
+    }
+    .announcement-meta{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:center;
+      margin-bottom:6px;
+      font-size:11px;
+      color:#7a6a55;
+    }
+    .admin-gang-tools{
+      margin-top:18px;
+      padding-top:14px;
+      border-top:1px solid #d8c7aa;
+    }
+    .admin-tool-section{
+      padding:12px;
+      margin-bottom:10px;
+      border:1px solid #ddcfb7;
+      border-radius:9px;
+      background:#fffaf2;
+    }
+    .admin-tool-head{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+    .admin-mini-form{
+      display:grid;
+      gap:8px;
+      margin-top:8px;
+    }
+    .admin-mini-form label>span{
+      display:block;
+      font-weight:700;
+      margin-bottom:4px;
+      font-size:12px;
+    }
+    .admin-mini-form input,
+    .admin-mini-form textarea{
+      width:100%;
+      box-sizing:border-box;
+    }
+    .admin-form-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+      gap:8px;
+    }
+    .admin-actions-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .important-check{
+      display:flex!important;
+      align-items:center;
+      gap:7px;
+      font-weight:700;
+    }
+    .important-check input{width:auto!important}
+    .reservation-admin-row{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:8px;
+      align-items:center;
+      padding:8px;
+      margin-top:6px;
+      border:1px solid #e0d3be;
+      border-radius:8px;
+      background:#fff;
+    }
+    .danger-soft{
+      border-color:#d6a5a5!important;
+      background:#fff0f0!important;
+    }
+
   </style>
 </head>
 <body>
@@ -40,7 +186,7 @@
   <section class="hero">
     <h1>MenelWars Tools</h1>
     <p>Destylarnia, prywatne narzędzia gangu i szybka ściąga mapy — wszystko w jednym miejscu.</p>
-    <button id="pc-utility-btn" type="button" class="module-utility">🖥 Instalacja na PC</button>
+    <button id="pc-utility-btn" type="button" class="module-utility">💻 <span>Zainstaluj na PC</span></button>
   </section>
 
   <nav class="tabs main-tabs" id="main-tabs">
@@ -203,9 +349,8 @@
     <div class="panel">
       <div class="panel-head">🎯 Cele gangu</div>
       <div class="panel-body">
-        <div class="module-placeholder">
-          <strong>Tablica wspólnych celów</strong>
-          <p class="muted">Miejsce na cele finansowe, inwestycje spółki, badania receptur i inne zadania gangu. Zarządzanie celami dodamy w kolejnym etapie.</p>
+        <div id="gang-goal-content">
+          <div class="muted">Pobieranie celu gangu...</div>
         </div>
       </div>
     </div>
@@ -215,9 +360,8 @@
     <div class="panel">
       <div class="panel-head">📢 Ogłoszenia</div>
       <div class="panel-body">
-        <div class="module-placeholder">
-          <strong>Tablica ogłoszeń gangu</strong>
-          <p class="muted">Tutaj będą przypięte informacje widoczne wyłącznie po odblokowaniu modułu Gang. Dodawanie ogłoszeń przez Admina będzie kolejną funkcją.</p>
+        <div id="gang-announcements-content">
+          <div class="muted">Pobieranie ogłoszeń...</div>
         </div>
       </div>
     </div>
@@ -367,6 +511,80 @@
         </div>
 
         <div id="admin-submissions"></div>
+
+        <div class="admin-gang-tools">
+
+          <div class="admin-tool-section">
+            <div class="admin-tool-head">
+              <strong>🔒 Rezerwacje receptur</strong>
+              <button id="admin-clear-all-reservations" type="button" class="danger-soft">
+                🧹 Wyczyść wszystkie
+              </button>
+            </div>
+            <div id="admin-reservations-list">
+              <div class="muted">Ładowanie rezerwacji...</div>
+            </div>
+          </div>
+
+          <div class="admin-tool-section">
+            <strong>🎯 Cel gangu</strong>
+            <form id="admin-goal-form" class="admin-mini-form">
+              <label>
+                <span>Tytuł</span>
+                <input id="admin-goal-title" type="text" maxlength="120" placeholder="np. Budowa spółki">
+              </label>
+
+              <div class="admin-form-grid">
+                <label>
+                  <span>Aktualnie</span>
+                  <input id="admin-goal-current" type="text" inputmode="decimal" placeholder="420000">
+                </label>
+
+                <label>
+                  <span>Cel</span>
+                  <input id="admin-goal-target" type="text" inputmode="decimal" placeholder="1000000">
+                </label>
+
+                <label>
+                  <span>Jednostka</span>
+                  <input id="admin-goal-unit" type="text" maxlength="20" placeholder="np. zł">
+                </label>
+              </div>
+
+              <div class="admin-actions-row">
+                <button class="primary-btn" type="submit">💾 Zapisz cel</button>
+                <button id="admin-goal-delete" type="button">🗑 Usuń cel</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="admin-tool-section">
+            <strong>📢 Ogłoszenia</strong>
+
+            <form id="admin-announcement-form" class="admin-mini-form">
+              <label>
+                <span>Treść ogłoszenia</span>
+                <textarea id="admin-announcement-text" rows="4" maxlength="1200" placeholder="Wpisz komunikat dla gangu..."></textarea>
+              </label>
+
+              <label class="important-check">
+                <input id="admin-announcement-important" type="checkbox">
+                <span>📌 Oznacz jako Ważne</span>
+              </label>
+
+              <button class="primary-btn" type="submit">
+                ➕ Dodaj ogłoszenie
+              </button>
+            </form>
+
+            <div id="admin-announcements-list" style="margin-top:10px">
+              <div class="muted">Ładowanie ogłoszeń...</div>
+            </div>
+          </div>
+
+          <div id="admin-gang-tools-status" class="submit-status"></div>
+
+        </div>
 
         <div style="
   margin-top:18px;
