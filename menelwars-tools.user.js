@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.15.0
+// @version      0.16.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -418,7 +418,28 @@ function displayName(name) {
   min-width:58px;
 }
 
+    .logoutSoft{
+      border:1px solid #bfae92!important;
+      border-radius:8px!important;
+      background:#f3ead9!important;
+      color:#5c4933!important;
+      font-weight:700!important;
+    }
+
+
     @media (max-width:600px){
+      #optPanel .tabs{
+        display:grid!important;
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+        gap:4px!important;
+        overflow:visible!important;
+      }
+
+      #optPanel .tab{
+        min-width:0!important;
+        width:auto!important;
+      }
+
       #bar{
         gap:4px;
         padding:5px 6px;
@@ -2023,7 +2044,7 @@ function renderGangSection(section="payments") {
         </div>
         <div class="paymentsActions">
           <button id="paymentsRefresh">↻ Odśwież</button>
-          <button id="paymentsLogout">🔒 Wyloguj</button>
+          <button id="paymentsLogout" class="logoutSoft">↪ Wyloguj</button>
         </div>
       </div>
       <div id="paymentsStatus" class="paymentsStatus"></div>

@@ -1737,6 +1737,16 @@ function renderAdminGangTools(payload) {
   const reservationsBox =
     el("admin-reservations-list");
 
+  const reservationsAccordion =
+    el("admin-section-reservations");
+
+  if (
+    reservationsAccordion &&
+    reservations.length > 0
+  ) {
+    reservationsAccordion.open = true;
+  }
+
   if (reservationsBox) {
     reservationsBox.innerHTML =
       reservations.length

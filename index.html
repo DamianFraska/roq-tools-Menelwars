@@ -551,6 +551,106 @@
       }
     }
 
+  
+    .logout-btn{
+      border:1px solid #bfae92;
+      border-radius:9px;
+      background:#f3ead9;
+      color:#5c4933;
+      padding:9px 11px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 1px 3px rgba(70,45,20,.07);
+    }
+    .logout-btn:hover{
+      background:#eadcc4;
+      border-color:#ad9776;
+    }
+
+    .admin-accordion{
+      margin-bottom:10px;
+      border:1px solid #ddcfb7;
+      border-radius:10px;
+      background:#fffaf2;
+      overflow:hidden;
+    }
+    .admin-accordion>summary{
+      list-style:none;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:11px 12px;
+      font-weight:800;
+      cursor:pointer;
+      user-select:none;
+      background:#f5ead7;
+    }
+    .admin-accordion>summary::-webkit-details-marker{display:none}
+    .admin-accordion[open]>summary{
+      border-bottom:1px solid #e0d2bc;
+      background:#efe0c7;
+    }
+    .accordion-chevron{
+      font-size:17px;
+      line-height:1;
+      transition:transform .15s ease;
+    }
+    .admin-accordion[open] .accordion-chevron{
+      transform:rotate(180deg);
+    }
+    .admin-accordion-body{
+      padding:10px;
+    }
+
+    @media (max-width:600px){
+      .hero{
+        padding:10px!important;
+        margin-bottom:9px!important;
+      }
+      .hero h1{
+        font-size:17px!important;
+        margin-bottom:3px!important;
+      }
+      .hero p{
+        font-size:11px!important;
+        line-height:1.25!important;
+      }
+      .module-utility{
+        margin-top:6px!important;
+        padding:5px 9px!important;
+      }
+
+      #distillery-tabs{
+        display:grid!important;
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+        gap:5px!important;
+        overflow:visible!important;
+      }
+      #distillery-tabs button{
+        width:100%!important;
+        min-width:0!important;
+        flex:none!important;
+      }
+
+      .logout-btn{
+        padding:7px 9px!important;
+        font-size:10.5px!important;
+      }
+
+      .admin-accordion{
+        margin-bottom:7px!important;
+        border-radius:8px!important;
+      }
+      .admin-accordion>summary{
+        padding:9px 10px!important;
+        font-size:12px!important;
+      }
+      .admin-accordion-body{
+        padding:8px!important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -706,7 +806,7 @@
 
             <div style="display:flex;gap:8px">
               <button id="payments-refresh" class="primary-btn" type="button">↻ Odśwież</button>
-              <button id="payments-logout" type="button">🔒 Wyloguj Gang</button>
+              <button id="payments-logout" class="logout-btn" type="button">↪ Wyloguj Gang</button>
             </div>
           </div>
 
@@ -885,8 +985,9 @@
 
             <button
               id="admin-logout"
+              class="logout-btn"
               type="button">
-              🔒 Wyloguj
+              ↪ Wyloguj
             </button>
 
           </div>
@@ -897,19 +998,30 @@
 
         <div class="admin-gang-tools">
 
-          <div class="admin-tool-section">
-            <div class="admin-tool-head">
-              <strong>🔒 Rezerwacje receptur</strong>
-              <button id="admin-clear-all-reservations" type="button" class="danger-soft">
-                🧹 Wyczyść wszystkie
-              </button>
+          <details id="admin-section-reservations" class="admin-accordion" open>
+            <summary>
+              <span>🔒 Rezerwacje receptur</span>
+              <span class="accordion-chevron">⌄</span>
+            </summary>
+            <div class="admin-accordion-body">
+              <div class="admin-tool-head">
+                <span class="muted">Aktywne rezerwacje wygasają automatycznie po 12 godzinach.</span>
+                <button id="admin-clear-all-reservations" type="button" class="danger-soft">
+                  🧹 Wyczyść wszystkie
+                </button>
+              </div>
+              <div id="admin-reservations-list">
+                <div class="muted">Ładowanie rezerwacji...</div>
+              </div>
             </div>
-            <div id="admin-reservations-list">
-              <div class="muted">Ładowanie rezerwacji...</div>
-            </div>
-          </div>
+          </details>
 
-          <div class="admin-tool-section admin-payments-section">
+          <details id="admin-section-payments" class="admin-accordion admin-payments-section">
+            <summary>
+              <span>💰 Zarządzanie wpłatami i spółką</span>
+              <span class="accordion-chevron">⌄</span>
+            </summary>
+            <div class="admin-accordion-body">
 
   <div style="
     display:flex;
@@ -920,9 +1032,7 @@
     margin-bottom:10px;
   ">
 
-    <strong>
-      💰 Zarządzanie wpłatami
-    </strong>
+    <span class="muted">Snapshoty, raport dzienny, dochód spółki i import rankingu.</span>
 
     <button
       id="admin-payments-refresh"
@@ -1063,11 +1173,15 @@
 
 </div>
 
-          </div>
+                      </div>
+          </details>
 
-
-          <div class="admin-tool-section">
-            <strong>🎯 Cel gangu</strong>
+<details id="admin-section-goal" class="admin-accordion">
+            <summary>
+              <span>🎯 Cel gangu</span>
+              <span class="accordion-chevron">⌄</span>
+            </summary>
+            <div class="admin-accordion-body">
             <form id="admin-goal-form" class="admin-mini-form">
               <label>
                 <span>Tytuł</span>
@@ -1098,10 +1212,15 @@
 
               <div id="admin-goal-status" class="submit-status"></div>
             </form>
-          </div>
+                      </div>
+          </details>
 
-          <div class="admin-tool-section">
-            <strong>📢 Ogłoszenia</strong>
+<details id="admin-section-announcements" class="admin-accordion">
+            <summary>
+              <span>📢 Ogłoszenia</span>
+              <span class="accordion-chevron">⌄</span>
+            </summary>
+            <div class="admin-accordion-body">
 
             <form id="admin-announcement-form" class="admin-mini-form">
               <label>
@@ -1122,19 +1241,19 @@
             <div id="admin-announcements-list" style="margin-top:10px">
               <div class="muted">Ładowanie ogłoszeń...</div>
             </div>
-          </div>
+                      </div>
+          </details>
 
           <div id="admin-gang-tools-status" class="submit-status"></div>
 
         </div>
 
-                <div class="panel" style="margin-top:12px">
-
-          <div class="panel-head">
-            👥 Gracze
-          </div>
-
-          <div class="panel-body">
+                <details id="admin-section-players" class="admin-accordion admin-players-accordion">
+          <summary>
+            <span>👥 Gracze</span>
+            <span class="accordion-chevron">⌄</span>
+          </summary>
+          <div class="admin-accordion-body">
 
             <form
               id="admin-player-add-form"
@@ -1169,10 +1288,8 @@
             ></div>
 
             <div id="admin-players-list"></div>
-
           </div>
-
-        </div>
+        </details>
 
         <div
           id="admin-status"
