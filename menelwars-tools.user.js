@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.12.0
+// @version      0.13.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -1730,99 +1730,30 @@ function paymentShare(value) {
 
 
 function paymentRow(player) {
+  const saldo = Number(player.saldo) || 0;
 
-  const saldo =
-    Number(player.saldo);
-
-  const contribution =
-    Math.max(
-      0,
-      Number(player.contribution) || 0
-    );
-
-  const share =
-    contribution >= COMPANY_MIN_CONTRIBUTION
-      ? Math.max(
-          0,
-          Number(player.share) || 0
-        )
-      : 0;
-
-  let cls = "ok";
-  let label = "✅ Rozliczony";
-  let amount = "0";
+  let status = "🟢 Na bieżąco";
+  let bg = "#f5f7f1";
+  let border = "#ccd6c5";
+  let value = "0 zł";
 
   if (saldo < 0) {
-
-    cls = "debt";
-    label = "🔴 Dług";
-
-    amount =
-      paymentAmount(
-        Math.abs(saldo)
-      );
-  }
-
-  if (saldo > 0) {
-
-    cls = "over";
-    label = "🏢 Wkład";
-
-    amount =
-      paymentAmount(saldo);
+    status = "🔴 Dług";
+    bg = "#fff1f1";
+    border = "#e3b2b2";
+    value = "-" + adminMoney(Math.abs(saldo)) + " zł";
+  } else if (saldo > 0) {
+    status = "🏢 Wkład w firmę";
+    bg = "#eef8f0";
+    border = "#b6d9bd";
+    value = "+" + adminMoney(saldo) + " zł";
   }
 
   return `
-    <div class="paymentRow ${cls}">
-      <div class="paymentNick">
-        <div>
-          ${esc(player.nick)}
-        </div>
-
-        <div
-          class="muted"
-          style="
-            margin-top:2px;
-            font-size:10px;
-            font-weight:400;
-            display:flex;
-            gap:7px;
-            flex-wrap:wrap;
-          "
-        >
-          <span>
-            🏢 Wkład w firmę:
-            <b>
-              ${paymentAmount(
-                contribution
-              )} zł
-            </b>
-          </span>
-
-          <span>
-            Udział:
-            <b>
-              ${paymentShare(share)}
-            </b>
-          </span>
-
-          <span>
-            💰 Pensja:
-            <b>
-              ${paymentAmount(
-                Number(player.salary) || 0
-              )} zł
-            </b>
-          </span>
-        </div>
-      </div>
-
-      <div class="paymentLabel">
-        ${label}
-      </div>
-
-      <div class="paymentAmount">
-        ${amount}
+    <div class="card" style="background:${bg};border-color:${border}">
+      <b>${esc(player.nick)}</b>
+      <div class="muted" style="margin-top:3px">
+        ${status}: <b>${value}</b>
       </div>
     </div>
   `;
@@ -1943,10 +1874,13 @@ function renderGangSection(section="payments") {
       <br><b>Udziały i przewidywane pensje</b>
       ${eligible.length
         ? eligible.map(p => `
-            <div class="card">
+            <div class="card" style="background:#eef8f0;border-color:#b6d9bd">
               <b>${esc(p.nick)}</b>
-              <span style="float:right"><b>${(Number(p.share || 0)*100).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})}%</b></span>
-              <div class="muted">Wkład: ${money(p.contribution)} · Pensja: ${money(p.salary)}</div>
+              <div class="muted" style="margin-top:3px">
+                🏢 Wkład: <b>${money(p.contribution)}</b>
+                · Udział: <b>${(Number(p.share || 0)*100).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})}%</b>
+                · 💰 Pensja: <b>${money(p.salary)}</b>
+              </div>
             </div>
           `).join("")
         : `<div class="muted">Nikt nie osiągnął jeszcze progu 30 000 zł wkładu.</div>`}
@@ -2821,7 +2755,7 @@ async function renderAdminGoal() {
         </label>
 
         <button type="submit" class="sendBtn">💾 Zapisz cel</button>
-        <button id="adminGoalDelete" type="button">🗑 Usuń cel</button>
+        <button id="adminGoalDelete" type="button" style="background:#fff0f0;border-color:#d9a4a4;color:#8a2f2f;font-weight:700">🗑 Usuń cel</button>
 
         <div id="adminGoalStatus" class="submitStatus"></div>
       </form>
@@ -2857,7 +2791,9 @@ async function renderAdminGoal() {
   adminQ("#adminGoalDelete").onclick = async () => {
     if (!confirm("Usunąć cel gangu?")) return;
     await adminGangPost("adminDeleteGoal");
-    renderAdminGoal();
+    await renderAdminGoal();
+    const status = adminQ("#adminGoalStatus");
+    if (status) status.textContent = "✅ Cel został usunięty.";
   };
 }
 

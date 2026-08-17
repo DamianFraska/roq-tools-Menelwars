@@ -1170,128 +1170,31 @@ const MAP_POSITIONS = {
 
   function paymentsRow(player) {
 
-  const saldo = Number(player.saldo);
-  const contribution =
-    Math.max(
-      0,
-      Number(player.contribution) || 0
-    );
+    const saldo = Number(player.saldo) || 0;
 
-  const share =
-    contribution >= COMPANY_MIN_CONTRIBUTION
-      ? Math.max(
-          0,
-          Number(player.share) || 0
-        )
-      : 0;
+    let stateClass = "zero";
+    let status = "🟢 Na bieżąco";
+    let saldoText = "0 zł";
 
-  let label = "✅ Rozliczony";
-  let bg = "#eef7ee";
-  let border = "#bad7ba";
-  let value = "0";
+    if (saldo < 0) {
+      stateClass = "debt";
+      status = "🔴 Dług";
+      saldoText = "-" + formatSaldo(Math.abs(saldo)) + " zł";
+    } else if (saldo > 0) {
+      stateClass = "credit";
+      status = "🏢 Wkład w firmę";
+      saldoText = "+" + formatSaldo(saldo) + " zł";
+    }
 
-  if (saldo < 0) {
-    label = "🔴 Dług";
-    bg = "#fff1f1";
-    border = "#e3b2b2";
-    value = formatSaldo(Math.abs(saldo));
-  }
-
-  if (saldo > 0) {
-    label = "🏢 Wkład";
-    bg = "#eef8f0";
-    border = "#b6d9bd";
-    value = formatSaldo(saldo);
-  }
-
-  return `
-    <div
-      style="
-        display:grid;
-        grid-template-columns:minmax(0,1fr) auto;
-        gap:8px;
-        align-items:center;
-        padding:7px 9px;
-        margin-bottom:4px;
-        border:1px solid ${border};
-        border-radius:7px;
-        background:${bg};
-      "
-    >
-      <div style="min-width:0">
-        <strong
-          style="
-            overflow-wrap:anywhere;
-            font-size:13px;
-          "
-        >
-          ${escapeHtml(player.nick)}
-        </strong>
-
-        <div
-          class="muted"
-          style="
-            margin-top:3px;
-            font-size:11px;
-            display:flex;
-            gap:9px;
-            flex-wrap:wrap;
-          "
-        >
-          <span>
-            🏢 Wkład w firmę:
-            <strong>
-              ${formatSaldo(contribution)} zł
-            </strong>
-          </span>
-
-          <span>
-            Udział:
-            <strong>
-              ${paymentsShare(share)}
-            </strong>
-          </span>
-
-          <span>
-            💰 Pensja:
-            <strong>
-              ${formatSaldo(
-                Number(player.salary) || 0
-              )} zł
-            </strong>
-          </span>
+    return `
+      <div class="finance-player-row ${stateClass}">
+        <div class="finance-name">${escapeHtml(player.nick)}</div>
+        <div class="finance-meta">
+          <span>${status}: <strong>${saldoText}</strong></span>
         </div>
       </div>
-
-      <div
-        style="
-          display:flex;
-          align-items:center;
-          gap:8px;
-          text-align:right;
-        "
-      >
-        <span
-          style="
-            font-size:12px;
-            font-weight:700;
-          "
-        >
-          ${label}
-        </span>
-
-        <strong
-          style="
-            font-size:13px;
-            min-width:58px;
-          "
-        >
-          ${value}
-        </strong>
-      </div>
-    </div>
-  `;
-}
+    `;
+  }
 
   function escapeHtml(value) {
     return String(value)
@@ -1342,14 +1245,12 @@ const MAP_POSITIONS = {
       <div class="company-list">
         ${eligible.length
           ? eligible.map(player => `
-              <div class="company-row">
-                <div>
-                  <b>${escapeHtml(player.nick)}</b>
-                  <div class="muted">Wkład: ${money(player.contribution)}</div>
-                </div>
-                <div style="text-align:right">
-                  <b>${(Number(player.share || 0) * 100).toLocaleString("pl-PL", {minimumFractionDigits:2,maximumFractionDigits:2})}%</b>
-                  <div class="muted">Pensja: ${money(player.salary)}</div>
+              <div class="finance-player-row credit">
+                <div class="finance-name">${escapeHtml(player.nick)}</div>
+                <div class="finance-meta">
+                  <span>🏢 Wkład: <strong>${money(player.contribution)}</strong></span>
+                  <span>Udział: <strong>${(Number(player.share || 0) * 100).toLocaleString("pl-PL", {minimumFractionDigits:2,maximumFractionDigits:2})}%</strong></span>
+                  <span>💰 Pensja: <strong>${money(player.salary)}</strong></span>
                 </div>
               </div>
             `).join("")
@@ -4171,11 +4072,11 @@ function setupAdmin() {
           await loadAdminGangTools();
           await loadPayments({background:true});
 
-          el("admin-gang-tools-status").textContent =
+          el("admin-goal-status").textContent =
             "✅ Cel gangu zapisany.";
 
         } catch (err) {
-          el("admin-gang-tools-status").textContent =
+          el("admin-goal-status").textContent =
             err.message || "Nie udało się zapisać celu.";
         }
       }
@@ -4192,11 +4093,11 @@ function setupAdmin() {
           await loadAdminGangTools();
           await loadPayments({background:true});
 
-          el("admin-gang-tools-status").textContent =
+          el("admin-goal-status").textContent =
             "✅ Cel został usunięty.";
 
         } catch (err) {
-          el("admin-gang-tools-status").textContent =
+          el("admin-goal-status").textContent =
             err.message || "Nie udało się usunąć celu.";
         }
       }
