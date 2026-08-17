@@ -90,6 +90,8 @@ const MAP_POSITIONS = {
 
   let premium = loadJson(STORAGE_KEY, {});
   let remoteApproved = loadJson(REMOTE_KEY, {});
+  let recipeReservations = {};
+  let recipeRanking = [];
 
   function backendConfigured() {
     return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(BACKEND_URL);
@@ -319,29 +321,94 @@ const MAP_POSITIONS = {
       </div>`;
   }
 
+  function recipeReservationFor(r) {
+    return recipeReservations[
+      key(r.baza,r.drozdze,r.woda,r.program)
+    ] || null;
+  }
+
+  function reservationClock(expiresAt) {
+    const date = new Date(Number(expiresAt));
+    if (!Number.isFinite(date.getTime())) return "";
+    return date.toLocaleTimeString("pl-PL", {
+      hour:"2-digit",
+      minute:"2-digit"
+    });
+  }
+
+  async function reserveUnknownRecipe(recipe) {
+    if (!backendConfigured()) {
+      window.alert("Backend nie jest skonfigurowany.");
+      return;
+    }
+
+    const savedNick = localStorage.getItem(NICK_KEY) || "";
+    const nick = window.prompt(
+      "Kto rezerwuje tę recepturę na 12 godzin?",
+      savedNick
+    );
+
+    if (nick === null) return;
+    const cleanNick = String(nick || "").trim();
+    if (!cleanNick) {
+      window.alert("Podaj nick.");
+      return;
+    }
+
+    localStorage.setItem(NICK_KEY, cleanNick);
+
+    try {
+      const result = await jsonp("reserveRecipe", {
+        nick:cleanNick,
+        baza:recipe.baza,
+        drozdze:recipe.drozdze,
+        woda:recipe.woda,
+        program:recipe.program
+      });
+
+      if (!result || !result.ok) {
+        throw new Error(
+          result && result.error
+            ? result.error
+            : "Nie udało się zarezerwować receptury."
+        );
+      }
+
+      window.alert(result.message || "Receptura zarezerwowana na 12 godzin.");
+      fetchApprovedRecipes();
+
+    } catch (err) {
+      window.alert(
+        err && err.message
+          ? err.message
+          : "Nie udało się zarezerwować receptury."
+      );
+    }
+  }
+
   function renderUnknown(data) {
 
-    const list =
-  data.unknown;
+    const list = data.unknown;
 
     el("unknown-list").innerHTML =
       list
-        .map(r => `
+        .map((r,index) => {
+          const reservation = recipeReservationFor(r);
 
-          <article class="unknown-card ${r.interesting ? "interesting" : ""}">
+          return `
+          <article
+            class="unknown-card ${r.interesting ? "interesting" : ""}"
+            data-reserve-index="${index}"
+            style="cursor:pointer"
+            title="Kliknij, aby zarezerwować recepturę na 12 godzin">
 
             <div>
-
-	<strong>
-	  ${displayName(r.baza)}
-	</strong>
-
-	<small>
-	  ${displayName(r.drozdze)} ·
-	  ${displayName(r.woda)} ·
-	  P${r.program}
-	</small>
-
+              <strong>${displayName(r.baza)}</strong>
+              <small>
+                ${displayName(r.drozdze)} ·
+                ${displayName(r.woda)} ·
+                P${r.program}
+              </small>
             </div>
 
             ${
@@ -359,14 +426,31 @@ const MAP_POSITIONS = {
                 : ""
             }
 
-          </article>
+            <div class="muted" style="margin-top:7px">
+              ${
+                reservation
+                  ? `🔒 <b>${escapeHtml(reservation.nick)}</b> robi tę recepturę · do ${reservationClock(reservation.expiresAt)}`
+                  : "🕒 Kliknij kafelek, aby zarezerwować na 12 h"
+              }
+            </div>
 
-        `)
+          </article>
+        `;
+        })
         .join("")
       ||
       `<div class="empty">
         Brak nieodkrytych receptur dla wybranych składników.
       </div>`;
+
+    el("unknown-list")
+      .querySelectorAll("[data-reserve-index]")
+      .forEach(card => {
+        card.addEventListener("click", () => {
+          const recipe = list[Number(card.dataset.reserveIndex)];
+          if (recipe) reserveUnknownRecipe(recipe);
+        });
+      });
   }
 
   function renderProgress(data) {
@@ -444,6 +528,37 @@ const MAP_POSITIONS = {
       <p class="muted">
         Zatwierdzone wyniki pobrane z serwera:
         <b>${Object.keys(remoteApproved).length}</b>
+      </p>
+
+      <h3>🏆 Ranking odkrywców</h3>
+
+      <div>
+        ${
+          recipeRanking.length
+            ? recipeRanking.slice(0,15).map((item,index) => `
+                <div style="
+                  display:flex;
+                  justify-content:space-between;
+                  gap:10px;
+                  padding:6px 8px;
+                  margin-bottom:4px;
+                  border:1px solid #e1d4bc;
+                  border-radius:7px;
+                  background:#fffdf8;
+                ">
+                  <span>
+                    <b>${index + 1}.</b>
+                    ${escapeHtml(item.nick)}
+                  </span>
+                  <b>${Number(item.count) || 0}</b>
+                </div>
+              `).join("")
+            : `<div class="empty">Brak zaakceptowanych odkryć do rankingu.</div>`
+        }
+      </div>
+
+      <p class="muted">
+        Ranking liczy unikalne receptury. Duplikaty i późniejsze korekty nie dodają kolejnego punktu.
       </p>
 
     `;
@@ -893,6 +1008,16 @@ const MAP_POSITIONS = {
 
             remoteApproved =
               payload.recipes;
+
+            recipeReservations =
+              payload.reservations && typeof payload.reservations === "object"
+                ? payload.reservations
+                : {};
+
+            recipeRanking =
+              Array.isArray(payload.ranking)
+                ? payload.ranking
+                : [];
 
             localStorage.setItem(
               REMOTE_KEY,
@@ -1602,6 +1727,28 @@ function adminSubmissionCard(item) {
         `
       : "";
 
+  const duplicateInfo = item.duplicate
+    ? `<div style="margin-top:6px;padding:6px;border-radius:6px;background:#f4efe5">
+         ♻️ Identyczny wynik jest już zatwierdzony (${formatSaldo(item.knownLiters)} l).
+       </div>`
+    : "";
+
+  const correctionInfo = item.correction
+    ? `<div style="margin-top:6px;padding:6px;border-radius:6px;background:#fff3d6">
+         ⚠️ Znany wynik: <b>${formatSaldo(item.knownLiters)} l</b> · nowe zgłoszenie: <b>${formatSaldo(item.litry)} l</b>.
+       </div>`
+    : "";
+
+  const approveAction = item.duplicate
+    ? "DUPLIKAT"
+    : "ZATWIERDZONE";
+
+  const approveLabel = item.duplicate
+    ? "♻️ Oznacz duplikat"
+    : item.correction
+      ? "✅ Zatwierdź korektę"
+      : "✅ Zatwierdź";
+
   return `
     <div
       data-submission-row="${item.row}"
@@ -1653,6 +1800,8 @@ function adminSubmissionCard(item) {
       </div>
 
       ${notes}
+      ${duplicateInfo}
+      ${correctionInfo}
 
       <div style="
         display:flex;
@@ -1662,14 +1811,15 @@ function adminSubmissionCard(item) {
 
         <button
           type="button"
-          data-admin-action="ZATWIERDZONE"
+          data-admin-action="${approveAction}"
+          data-correction="${item.correction ? "1" : "0"}"
           data-row="${item.row}"
           style="
             flex:1;
             background:#eaf6ea;
             border-color:#9fc79f;
           ">
-          ✅ Zatwierdź
+          ${approveLabel}
         </button>
 
         <button
@@ -1693,7 +1843,8 @@ function adminSubmissionCard(item) {
 async function setAdminSubmissionStatus(
   row,
   newStatus,
-  button
+  button,
+  correction=false
 ) {
 
   const token =
@@ -1707,6 +1858,8 @@ async function setAdminSubmissionStatus(
 
   const isApprove =
     newStatus === "ZATWIERDZONE";
+  const isDuplicate =
+    newStatus === "DUPLIKAT";
 
 
   const confirmed =
@@ -1766,7 +1919,10 @@ async function setAdminSubmissionStatus(
           row,
 
           status:
-            newStatus
+            newStatus,
+
+          correction:
+            Boolean(correction)
         })
       }
     );

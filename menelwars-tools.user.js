@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.9.2
+// @version      0.10.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -102,6 +102,8 @@ function displayName(name) {
 
   let premiumState = {};
   let remoteApproved = {};
+  let recipeReservations = {};
+  let recipeRanking = [];
 
   try { premiumState = JSON.parse(localStorage.getItem(PREMIUM_KEY)) || {}; } catch {}
   try { remoteApproved = JSON.parse(localStorage.getItem(REMOTE_KEY)) || {}; } catch {}
@@ -536,6 +538,69 @@ function displayName(name) {
   `;
 }
 
+  function recipeReservationFor(r) {
+    return recipeReservations[
+      key(r.baza,r.drozdze,r.woda,r.program)
+    ] || null;
+  }
+
+  function reservationClock(expiresAt) {
+    const date = new Date(Number(expiresAt));
+    if (!Number.isFinite(date.getTime())) return "";
+    return date.toLocaleTimeString("pl-PL", {
+      hour:"2-digit",
+      minute:"2-digit"
+    });
+  }
+
+  async function reserveUnknownRecipe(recipe) {
+    const savedNick = localStorage.getItem(NICK_KEY) || "";
+    const nick = window.prompt(
+      "Kto rezerwuje tę recepturę na 12 godzin?",
+      savedNick
+    );
+
+    if (nick === null) return;
+    const cleanNick = String(nick || "").trim();
+    if (!cleanNick) {
+      window.alert("Podaj nick.");
+      return;
+    }
+
+    localStorage.setItem(NICK_KEY, cleanNick);
+
+    try {
+      const url = BACKEND_URL +
+        "?action=reserveRecipe" +
+        "&nick=" + encodeURIComponent(cleanNick) +
+        "&baza=" + encodeURIComponent(recipe.baza) +
+        "&drozdze=" + encodeURIComponent(recipe.drozdze) +
+        "&woda=" + encodeURIComponent(recipe.woda) +
+        "&program=" + encodeURIComponent(recipe.program) +
+        "&_=" + Date.now();
+
+      const result = await gmJsonRequest("GET", url);
+
+      if (!result || !result.ok) {
+        throw new Error(
+          result && result.error
+            ? result.error
+            : "Nie udało się zarezerwować receptury."
+        );
+      }
+
+      window.alert(result.message || "Receptura zarezerwowana na 12 godzin.");
+      fetchApproved();
+
+    } catch (err) {
+      window.alert(
+        err && err.message
+          ? err.message
+          : "Nie udało się zarezerwować receptury."
+      );
+    }
+  }
+
   function renderOptimizer() {
 
   if (!optPanel) return;
@@ -625,53 +690,49 @@ function displayName(name) {
             a.program - b.program
         );
 
-
     body =
       ranked
-        .map(r => `
+        .map((r,index) => {
+          const reservation = recipeReservationFor(r);
 
-          <div class="card">
+          return `
+          <div
+            class="card"
+            data-reserve-index="${index}"
+            style="cursor:pointer"
+            title="Kliknij, aby zarezerwować recepturę na 12 godzin">
 
-            <div>
-              <b>
-                ${esc(displayName(r.baza))}
-              </b>
-            </div>
+            <div><b>${esc(displayName(r.baza))}</b></div>
 
             <div>
               ${esc(displayName(r.drozdze))}
-              ·
-              ${esc(displayName(r.woda))}
-              ·
-              P${r.program}
+              · ${esc(displayName(r.woda))}
+              · P${r.program}
             </div>
 
             ${
-              r.trioMax !== null &&
-              r.trioMax >= th
-
+              r.trioMax !== null && r.trioMax >= th
                 ? `
-                    <div class="star">
-                      ⭐ Interesująca do zbadania
-                    </div>
-
+                    <div class="star">⭐ Interesująca do zbadania</div>
                     <div class="muted">
-                      Inny program tej trójki:
-                      do ${fmt(r.trioMax)} l.
+                      Inny program tej trójki: do ${fmt(r.trioMax)} l.
                     </div>
                   `
-
                 : ""
             }
 
-          </div>
-
-        `)
+            <div class="muted" style="margin-top:6px">
+              ${
+                reservation
+                  ? `🔒 <b>${esc(reservation.nick)}</b> robi tę recepturę · do ${reservationClock(reservation.expiresAt)}`
+                  : "🕒 Kliknij kafelek, aby zarezerwować na 12 h"
+              }
+            </div>
+          </div>`;
+        })
         .join("")
       ||
-      `<div class="muted">
-        Brak nieodkrytych receptur.
-      </div>`;
+      `<div class="muted">Brak nieodkrytych receptur.</div>`;
   }
 
 
@@ -752,6 +813,24 @@ function displayName(name) {
         <div style="width:${ap}%"></div>
       </div>
 
+      <br>
+      <b>🏆 Ranking odkrywców</b>
+      <div style="margin-top:7px">
+        ${
+          recipeRanking.length
+            ? recipeRanking.slice(0,15).map((item,index) => `
+                <div class="card" style="padding:6px 8px;margin-bottom:4px">
+                  <span><b>${index+1}.</b> ${esc(item.nick)}</span>
+                  <span style="float:right"><b>${Number(item.count) || 0}</b></span>
+                </div>
+              `).join("")
+            : `<div class="muted">Brak zaakceptowanych odkryć do rankingu.</div>`
+        }
+      </div>
+      <div class="muted" style="margin-top:5px">
+        Jedna unikalna receptura daje maksymalnie 1 punkt. Duplikaty i korekty nie dodają punktu.
+      </div>
+
     `;
   }
 
@@ -759,6 +838,25 @@ function displayName(name) {
   optPanel
     .querySelector(".body")
     .innerHTML = body;
+
+  if (currentTab === "unknown") {
+    const ranked = unknown
+      .map(r => ({...r,trioMax:maxForTrio(r)}))
+      .sort((a,b) =>
+        (b.trioMax ?? -1) - (a.trioMax ?? -1) ||
+        a.baza.localeCompare(b.baza) ||
+        a.program - b.program
+      );
+
+    optPanel
+      .querySelectorAll("[data-reserve-index]")
+      .forEach(card => {
+        card.onclick = () => {
+          const recipe = ranked[Number(card.dataset.reserveIndex)];
+          if (recipe) reserveUnknownRecipe(recipe);
+        };
+      });
+  }
 
 
   optPanel
@@ -2431,6 +2529,14 @@ async function renderAdminSubmissions() {
                     : ""
                 }
 
+                ${
+                  item.duplicate
+                    ? `<div class="muted" style="margin-top:6px">♻️ Identyczny wynik ${adminMoney(item.knownLiters)} l jest już zatwierdzony.</div>`
+                    : item.correction
+                      ? `<div class="muted" style="margin-top:6px">⚠️ Znany wynik: <b>${adminMoney(item.knownLiters)} l</b> · nowe zgłoszenie: <b>${adminMoney(item.litry)} l</b>.</div>`
+                      : ""
+                }
+
                 <div style="
                   display:flex;
                   gap:6px;
@@ -2439,9 +2545,16 @@ async function renderAdminSubmissions() {
                   <button
                     class="adminGood"
                     style="flex:1"
-                    data-submission-action="ZATWIERDZONE"
+                    data-submission-action="${item.duplicate ? "DUPLIKAT" : "ZATWIERDZONE"}"
+                    data-correction="${item.correction ? "1" : "0"}"
                     data-row="${item.row}">
-                    ✅ Zatwierdź
+                    ${
+                      item.duplicate
+                        ? "♻️ Oznacz duplikat"
+                        : item.correction
+                          ? "✅ Zatwierdź korektę"
+                          : "✅ Zatwierdź"
+                    }
                   </button>
 
                   <button
@@ -2473,8 +2586,8 @@ async function renderAdminSubmissions() {
         button.onclick = () =>
           changeSubmissionStatus(
             Number(button.dataset.row),
-            button.dataset
-              .submissionAction
+            button.dataset.submissionAction,
+            button.dataset.correction === "1"
           );
       });
 
@@ -2493,16 +2606,23 @@ async function renderAdminSubmissions() {
 
 async function changeSubmissionStatus(
   row,
-  status
+  status,
+  correction=false
 ) {
   const approve =
     status === "ZATWIERDZONE";
+  const duplicate =
+    status === "DUPLIKAT";
 
   if (
     !window.confirm(
-      approve
-        ? "Zatwierdzić tę recepturę?"
-        : "Odrzucić tę recepturę?"
+      duplicate
+        ? "Oznaczyć to zgłoszenie jako duplikat?"
+        : approve
+          ? (correction
+              ? "Zatwierdzić ten wynik jako korektę istniejącej receptury?"
+              : "Zatwierdzić tę recepturę?")
+          : "Odrzucić tę recepturę?"
     )
   ) {
     return;
@@ -2530,7 +2650,8 @@ async function changeSubmissionStatus(
             "adminSetSubmissionStatus",
           token:adminToken(),
           row,
-          status
+          status,
+          correction:Boolean(correction)
         }
       );
 
@@ -4072,6 +4193,16 @@ function openAdmin() {
 
         remoteApproved =
           payload.recipes;
+
+        recipeReservations =
+          payload.reservations && typeof payload.reservations === "object"
+            ? payload.reservations
+            : {};
+
+        recipeRanking =
+          Array.isArray(payload.ranking)
+            ? payload.ranking
+            : [];
 
         localStorage.setItem(
           REMOTE_KEY,
