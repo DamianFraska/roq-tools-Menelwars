@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.13.0
+// @version      0.15.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -98,7 +98,7 @@ function displayName(name) {
 
   const COMPANY_MIN_CONTRIBUTION = 30000;
   const COMPANY_BASE_SALARY = 160;
-  const COMPANY_SALARY_RATIO = 0.80;
+  const COMPANY_SALARY_RATIO = 0.50;
 
   let premiumState = {};
   let remoteApproved = {};
@@ -417,6 +417,139 @@ function displayName(name) {
   text-align:right;
   min-width:58px;
 }
+
+    @media (max-width:600px){
+      #bar{
+        gap:4px;
+        padding:5px 6px;
+        font-size:10px;
+        max-width:calc(100vw - 8px);
+      }
+
+      #bar button{
+        padding:5px 6px;
+        font-size:10px;
+      }
+
+      .title{
+        font-size:10px;
+      }
+
+      .panel{
+        left:4px;
+        right:4px;
+        top:48px;
+        width:auto;
+        max-height:calc(100vh - 54px);
+        border-radius:9px;
+        font-size:11px;
+      }
+
+      .head{
+        padding:8px 9px;
+        font-size:12px;
+      }
+
+      .premium{
+        padding:7px 8px;
+      }
+
+      .ptitle{
+        margin-bottom:5px;
+        font-size:11px;
+      }
+
+      .checks{
+        gap:4px 7px;
+        font-size:10px;
+      }
+
+      .tab{
+        padding:6px 3px;
+        font-size:9.5px;
+        line-height:1.1;
+      }
+
+      .body,
+      .mapbody,
+      .paymentsWrap,
+      .adminWrap{
+        padding:7px 8px;
+        max-height:calc(100vh - 115px);
+      }
+
+      .card{
+        padding:6px 7px;
+        margin-bottom:5px;
+        border-radius:7px;
+        font-size:10.5px;
+      }
+
+      .muted{
+        font-size:9.5px;
+      }
+
+      .liters{
+        font-size:12px;
+      }
+
+      .adminTabs{
+        gap:3px;
+        flex-wrap:wrap;
+      }
+
+      .adminTabs button{
+        flex:1 1 30%;
+        padding:5px 3px;
+        font-size:9px;
+      }
+
+      .adminBox{
+        padding:7px;
+        margin-bottom:6px;
+      }
+
+      .adminGrid{
+        gap:4px;
+      }
+
+      .form{
+        gap:6px;
+      }
+
+      .form input,
+      .form select,
+      .form textarea,
+      .paymentsLogin input{
+        padding:6px 7px;
+        font-size:11px;
+      }
+
+      .sendBtn{
+        padding:7px;
+        font-size:10.5px;
+      }
+
+      .paymentsTop{
+        gap:5px;
+        margin-bottom:6px;
+      }
+
+      .paymentsActions{
+        gap:4px;
+      }
+
+      .paymentsActions button{
+        padding:5px 6px;
+        font-size:9.5px;
+      }
+
+      .bar{
+        height:9px;
+        margin:6px 0 10px;
+      }
+    }
+
   `;
 
   function mount() {
@@ -1729,7 +1862,27 @@ function paymentShare(value) {
 }
 
 
-function paymentRow(player) {
+function paymentRankBadge(index) {
+  const position = index + 1;
+
+  if (position === 1) return "🥇";
+  if (position === 2) return "🥈";
+  if (position === 3) return "🥉";
+
+  return `<span style="
+    display:inline-flex;
+    width:22px;
+    height:22px;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    background:#eee5d6;
+    font-weight:900;
+    font-size:11px;
+  ">${position}</span>`;
+}
+
+function paymentRow(player,index=0) {
   const saldo = Number(player.saldo) || 0;
 
   let status = "🟢 Na bieżąco";
@@ -1743,17 +1896,34 @@ function paymentRow(player) {
     border = "#e3b2b2";
     value = "-" + adminMoney(Math.abs(saldo)) + " zł";
   } else if (saldo > 0) {
-    status = "🏢 Wkład w firmę";
+    status = "🔵 Nadpłata";
     bg = "#eef8f0";
     border = "#b6d9bd";
     value = "+" + adminMoney(saldo) + " zł";
   }
 
   return `
-    <div class="card" style="background:${bg};border-color:${border}">
-      <b>${esc(player.nick)}</b>
-      <div class="muted" style="margin-top:3px">
-        ${status}: <b>${value}</b>
+    <div class="card" style="
+      background:${bg};
+      border-color:${border};
+      display:grid;
+      grid-template-columns:28px minmax(0,1fr) auto;
+      gap:7px;
+      align-items:center;
+    ">
+      <div style="text-align:center">
+        ${paymentRankBadge(index)}
+      </div>
+
+      <div>
+        <b>${esc(player.nick)}</b>
+        <div class="muted" style="margin-top:3px">
+          ${status}
+        </div>
+      </div>
+
+      <div style="font-weight:900;white-space:nowrap">
+        ${value}
       </div>
     </div>
   `;
@@ -1857,7 +2027,20 @@ function renderGangSection(section="payments") {
         </div>
       </div>
       <div id="paymentsStatus" class="paymentsStatus"></div>
-      <div>${players.length ? players.map(paymentRow).join("") : `<div class="muted">Brak danych do wyświetlenia.</div>`}</div>
+      <div>${
+        players.length
+          ? players
+              .slice()
+              .sort((a,b) =>
+                (Number(b.saldo)||0) -
+                (Number(a.saldo)||0)
+                ||
+                String(a.nick||"").localeCompare(String(b.nick||""),"pl")
+              )
+              .map((player,index) => paymentRow(player,index))
+              .join("")
+          : `<div class="muted">Brak danych do wyświetlenia.</div>`
+      }</div>
     `;
   }
 
@@ -1868,8 +2051,8 @@ function renderGangSection(section="payments") {
 
     body = `
       <div class="card"><b>Dzienny dochód:</b> ${money(payload.companyIncome)}</div>
-      <div class="card"><b>Budżet pensji 80%:</b> ${money(payload.salaryBudget)}</div>
-      <div class="card"><b>Rozwój 20%:</b> ${money(payload.developmentBudget)}</div>
+      <div class="card"><b>Budżet pensji 50%:</b> ${money(payload.salaryBudget)}</div>
+      <div class="card"><b>Rozwój 50%:</b> ${money(payload.developmentBudget)}</div>
       <div class="card"><b>Udziałowcy ≥ 30 000:</b> ${Number(payload.eligibleCount) || 0}</div>
       <br><b>Udziały i przewidywane pensje</b>
       ${eligible.length
@@ -2631,6 +2814,31 @@ async function adminGangToolsData() {
   );
 }
 
+function tmSetBusy(button,status,text) {
+  if (button) {
+    button.disabled = true;
+    button.dataset.originalText =
+      button.dataset.originalText ||
+      button.innerHTML;
+    button.innerHTML = `⏳ ${esc(text)}`;
+  }
+
+  if (status) {
+    status.textContent = `⏳ ${text}`;
+  }
+}
+
+function tmClearBusy(button) {
+  if (!button) return;
+
+  button.disabled = false;
+
+  if (button.dataset.originalText) {
+    button.innerHTML = button.dataset.originalText;
+    delete button.dataset.originalText;
+  }
+}
+
 async function adminGangPost(action,data={}) {
   return gmJsonRequest(
     "POST",
@@ -2765,6 +2973,11 @@ async function renderAdminGoal() {
   adminQ("#adminGoalForm").onsubmit = async event => {
     event.preventDefault();
 
+    const button =
+      adminQ("#adminGoalForm button[type='submit']");
+    const status =
+      adminQ("#adminGoalStatus");
+
     const current = Number(
       adminQ("#adminGoalCurrent").value.replace(/\s+/g,"").replace(",",".")
     );
@@ -2772,20 +2985,34 @@ async function renderAdminGoal() {
       adminQ("#adminGoalTarget").value.replace(/\s+/g,"").replace(",",".")
     );
 
-    const result = await adminGangPost(
-      "adminSaveGoal",
-      {
-        title:adminQ("#adminGoalTitle").value.trim(),
-        current,
-        target,
-        unit:adminQ("#adminGoalUnit").value.trim()
-      }
+    tmSetBusy(
+      button,
+      status,
+      "Zapisywanie celu..."
     );
 
-    adminQ("#adminGoalStatus").textContent =
-      result && result.ok
-        ? "✅ Cel zapisany."
-        : "⚠️ " + (result && result.error || "Nie udało się zapisać.");
+    try {
+      const result = await adminGangPost(
+        "adminSaveGoal",
+        {
+          title:adminQ("#adminGoalTitle").value.trim(),
+          current,
+          target,
+          unit:adminQ("#adminGoalUnit").value.trim()
+        }
+      );
+
+      status.textContent =
+        result && result.ok
+          ? "✅ Cel zapisany."
+          : "⚠️ " + (result && result.error || "Nie udało się zapisać.");
+
+    } catch (err) {
+      status.textContent =
+        "⚠️ " + (err.message || "Nie udało się zapisać.");
+    } finally {
+      tmClearBusy(button);
+    }
   };
 
   adminQ("#adminGoalDelete").onclick = async () => {
@@ -2819,6 +3046,7 @@ async function renderAdminAnnouncements() {
         </label>
 
         <button type="submit" class="sendBtn">➕ Dodaj ogłoszenie</button>
+        <div id="adminAnnouncementStatus" class="submitStatus"></div>
       </form>
     </div>
 
@@ -2849,17 +3077,45 @@ async function renderAdminAnnouncements() {
     event.preventDefault();
 
     const text = adminQ("#adminAnnouncementText").value.trim();
-    if (!text) return;
+    const button =
+      adminQ("#adminAnnouncementForm button[type='submit']");
+    const status =
+      adminQ("#adminAnnouncementStatus");
 
-    await adminGangPost(
-      "adminAddAnnouncement",
-      {
-        text,
-        important:adminQ("#adminAnnouncementImportant").checked
-      }
+    if (!text) {
+      status.textContent = "Wpisz treść ogłoszenia.";
+      return;
+    }
+
+    tmSetBusy(
+      button,
+      status,
+      "Dodawanie ogłoszenia..."
     );
 
-    renderAdminAnnouncements();
+    try {
+      await adminGangPost(
+        "adminAddAnnouncement",
+        {
+          text,
+          important:adminQ("#adminAnnouncementImportant").checked
+        }
+      );
+
+      status.textContent =
+        "✅ Ogłoszenie dodane.";
+
+      setTimeout(
+        () => renderAdminAnnouncements(),
+        250
+      );
+
+    } catch (err) {
+      status.textContent =
+        "⚠️ " + (err.message || "Nie udało się dodać ogłoszenia.");
+    } finally {
+      tmClearBusy(button);
+    }
   };
 
   section
@@ -3825,7 +4081,7 @@ function renderAdminCompanyPlan(
 
       <div class="adminBox">
         <span class="adminLabel">
-          Budżet pensji 80%
+          Budżet pensji 50%
         </span>
         <strong>
           ${companyMoney(
@@ -3848,7 +4104,7 @@ function renderAdminCompanyPlan(
 
     <div class="adminBox">
       <span class="adminLabel">
-        Rozwój 20%
+        Rozwój 50%
       </span>
       <strong>
         ${companyMoney(
@@ -3866,7 +4122,7 @@ function renderAdminCompanyPlan(
         )} zł
       </b>.
       Pensja = 160 zł +
-      udział w pozostałej puli 80%.
+      udział w pozostałej puli 50%.
     </div>
 
     ${rows}
@@ -3912,8 +4168,8 @@ function renderAdminPayments() {
           style="margin:4px 0 7px"
         >
           Próg udziału: 30 000 zł.
-          80% dochodu na pensje,
-          20% na rozwój.
+          50% dochodu na pensje,
+          50% na rozwój.
         </div>
 
         <label

@@ -207,6 +207,350 @@
     .finance-player-row.credit{background:#eef8f0;border-color:#b6d9bd}
     .finance-player-row.zero{background:#f5f7f1;border-color:#ccd6c5}
 
+  
+    .ranked-payment-row{
+      display:grid;
+      grid-template-columns:34px minmax(0,1fr) auto;
+      gap:9px;
+      align-items:center;
+      min-height:47px;
+    }
+    .payment-rank{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .rank-badge{
+      width:27px;
+      height:27px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:50%;
+      font-size:12px;
+      line-height:1;
+      font-weight:900;
+      border:1px solid rgba(75,55,32,.22);
+      box-shadow:
+        inset 0 1px 1px rgba(255,255,255,.65),
+        0 1px 3px rgba(65,45,25,.10);
+    }
+    .rank-badge.gold{
+      background:linear-gradient(145deg,#ffe89a,#dcae31);
+      color:#604600;
+      border-color:#c59a26;
+    }
+    .rank-badge.silver{
+      background:linear-gradient(145deg,#f2f2f2,#b8b8b8);
+      color:#4d4d4d;
+      border-color:#aaa;
+    }
+    .rank-badge.bronze{
+      background:linear-gradient(145deg,#edc19a,#a96837);
+      color:#5d3218;
+      border-color:#a36a3d;
+    }
+    .rank-badge.normal{
+      background:#eee5d6;
+      color:#675640;
+    }
+    .payment-main{
+      min-width:0;
+    }
+    .payment-total{
+      min-width:95px;
+      text-align:right;
+      font-size:14px;
+      font-weight:900;
+      white-space:nowrap;
+      color:#4a3929;
+      padding-right:2px;
+    }
+    @media (max-width:470px){
+      .ranked-payment-row{
+        grid-template-columns:30px minmax(0,1fr) auto;
+        gap:7px;
+      }
+      .payment-total{
+        min-width:78px;
+        font-size:12px;
+      }
+      .rank-badge{
+        width:24px;
+        height:24px;
+        font-size:11px;
+      }
+    }
+
+  
+    .loading-spinner{
+      display:inline-block;
+      width:12px;
+      height:12px;
+      border:2px solid rgba(90,65,35,.24);
+      border-top-color:#765737;
+      border-radius:50%;
+      vertical-align:-2px;
+      animation:mw-spin .7s linear infinite;
+      box-sizing:border-box;
+    }
+    .loading-inline{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-weight:700;
+      color:#765737;
+    }
+    @keyframes mw-spin{
+      to{transform:rotate(360deg)}
+    }
+
+  
+    /* =========================================================
+       MOBILE COMPACT — tylko telefony
+       ========================================================= */
+    @media (max-width:600px){
+
+      body{
+        font-size:12px;
+      }
+
+      .topbar{
+        padding:8px 10px!important;
+        min-height:auto!important;
+      }
+
+      .brand{
+        gap:8px!important;
+      }
+
+      .brand .logo{
+        font-size:23px!important;
+      }
+
+      .brand strong{
+        font-size:16px!important;
+      }
+
+      .brand small{
+        font-size:11px!important;
+        margin-top:1px!important;
+      }
+
+      .chip,
+      .install{
+        font-size:11px!important;
+        padding:5px 8px!important;
+      }
+
+      .wrap,
+      main{
+        padding-left:8px!important;
+        padding-right:8px!important;
+      }
+
+      .main-tabs{
+        gap:5px!important;
+        margin-bottom:7px!important;
+      }
+
+      .main-tabs button{
+        min-height:38px!important;
+        padding:6px 7px!important;
+        font-size:11px!important;
+        border-radius:8px!important;
+      }
+
+      #gang-tabs,
+      #distillery-tabs{
+        gap:5px!important;
+        margin-bottom:8px!important;
+      }
+
+      #gang-tabs{
+        grid-template-columns:repeat(3,minmax(0,1fr))!important;
+      }
+
+      #gang-tabs button,
+      #distillery-tabs button{
+        min-height:36px!important;
+        padding:5px 5px!important;
+        font-size:10.5px!important;
+        line-height:1.1!important;
+        border-radius:8px!important;
+      }
+
+      .panel{
+        border-radius:10px!important;
+        margin-bottom:9px!important;
+      }
+
+      .panel-head{
+        padding:8px 10px!important;
+        font-size:14px!important;
+      }
+
+      .panel-body{
+        padding:9px!important;
+      }
+
+      h1{
+        font-size:18px!important;
+      }
+
+      h2{
+        font-size:17px!important;
+      }
+
+      h3{
+        font-size:15px!important;
+        margin-top:10px!important;
+        margin-bottom:8px!important;
+      }
+
+      .module-utility{
+        padding:5px 9px!important;
+        margin-top:7px!important;
+        font-size:10.5px!important;
+      }
+
+      .company-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+        gap:5px!important;
+        margin-bottom:10px!important;
+      }
+
+      .company-stat{
+        padding:7px 8px!important;
+        border-radius:8px!important;
+      }
+
+      .company-stat small{
+        font-size:10px!important;
+        line-height:1.15!important;
+        margin-bottom:2px!important;
+      }
+
+      .company-stat b{
+        font-size:13px!important;
+      }
+
+      .company-list{
+        gap:4px!important;
+      }
+
+      .finance-player-row{
+        padding:6px 7px!important;
+        margin-bottom:4px!important;
+        border-radius:7px!important;
+      }
+
+      .finance-player-row .finance-name{
+        font-size:12px!important;
+      }
+
+      .finance-player-row .finance-meta{
+        margin-top:2px!important;
+        gap:6px!important;
+        font-size:9.8px!important;
+        line-height:1.25!important;
+      }
+
+      .ranked-payment-row{
+        grid-template-columns:27px minmax(0,1fr) auto!important;
+        gap:6px!important;
+        min-height:40px!important;
+      }
+
+      .rank-badge{
+        width:23px!important;
+        height:23px!important;
+        font-size:10px!important;
+      }
+
+      .payment-total{
+        min-width:72px!important;
+        font-size:11px!important;
+      }
+
+      .gang-goal-card{
+        padding:9px!important;
+      }
+
+      .gang-progress-track{
+        height:12px!important;
+        margin:7px 0 5px!important;
+      }
+
+      .announcement-card{
+        padding:8px!important;
+        margin-bottom:6px!important;
+      }
+
+      .announcement-meta{
+        font-size:9px!important;
+        margin-bottom:4px!important;
+      }
+
+      .admin-tool-section{
+        padding:8px!important;
+        margin-bottom:7px!important;
+      }
+
+      .admin-mini-form{
+        gap:6px!important;
+      }
+
+      .admin-mini-form label>span,
+      .adminLabel{
+        font-size:10px!important;
+      }
+
+      .admin-mini-form input,
+      .admin-mini-form textarea,
+      .adminTextarea{
+        padding:6px 7px!important;
+        font-size:11px!important;
+      }
+
+      .primary-btn,
+      .danger-button,
+      .danger-soft,
+      .admin-actions-row button{
+        padding:7px 9px!important;
+        font-size:10.5px!important;
+      }
+
+      .muted{
+        font-size:10.5px!important;
+        line-height:1.3!important;
+      }
+
+      footer{
+        font-size:9px!important;
+        padding:9px 0!important;
+      }
+    }
+
+    @media (max-width:380px){
+      #gang-tabs{
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+      }
+
+      .company-grid{
+        gap:4px!important;
+      }
+
+      .company-stat{
+        padding:6px!important;
+      }
+
+      .payment-total{
+        min-width:64px!important;
+        font-size:10px!important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -631,7 +975,7 @@
       style="margin-top:4px;margin-bottom:8px"
     >
       Do udziału kwalifikuje się gracz z wkładem co najmniej 30 000 zł.
-      80% dochodu przeznaczamy na pensje, 20% pozostaje na rozwój.
+      50% dochodu przeznaczamy na pensje, 50% pozostaje na rozwój.
     </div>
 
     <label style="display:block;margin-bottom:8px">

@@ -20,7 +20,7 @@
 
   const COMPANY_MIN_CONTRIBUTION = 30000;
   const COMPANY_BASE_SALARY = 160;
-  const COMPANY_SALARY_RATIO = 0.80;
+  const COMPANY_SALARY_RATIO = 0.50;
 
   const DISPLAY_NAMES = {
   "Ziemniak irga": 'Ziemniaki "Irga"',
@@ -1168,29 +1168,60 @@ const MAP_POSITIONS = {
       .replace(".", ",") + "%";
   }
 
-  function paymentsRow(player) {
+  function paymentsRankBadge(index) {
+    const position = index + 1;
+
+    if (position === 1) {
+      return `<span class="rank-badge gold">1</span>`;
+    }
+
+    if (position === 2) {
+      return `<span class="rank-badge silver">2</span>`;
+    }
+
+    if (position === 3) {
+      return `<span class="rank-badge bronze">3</span>`;
+    }
+
+    return `<span class="rank-badge normal">${position}</span>`;
+  }
+
+  function paymentsRow(player,index=0) {
 
     const saldo = Number(player.saldo) || 0;
 
     let stateClass = "zero";
     let status = "🟢 Na bieżąco";
-    let saldoText = "0 zł";
+    let amount = "0 zł";
 
     if (saldo < 0) {
       stateClass = "debt";
       status = "🔴 Dług";
-      saldoText = "-" + formatSaldo(Math.abs(saldo)) + " zł";
+      amount = "-" + formatSaldo(Math.abs(saldo)) + " zł";
     } else if (saldo > 0) {
       stateClass = "credit";
-      status = "🏢 Wkład w firmę";
-      saldoText = "+" + formatSaldo(saldo) + " zł";
+      status = "🔵 Nadpłata";
+      amount = "+" + formatSaldo(saldo) + " zł";
     }
 
     return `
-      <div class="finance-player-row ${stateClass}">
-        <div class="finance-name">${escapeHtml(player.nick)}</div>
-        <div class="finance-meta">
-          <span>${status}: <strong>${saldoText}</strong></span>
+      <div class="finance-player-row ${stateClass} ranked-payment-row">
+        <div class="payment-rank">
+          ${paymentsRankBadge(index)}
+        </div>
+
+        <div class="payment-main">
+          <div class="finance-name">
+            ${escapeHtml(player.nick)}
+          </div>
+
+          <div class="finance-meta">
+            <span>${status}</span>
+          </div>
+        </div>
+
+        <div class="payment-total">
+          ${amount}
         </div>
       </div>
     `;
@@ -1236,8 +1267,8 @@ const MAP_POSITIONS = {
     box.innerHTML = `
       <div class="company-grid">
         <div class="company-stat"><small>Dzienny dochód</small><b>${money(payload.companyIncome)}</b></div>
-        <div class="company-stat"><small>Budżet pensji 80%</small><b>${money(payload.salaryBudget)}</b></div>
-        <div class="company-stat"><small>Rozwój 20%</small><b>${money(payload.developmentBudget)}</b></div>
+        <div class="company-stat"><small>Budżet pensji 50%</small><b>${money(payload.salaryBudget)}</b></div>
+        <div class="company-stat"><small>Rozwój 50%</small><b>${money(payload.developmentBudget)}</b></div>
         <div class="company-stat"><small>Udziałowcy ≥ 30 000</small><b>${Number(payload.eligibleCount) || 0}</b></div>
       </div>
 
@@ -1388,9 +1419,27 @@ const MAP_POSITIONS = {
     el("payments-count").textContent =
       `Graczy: ${players.length}`;
 
+    const rankedPlayers =
+      players
+        .slice()
+        .sort((a,b) =>
+          (Number(b.saldo) || 0) -
+          (Number(a.saldo) || 0)
+          ||
+          String(a.nick || "")
+            .localeCompare(
+              String(b.nick || ""),
+              "pl"
+            )
+        );
+
     el("payments-list").innerHTML =
-      players.length
-        ? players.map(paymentsRow).join("")
+      rankedPlayers.length
+        ? rankedPlayers
+            .map((player,index) =>
+              paymentsRow(player,index)
+            )
+            .join("")
         : `<div class="empty">Brak danych do wyświetlenia.</div>`;
   }
 
@@ -1611,6 +1660,37 @@ function showAdminLogin(message="") {
 }
 
 
+function setActionLoading(button,statusEl,text="Zapisywanie...") {
+  if (button) {
+    button.disabled = true;
+    button.dataset.originalText =
+      button.dataset.originalText ||
+      button.innerHTML;
+    button.innerHTML =
+      `<span class="loading-spinner" aria-hidden="true"></span> ${escapeHtml(text)}`;
+  }
+
+  if (statusEl) {
+    statusEl.innerHTML =
+      `<span class="loading-inline">
+        <span class="loading-spinner" aria-hidden="true"></span>
+        ${escapeHtml(text)}
+      </span>`;
+  }
+}
+
+function clearActionLoading(button) {
+  if (!button) return;
+
+  button.disabled = false;
+
+  if (button.dataset.originalText) {
+    button.innerHTML =
+      button.dataset.originalText;
+    delete button.dataset.originalText;
+  }
+}
+
 async function adminPostAction(action, data={}) {
   const token = adminToken();
 
@@ -1688,20 +1768,30 @@ function renderAdminGangTools(payload) {
         button.onclick = async () => {
           if (!window.confirm("Usunąć tę rezerwację?")) return;
 
-          button.disabled = true;
+          const status = el("admin-gang-tools-status");
+
+          setActionLoading(
+            button,
+            status,
+            "Zwalnianie rezerwacji..."
+          );
 
           try {
             await adminPostAction(
               "adminClearReservation",
               {recipeKey:button.dataset.clearReservation}
             );
-            await loadAdminGangTools();
+
+            status.textContent =
+              "✅ Rezerwacja została zwolniona.";
+
+            loadAdminGangTools();
             fetchApprovedRecipes();
           } catch (err) {
-            el("admin-gang-tools-status").textContent =
+            status.textContent =
               err.message || "Nie udało się usunąć rezerwacji.";
           } finally {
-            button.disabled = false;
+            clearActionLoading(button);
           }
         };
       });
@@ -3223,7 +3313,7 @@ function renderAdminCompanyPlan(
         background:#fffdf8;
       ">
         <div class="muted">
-          Budżet pensji 80%
+          Budżet pensji 50%
         </div>
         <strong>
           ${companyMoney(
@@ -3255,7 +3345,7 @@ function renderAdminCompanyPlan(
         background:#fffdf8;
       ">
         <div class="muted">
-          Rozwój 20%
+          Rozwój 50%
         </div>
         <strong>
           ${companyMoney(
@@ -3274,7 +3364,7 @@ function renderAdminCompanyPlan(
       </b>.
       Każdy zakwalifikowany dostaje najpierw
       <b>${COMPANY_BASE_SALARY} zł</b>,
-      a pozostała część 80% dochodu jest
+      a pozostała część 50% dochodu jest
       dzielona proporcjonalnie do wkładu.
     </div>
 
@@ -4023,19 +4113,29 @@ function setupAdmin() {
         )) return;
 
         const button = event.currentTarget;
-        button.disabled = true;
+        const status = el("admin-gang-tools-status");
+
+        setActionLoading(
+          button,
+          status,
+          "Czyszczenie rezerwacji..."
+        );
 
         try {
           await adminPostAction(
             "adminClearAllReservations"
           );
-          await loadAdminGangTools();
+
+          status.textContent =
+            "✅ Rezerwacje zostały wyczyszczone.";
+
+          loadAdminGangTools();
           fetchApprovedRecipes();
         } catch (err) {
-          el("admin-gang-tools-status").textContent =
+          status.textContent =
             err.message || "Nie udało się wyczyścić rezerwacji.";
         } finally {
-          button.disabled = false;
+          clearActionLoading(button);
         }
       }
     );
@@ -4045,6 +4145,12 @@ function setupAdmin() {
       "submit",
       async event => {
         event.preventDefault();
+
+        const form = event.currentTarget;
+        const button =
+          form.querySelector('button[type="submit"]');
+        const status =
+          el("admin-goal-status");
 
         const current = Number(
           String(el("admin-goal-current").value || "")
@@ -4058,6 +4164,12 @@ function setupAdmin() {
             .replace(",",".")
         );
 
+        setActionLoading(
+          button,
+          status,
+          "Zapisywanie celu..."
+        );
+
         try {
           await adminPostAction(
             "adminSaveGoal",
@@ -4069,15 +4181,18 @@ function setupAdmin() {
             }
           );
 
-          await loadAdminGangTools();
-          await loadPayments({background:true});
-
-          el("admin-goal-status").textContent =
+          status.textContent =
             "✅ Cel gangu zapisany.";
 
+          // Odświeżamy dane już po pokazaniu użytkownikowi sukcesu.
+          loadAdminGangTools();
+          loadPayments({background:true});
+
         } catch (err) {
-          el("admin-goal-status").textContent =
+          status.textContent =
             err.message || "Nie udało się zapisać celu.";
+        } finally {
+          clearActionLoading(button);
         }
       }
     );
@@ -4085,20 +4200,32 @@ function setupAdmin() {
   el("admin-goal-delete")
     ?.addEventListener(
       "click",
-      async () => {
+      async event => {
         if (!window.confirm("Usunąć aktywny cel gangu?")) return;
+
+        const button = event.currentTarget;
+        const status = el("admin-goal-status");
+
+        setActionLoading(
+          button,
+          status,
+          "Usuwanie celu..."
+        );
 
         try {
           await adminPostAction("adminDeleteGoal");
-          await loadAdminGangTools();
-          await loadPayments({background:true});
 
-          el("admin-goal-status").textContent =
+          status.textContent =
             "✅ Cel został usunięty.";
 
+          loadAdminGangTools();
+          loadPayments({background:true});
+
         } catch (err) {
-          el("admin-goal-status").textContent =
+          status.textContent =
             err.message || "Nie udało się usunąć celu.";
+        } finally {
+          clearActionLoading(button);
         }
       }
     );
@@ -4109,14 +4236,26 @@ function setupAdmin() {
       async event => {
         event.preventDefault();
 
+        const form = event.currentTarget;
+        const button =
+          form.querySelector('button[type="submit"]');
+        const status =
+          el("admin-gang-tools-status");
+
         const text =
           el("admin-announcement-text").value.trim();
 
         if (!text) {
-          el("admin-gang-tools-status").textContent =
+          status.textContent =
             "Wpisz treść ogłoszenia.";
           return;
         }
+
+        setActionLoading(
+          button,
+          status,
+          "Dodawanie ogłoszenia..."
+        );
 
         try {
           await adminPostAction(
@@ -4131,15 +4270,17 @@ function setupAdmin() {
           el("admin-announcement-text").value = "";
           el("admin-announcement-important").checked = false;
 
-          await loadAdminGangTools();
-          await loadPayments({background:true});
-
-          el("admin-gang-tools-status").textContent =
+          status.textContent =
             "✅ Ogłoszenie dodane.";
 
+          loadAdminGangTools();
+          loadPayments({background:true});
+
         } catch (err) {
-          el("admin-gang-tools-status").textContent =
+          status.textContent =
             err.message || "Nie udało się dodać ogłoszenia.";
+        } finally {
+          clearActionLoading(button);
         }
       }
     );
