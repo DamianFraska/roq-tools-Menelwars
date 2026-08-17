@@ -10,6 +10,19 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="styles.css">
   <title>MenelWars Tools</title>
+
+  <style>
+    .main-tabs{margin-bottom:10px}
+    .sub-tabs{margin-top:0;margin-bottom:14px}
+    .sub-tabs[hidden]{display:none!important}
+    .module-utility{margin-top:8px;padding:6px 10px;font-size:12px;opacity:.85}
+    .module-placeholder{padding:14px;border:1px dashed #cdbb9b;border-radius:10px;background:rgba(255,255,255,.35)}
+    .company-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin-bottom:14px}
+    .company-stat{padding:10px;border:1px solid #ddcfb7;border-radius:9px;background:#fffdf8}
+    .company-stat small{display:block;color:#786a56;margin-bottom:3px}
+    .company-list{display:grid;gap:6px}
+    .company-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px;border:1px solid #e4d8c5;border-radius:8px;background:#fff}
+  </style>
 </head>
 <body>
 <header class="topbar">
@@ -25,19 +38,30 @@
 
 <main>
   <section class="hero">
-    <h1>Mobilny zestaw narzędzi</h1>
-    <p>Destylarnia, nieodkryte kombinacje i szybka ściąga mapy. Ustawienia premium są zapamiętywane na tym urządzeniu.</p>
+    <h1>MenelWars Tools</h1>
+    <p>Destylarnia, prywatne narzędzia gangu i szybka ściąga mapy — wszystko w jednym miejscu.</p>
+    <button id="pc-utility-btn" type="button" class="module-utility">🖥 Instalacja na PC</button>
   </section>
 
-  <nav class="tabs">
-    <button class="active" data-tab="optimizer-view">⚗ Destylarnia</button>
-    <button data-tab="unknown-view">🔬 Nieodkryte</button>
-    <button data-tab="submit-view">➕ Dodaj</button>
-    <button data-tab="payments-view">💰 Wpłaty</button>
-    <button data-tab="map-view">🗺 Mapa</button>
-    <button data-tab="progress-view">📊 Postęp</button>
-    <button data-tab="pc-view">🖥 PC</button>
-    <button data-tab="admin-view">🛠 Admin</button>
+  <nav class="tabs main-tabs" id="main-tabs">
+    <button class="active" data-module="distillery">⚗ Destylarnia</button>
+    <button data-module="gang">👥 Gang</button>
+    <button data-module="map">🗺 Mapa</button>
+  </nav>
+
+  <nav class="tabs sub-tabs" id="distillery-tabs">
+    <button class="active" data-subtab="optimizer-view" data-group="distillery">📖 Dostępne recepty</button>
+    <button data-subtab="unknown-view" data-group="distillery">🔬 Nieodkryte</button>
+    <button data-subtab="submit-view" data-group="distillery">➕ Dodaj</button>
+    <button data-subtab="progress-view" data-group="distillery">📊 Postęp</button>
+  </nav>
+
+  <nav class="tabs sub-tabs" id="gang-tabs" hidden>
+    <button class="active" data-subtab="payments-view" data-group="gang">💰 Wpłaty</button>
+    <button data-subtab="company-view" data-group="gang">🏢 Spółka</button>
+    <button data-subtab="goals-view" data-group="gang">🎯 Cele</button>
+    <button data-subtab="announcements-view" data-group="gang">📢 Ogłoszenia</button>
+    <button data-subtab="admin-view" data-group="gang">🛠 Admin</button>
   </nav>
 
   <section id="optimizer-view" class="view">
@@ -46,7 +70,7 @@
       <div class="panel-body"><div id="premium-grid" class="check-grid"></div></div>
     </div>
     <div class="panel">
-      <div class="panel-head">🏆 Najlepsze dostępne receptury</div>
+      <div class="panel-head">📖 Dostępne recepty — najlepsze wyniki</div>
       <div class="panel-body" id="top-list"></div>
     </div>
   </section>
@@ -114,14 +138,13 @@
   </section>
 
 
-  <section id="payments-view" class="view" hidden>
+  <section id="gang-gate-view" class="view" hidden>
     <div class="panel">
-      <div class="panel-head">💰 Dług / nadpłata</div>
+      <div class="panel-head">👥 Gang</div>
       <div class="panel-body">
-
         <div id="payments-login">
           <p class="muted">
-            🔐 Dostęp tylko dla członków gangu. Wpisz hasło gangu, aby odblokować dane na tym urządzeniu.
+            🔐 Ta część MenelWars Tools jest tylko dla członków gangu. Zaloguj się raz, aby odblokować Wpłaty, Spółkę, Cele i Ogłoszenia na tym urządzeniu.
           </p>
 
           <form id="payments-login-form" class="submit-form">
@@ -131,14 +154,21 @@
             </label>
 
             <button class="primary-btn" type="submit">
-              🔓 Odblokuj wpłaty
+              🔓 Wejdź do modułu Gang
             </button>
 
             <div id="payments-login-status" class="submit-status"></div>
           </form>
         </div>
+      </div>
+    </div>
+  </section>
 
-        <div id="payments-content" hidden>
+  <section id="payments-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">💰 Wpłaty</div>
+      <div class="panel-body">
+        <div id="payments-content">
           <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:12px">
             <div>
               <strong id="payments-date">Stan na: —</strong>
@@ -147,14 +177,48 @@
 
             <div style="display:flex;gap:8px">
               <button id="payments-refresh" class="primary-btn" type="button">↻ Odśwież</button>
-              <button id="payments-logout" type="button">🔒 Wyloguj</button>
+              <button id="payments-logout" type="button">🔒 Wyloguj Gang</button>
             </div>
           </div>
 
           <div id="payments-list"></div>
           <div id="payments-status" class="submit-status"></div>
         </div>
+      </div>
+    </div>
+  </section>
 
+  <section id="company-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">🏢 Spółka</div>
+      <div class="panel-body">
+        <div id="company-summary">
+          <div class="muted">Pobieranie danych spółki...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="goals-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">🎯 Cele gangu</div>
+      <div class="panel-body">
+        <div class="module-placeholder">
+          <strong>Tablica wspólnych celów</strong>
+          <p class="muted">Miejsce na cele finansowe, inwestycje spółki, badania receptur i inne zadania gangu. Zarządzanie celami dodamy w kolejnym etapie.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="announcements-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">📢 Ogłoszenia</div>
+      <div class="panel-body">
+        <div class="module-placeholder">
+          <strong>Tablica ogłoszeń gangu</strong>
+          <p class="muted">Tutaj będą przypięte informacje widoczne wyłącznie po odblokowaniu modułu Gang. Dodawanie ogłoszeń przez Admina będzie kolejną funkcją.</p>
+        </div>
       </div>
     </div>
   </section>

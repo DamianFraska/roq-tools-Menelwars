@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.10.0
+// @version      0.11.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -172,6 +172,7 @@ function displayName(name) {
 	let submitPanel=null;
 	let paymentsPanel=null;
 	let adminPanel=null;
+	let latestGangPayload=null;
 	let currentTab="top";
   let adminPaymentsSnapshot = null;
 
@@ -440,24 +441,16 @@ function displayName(name) {
         MenelWars Tools
       </span>
 
-      <button id="map">
-        🗺 Mapa
-      </button>
-
-      <button id="payments">
-        💰 Wpłaty
-      </button>
-
-      <button id="submit">
-        ➕ Zgłoś
-      </button>
-
-      <button id="admin">
-        🛠 Admin
-      </button>
-
       <button id="opt">
         ⚗ Destylarnia
+      </button>
+
+      <button id="gang">
+        👥 Gang
+      </button>
+
+      <button id="map">
+        🗺 Mapa
       </button>
     `;
     root.appendChild(bar); document.documentElement.appendChild(host);
@@ -518,9 +511,7 @@ function displayName(name) {
         );
       };
     root.getElementById("map").onclick = openMap;
-    root.getElementById("payments").onclick = openPayments;
-    root.getElementById("submit").onclick = openSubmit;
-    root.getElementById("admin").onclick = openAdmin;
+    root.getElementById("gang").onclick = openPayments;
     root.getElementById("opt").onclick = openOptimizer;
     return true;
   }
@@ -858,6 +849,7 @@ function displayName(name) {
       });
   }
 
+
   optPanel
     .querySelectorAll(".tab")
     .forEach(
@@ -886,12 +878,21 @@ function displayName(name) {
     optPanel.innerHTML = `<div class="head"><span>⚗ MenelWars — Destylarnia</span><span class="close">×</span></div>
       <div class="premium"><div class="ptitle">Posiadane składniki premium</div>
       <div class="checks">${[...PREMIUM.baza,...PREMIUM.drozdze].map(checkboxHtml).join("")}</div></div>
-      <div class="tabs"><div class="tab active" data-tab="top">Najlepsze</div>
-      <div class="tab" data-tab="unknown">Nieodkryte</div><div class="tab" data-tab="progress">Postęp</div></div>
+      <div class="tabs"><div class="tab active" data-tab="top">Dostępne recepty</div>
+      <div class="tab" data-tab="unknown">Nieodkryte</div>
+      <div class="tab" data-tab="submit">Dodaj</div>
+      <div class="tab" data-tab="progress">Postęp</div></div>
       <div class="body"></div>`;
     root.appendChild(optPanel);
     optPanel.querySelector(".close").onclick=()=>{optPanel.remove();optPanel=null;};
-    optPanel.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{currentTab=t.dataset.tab;renderOptimizer();});
+    optPanel.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+      if (t.dataset.tab === "submit") {
+        openSubmit();
+        return;
+      }
+      currentTab=t.dataset.tab;
+      renderOptimizer();
+    });
     optPanel.querySelectorAll("[data-premium]").forEach(cb=>cb.onchange=()=>{
       premiumState[cb.dataset.premium]=cb.checked;
       localStorage.setItem(PREMIUM_KEY,JSON.stringify(premiumState));
@@ -1712,100 +1713,104 @@ function renderPaymentsLogin(
 }
 
 
-function renderPaymentsData(
-  payload
-) {
+function renderGangSection(section="payments") {
 
-  if (!paymentsPanel) {
-    return;
+  if (!paymentsPanel || !latestGangPayload) return;
+
+  const payload = latestGangPayload;
+  const players = Array.isArray(payload.players) ? payload.players : [];
+  const wrap = paymentsPanel.querySelector(".paymentsWrap");
+
+  const money = value =>
+    (Number(value) || 0).toLocaleString("pl-PL", {maximumFractionDigits:2}) + " zł";
+
+  const nav = `
+    <div class="tabs" style="margin-bottom:10px">
+      <div class="tab ${section === "payments" ? "active" : ""}" data-gang-tab="payments">Wpłaty</div>
+      <div class="tab ${section === "company" ? "active" : ""}" data-gang-tab="company">Spółka</div>
+      <div class="tab ${section === "goals" ? "active" : ""}" data-gang-tab="goals">Cele</div>
+      <div class="tab ${section === "announcements" ? "active" : ""}" data-gang-tab="announcements">Ogłoszenia</div>
+      <div class="tab" data-gang-tab="admin">Admin</div>
+    </div>
+  `;
+
+  let body = "";
+
+  if (section === "payments") {
+    body = `
+      <div class="paymentsTop">
+        <div class="paymentsMeta">
+          <b>Stan na: ${paymentsDate(payload.saldoDate || payload.updatedAt)}</b><br>
+          <span class="muted">Graczy: ${players.length}</span>
+        </div>
+        <div class="paymentsActions">
+          <button id="paymentsRefresh">↻ Odśwież</button>
+          <button id="paymentsLogout">🔒 Wyloguj</button>
+        </div>
+      </div>
+      <div id="paymentsStatus" class="paymentsStatus"></div>
+      <div>${players.length ? players.map(paymentRow).join("") : `<div class="muted">Brak danych do wyświetlenia.</div>`}</div>
+    `;
   }
 
-  const players =
-    Array.isArray(
-      payload.players
-    )
-      ? payload.players
-      : [];
+  if (section === "company") {
+    const eligible = players
+      .filter(p => Number(p.share) > 0 || Number(p.salary) > 0)
+      .sort((a,b) => Number(b.contribution || 0) - Number(a.contribution || 0));
 
-  paymentsPanel
-    .querySelector(
-      ".paymentsWrap"
-    )
-    .innerHTML = `
-
-      <div class="paymentsTop">
-
-        <div class="paymentsMeta">
-
-          <b>
-            Stan na:
-            ${paymentsDate(
-              payload.saldoDate || payload.updatedAt
-            )}
-          </b>
-
-          <br>
-
-          <span class="muted">
-            Graczy:
-            ${players.length}
-          </span>
-
-        </div>
-
-        <div class="paymentsActions">
-
-          <button id="paymentsRefresh">
-            ↻ Odśwież
-          </button>
-
-          <button id="paymentsLogout">
-            🔒 Wyloguj
-          </button>
-
-        </div>
-
-      </div>
-
-      <div
-        id="paymentsStatus"
-        class="paymentsStatus">
-      </div>
-
-      <div>
-        ${
-          players.length
-            ? players
-                .map(paymentRow)
-                .join("")
-            : `
-                <div class="muted">
-                  Brak danych do wyświetlenia.
-                </div>
-              `
-        }
-      </div>
+    body = `
+      <div class="card"><b>Dzienny dochód:</b> ${money(payload.companyIncome)}</div>
+      <div class="card"><b>Budżet pensji 80%:</b> ${money(payload.salaryBudget)}</div>
+      <div class="card"><b>Rozwój 20%:</b> ${money(payload.developmentBudget)}</div>
+      <div class="card"><b>Udziałowcy ≥ 30 000:</b> ${Number(payload.eligibleCount) || 0}</div>
+      <br><b>Udziały i przewidywane pensje</b>
+      ${eligible.length
+        ? eligible.map(p => `
+            <div class="card">
+              <b>${esc(p.nick)}</b>
+              <span style="float:right"><b>${(Number(p.share || 0)*100).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})}%</b></span>
+              <div class="muted">Wkład: ${money(p.contribution)} · Pensja: ${money(p.salary)}</div>
+            </div>
+          `).join("")
+        : `<div class="muted">Nikt nie osiągnął jeszcze progu 30 000 zł wkładu.</div>`}
     `;
+  }
 
-  paymentsPanel
-    .querySelector(
-      "#paymentsRefresh"
-    )
-    .onclick =
-      loadPayments;
+  if (section === "goals") {
+    body = `<div class="card"><b>🎯 Cele gangu</b><div class="muted" style="margin-top:6px">Miejsce na wspólne cele, inwestycje i zadania. Zarządzanie celami dodamy w kolejnym etapie.</div></div>`;
+  }
 
-  paymentsPanel
-    .querySelector(
-      "#paymentsLogout"
-    )
-    .onclick = () => {
+  if (section === "announcements") {
+    body = `<div class="card"><b>📢 Ogłoszenia</b><div class="muted" style="margin-top:6px">Tutaj będą przypięte komunikaty widoczne wyłącznie dla członków gangu.</div></div>`;
+  }
 
-      setGangToken("");
+  wrap.innerHTML = nav + body;
 
-      renderPaymentsLogin(
-        "Dostęp na tym urządzeniu został usunięty."
-      );
+  wrap.querySelectorAll("[data-gang-tab]").forEach(tab => {
+    tab.onclick = () => {
+      const target = tab.dataset.gangTab;
+      if (target === "admin") {
+        openAdmin();
+        return;
+      }
+      renderGangSection(target);
     };
+  });
+
+  const refresh = wrap.querySelector("#paymentsRefresh");
+  if (refresh) refresh.onclick = loadPayments;
+
+  const logout = wrap.querySelector("#paymentsLogout");
+  if (logout) logout.onclick = () => {
+    setGangToken("");
+    latestGangPayload = null;
+    renderPaymentsLogin("Dostęp do modułu Gang na tym urządzeniu został usunięty.");
+  };
+}
+
+function renderPaymentsData(payload) {
+  latestGangPayload = payload;
+  renderGangSection("payments");
 }
 
 
@@ -2083,7 +2088,7 @@ function openPayments() {
     <div class="head">
 
       <span>
-        💰 Dług / nadpłata
+        👥 Gang
       </span>
 
       <span class="close">
@@ -4241,9 +4246,8 @@ function openAdmin() {
 }
 
   GM_registerMenuCommand("⚗ Otwórz Destylarnię",()=>{mount();openOptimizer();});
-  GM_registerMenuCommand("💰 Otwórz Wpłaty",()=>{mount();openPayments();});
+  GM_registerMenuCommand("👥 Otwórz Gang",()=>{mount();openPayments();});
   GM_registerMenuCommand("🗺 Otwórz Mapę",()=>{mount();openMap();});
-  GM_registerMenuCommand("🛠 Otwórz Admin",()=>{mount();openAdmin();});
 
   function boot() {
     if (!document.documentElement) { setTimeout(boot,50); return; }

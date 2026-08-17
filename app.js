@@ -1303,15 +1303,63 @@ const MAP_POSITIONS = {
   }
 
   function showPaymentsLogin(message="") {
-
-    el("payments-login").hidden = false;
-    el("payments-content").hidden = true;
     el("payments-login-status").textContent = message;
+    showToolView("gang-gate-view", "gang");
+    el("gang-tabs").hidden = true;
   }
 
   function showPaymentsContent() {
-    el("payments-login").hidden = true;
-    el("payments-content").hidden = false;
+    el("gang-tabs").hidden = false;
+    showToolView("payments-view", "gang");
+  }
+
+  function renderCompanySummary(payload) {
+    const box = el("company-summary");
+    if (!box) return;
+
+    const players = Array.isArray(payload && payload.players)
+      ? payload.players
+      : [];
+
+    const eligible = players
+      .filter(player => Number(player.share) > 0 || Number(player.salary) > 0)
+      .sort((a,b) => Number(b.contribution || 0) - Number(a.contribution || 0));
+
+    const money = value =>
+      (Number(value) || 0).toLocaleString("pl-PL", {
+        maximumFractionDigits:2
+      }) + " zł";
+
+    box.innerHTML = `
+      <div class="company-grid">
+        <div class="company-stat"><small>Dzienny dochód</small><b>${money(payload.companyIncome)}</b></div>
+        <div class="company-stat"><small>Budżet pensji 80%</small><b>${money(payload.salaryBudget)}</b></div>
+        <div class="company-stat"><small>Rozwój 20%</small><b>${money(payload.developmentBudget)}</b></div>
+        <div class="company-stat"><small>Udziałowcy ≥ 30 000</small><b>${Number(payload.eligibleCount) || 0}</b></div>
+      </div>
+
+      <h3>Udziały i przewidywane pensje</h3>
+      <div class="company-list">
+        ${eligible.length
+          ? eligible.map(player => `
+              <div class="company-row">
+                <div>
+                  <b>${escapeHtml(player.nick)}</b>
+                  <div class="muted">Wkład: ${money(player.contribution)}</div>
+                </div>
+                <div style="text-align:right">
+                  <b>${(Number(player.share || 0) * 100).toLocaleString("pl-PL", {minimumFractionDigits:2,maximumFractionDigits:2})}%</b>
+                  <div class="muted">Pensja: ${money(player.salary)}</div>
+                </div>
+              </div>
+            `).join("")
+          : `<div class="empty">Nikt nie osiągnął jeszcze progu 30 000 zł wkładu.</div>`}
+      </div>
+
+      <p class="muted" style="margin-top:10px">
+        To wartości wyliczane z aktualnego salda. Udział i pensja zmieniają się razem z wkładem gracza.
+      </p>
+    `;
   }
 
   async function loadPayments() {
@@ -1355,6 +1403,9 @@ const MAP_POSITIONS = {
             : "Nie udało się pobrać wpłat."
         );
       }
+
+      latestGangPayload = payload;
+      renderCompanySummary(payload);
 
       const players =
         Array.isArray(payload.players)
@@ -1483,15 +1534,13 @@ const MAP_POSITIONS = {
     el("payments-logout")
       .addEventListener("click", () => {
         setGangToken("");
+        latestGangPayload = null;
         el("payments-list").innerHTML = "";
-        showPaymentsLogin("Dostęp na tym urządzeniu został usunięty.");
+        el("gang-tabs").hidden = true;
+        showPaymentsLogin("Dostęp do modułu Gang na tym urządzeniu został usunięty.");
       });
 
-    if (gangToken()) {
-      showPaymentsContent();
-    } else {
-      showPaymentsLogin();
-    }
+    el("gang-tabs").hidden = !gangToken();
   }
 
   // ============================================================
@@ -1499,6 +1548,7 @@ const MAP_POSITIONS = {
 // ============================================================
 
 let adminPaymentsSnapshot = null;
+let latestGangPayload = null;
 
 function adminToken() {
   return localStorage.getItem(ADMIN_TOKEN_KEY) || "";
@@ -3719,47 +3769,107 @@ function setupAdmin() {
   showAdminLogin();
 }
   // ============================================================
-  // TABS
+  // NAWIGACJA MODUŁOWA
   // ============================================================
 
+  function showToolView(viewId, moduleName) {
+    document
+      .querySelectorAll(".view")
+      .forEach(view => {
+        view.hidden = view.id !== viewId;
+      });
+
+    document
+      .querySelectorAll("[data-module]")
+      .forEach(button => {
+        button.classList.toggle(
+          "active",
+          button.dataset.module === moduleName
+        );
+      });
+
+    const distilleryTabs = el("distillery-tabs");
+    const gangTabs = el("gang-tabs");
+
+    distilleryTabs.hidden = moduleName !== "distillery";
+
+    if (moduleName !== "gang") {
+      gangTabs.hidden = true;
+    } else if (gangToken() && viewId !== "gang-gate-view") {
+      gangTabs.hidden = false;
+    }
+
+    document
+      .querySelectorAll("[data-subtab]")
+      .forEach(button => {
+        button.classList.toggle(
+          "active",
+          button.dataset.subtab === viewId
+        );
+      });
+  }
+
+  async function openGangModule(target="payments-view") {
+    if (!gangToken()) {
+      showPaymentsLogin();
+      return;
+    }
+
+    el("gang-tabs").hidden = false;
+
+    if (target === "admin-view") {
+      showToolView("admin-view", "gang");
+      checkAdminAccess();
+      return;
+    }
+
+    showToolView(target, "gang");
+
+    if (target === "payments-view" || target === "company-view") {
+      await loadPayments();
+      if (target === "company-view") {
+        showToolView("company-view", "gang");
+        if (latestGangPayload) renderCompanySummary(latestGangPayload);
+      }
+    }
+  }
+
   document
-    .querySelectorAll("[data-tab]")
-    .forEach(btn => {
+    .querySelectorAll("[data-module]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        const moduleName = button.dataset.module;
 
-      btn.addEventListener(
-        "click",
-        () => {
-
-          document
-            .querySelectorAll("[data-tab]")
-            .forEach(
-              x =>
-                x.classList.toggle(
-                  "active",
-                  x === btn
-                )
-            );
-
-          document
-            .querySelectorAll(".view")
-            .forEach(
-              v =>
-                v.hidden =
-                  v.id !==
-                  btn.dataset.tab
-            );
-
-          if (btn.dataset.tab === "payments-view") {
-  loadPayments();
-}
-
-if (btn.dataset.tab === "admin-view") {
-  checkAdminAccess();
-}
+        if (moduleName === "distillery") {
+          showToolView("optimizer-view", "distillery");
+        } else if (moduleName === "gang") {
+          openGangModule("payments-view");
+        } else if (moduleName === "map") {
+          showToolView("map-view", "map");
         }
-      );
+      });
     });
 
+  document
+    .querySelectorAll("[data-subtab]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        const viewId = button.dataset.subtab;
+        const group = button.dataset.group;
+
+        if (group === "gang") {
+          openGangModule(viewId);
+          return;
+        }
+
+        showToolView(viewId, "distillery");
+      });
+    });
+
+  el("pc-utility-btn")
+    .addEventListener("click", () => {
+      showToolView("pc-view", "distillery");
+    });
 
   // ============================================================
   // START
@@ -3771,6 +3881,7 @@ setupPayments();
 renderAll();
 fetchApprovedRecipes();
 setupAdmin();
+showToolView("optimizer-view", "distillery");
 
   // Pobieramy nowe zatwierdzone dane także co 5 minut.
   setInterval(
