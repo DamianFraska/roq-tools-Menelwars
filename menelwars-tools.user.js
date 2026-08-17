@@ -858,7 +858,6 @@ function displayName(name) {
       });
   }
 
-
   optPanel
     .querySelectorAll(".tab")
     .forEach(
