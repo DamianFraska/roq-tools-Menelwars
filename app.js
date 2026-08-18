@@ -2652,34 +2652,7 @@ const MAP_POSITIONS = {
   function renderGangGoal(payload) {
     const box = el("gang-goal-content");
     if (!box) return;
-
-    const salaryPlayerSelect = el("admin-salary-player");
-
-  if (salaryPlayerSelect) {
-    const players =
-      latestGangPayload && Array.isArray(latestGangPayload.players)
-        ? latestGangPayload.players
-        : [];
-
-    const previous = salaryPlayerSelect.value;
-
-    salaryPlayerSelect.innerHTML = players
-      .slice()
-      .sort((a,b) => String(a.nick || "").localeCompare(String(b.nick || ""),"pl"))
-      .map(player => `<option value="${escapeHtml(player.nick)}">${escapeHtml(player.nick)}</option>`)
-      .join("");
-
-    if (
-      previous &&
-      Array.from(salaryPlayerSelect.options).some(option => option.value === previous)
-    ) {
-      salaryPlayerSelect.value = previous;
-    }
-  }
-
-  refreshAdminIdentityStatus();
-
-  const goal = payload && payload.goal;
+const goal = payload && payload.goal;
 
     if (!goal) {
       box.innerHTML = `
@@ -3110,20 +3083,45 @@ async function refreshAdminIdentityStatus() {
   const select = el("admin-salary-player");
   const box = el("admin-identity-device-count");
 
-  if (!select || !box || !select.value) return;
+  if (!select || !box) return;
+
+  if (!select.value) {
+    box.textContent =
+      "Aktywne urządzenia: 0";
+    return;
+  }
+
+  box.textContent =
+    "Aktywne urządzenia: ładowanie...";
 
   try {
-    const result = await jsonp("adminIdentityStatus",{
-      token:adminToken(),
-      nick:select.value
-    });
+    const result =
+      await jsonp(
+        "adminIdentityStatus",
+        {
+          token:adminToken(),
+          nick:select.value
+        }
+      );
 
-    if (!result || !result.ok) throw new Error("Błąd statusu.");
+    if (
+      !result ||
+      !result.ok
+    ) {
+      throw new Error(
+        result &&
+        result.error
+          ? result.error
+          : "Błąd statusu."
+      );
+    }
 
     box.textContent =
       `Aktywne urządzenia: ${Number(result.deviceCount) || 0}`;
+
   } catch (err) {
-    box.textContent = "Aktywne urządzenia: —";
+    box.textContent =
+      "Aktywne urządzenia: błąd pobierania";
   }
 }
 
@@ -3237,6 +3235,56 @@ async function loadAdminPolls() {
 
 
 function renderAdminGangTools(payload) {
+
+  const salaryPlayerSelect =
+    el("admin-salary-player");
+
+  if (salaryPlayerSelect) {
+    const players =
+      latestGangPayload &&
+      Array.isArray(
+        latestGangPayload.players
+      )
+        ? latestGangPayload.players
+        : [];
+
+    const previous =
+      salaryPlayerSelect.value;
+
+    salaryPlayerSelect.innerHTML =
+      players
+        .slice()
+        .sort(
+          (a,b) =>
+            String(a.nick || "")
+              .localeCompare(
+                String(b.nick || ""),
+                "pl"
+              )
+        )
+        .map(
+          player =>
+            `<option value="${escapeHtml(player.nick)}">${escapeHtml(player.nick)}</option>`
+        )
+        .join("");
+
+    if (
+      previous &&
+      Array.from(
+        salaryPlayerSelect.options
+      ).some(
+        option =>
+          option.value === previous
+      )
+    ) {
+      salaryPlayerSelect.value =
+        previous;
+    }
+  }
+
+  refreshAdminIdentityStatus();
+
+
   const reservations =
     Array.isArray(payload && payload.reservations)
       ? payload.reservations
