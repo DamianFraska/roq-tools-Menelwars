@@ -425,3 +425,109 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
 .research-submitted .research-status{
   color:#315f8f!important;
 }
+
+
+/* v17 — dobrowolne zrzeczenie pensji */
+.salary-self-service{margin-top:10px}
+
+.salary-identity-card,
+.salary-waiver-card{
+  border:1px solid #d8c7aa;
+  border-radius:10px;
+  background:#fffaf2;
+  padding:10px;
+}
+
+.salary-waiver-card.waived{
+  background:#eef7ef;
+  border-color:#9fc3a4;
+}
+
+.salary-identity-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr auto;
+  gap:6px;
+  align-items:end;
+}
+
+.salary-identity-grid label{display:grid;gap:4px}
+.salary-identity-grid label>span{
+  font-size:11px;font-weight:700;color:#6b5b47
+}
+
+.salary-identity-grid input,
+.salary-admin-grid select{
+  width:100%;
+  border:1px solid #ccb797;
+  border-radius:8px;
+  background:#fffdf8;
+  color:#332a20;
+  padding:8px;
+}
+
+.salary-waiver-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:8px;
+}
+
+.salary-waiver-note{
+  color:#6d5f4d;
+  font-size:11px;
+  line-height:1.35;
+}
+
+.salary-fund-highlight{
+  margin-top:8px;
+  padding:8px;
+  border:1px solid #b7ccb9;
+  border-radius:8px;
+  background:#f1f8f2;
+  color:#356a3c;
+  font-weight:700;
+}
+
+.salary-admin-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:6px;
+  align-items:center;
+}
+
+.salary-code-result{
+  margin-top:8px;
+  padding:10px;
+  border-radius:8px;
+  background:#fff4cf;
+  border:1px solid #d8bb68;
+  text-align:center;
+}
+
+.salary-code-result strong{
+  display:block;
+  font-size:22px;
+  letter-spacing:.12em;
+  margin:4px 0;
+}
+
+.salary-waived-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin-left:5px;
+  padding:2px 6px;
+  border-radius:999px;
+  background:#dceedd;
+  color:#356a3c;
+  font-size:9px;
+  font-weight:800;
+}
+
+@media(max-width:600px){
+  .salary-identity-grid{grid-template-columns:1fr 1fr}
+  .salary-identity-grid button{grid-column:1/-1}
+  .salary-waiver-actions{align-items:stretch;flex-direction:column}
+  .salary-admin-grid{grid-template-columns:1fr}
+}

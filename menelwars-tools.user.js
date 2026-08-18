@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.18.1
+// @version      0.19.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -92,6 +92,7 @@ function displayName(name) {
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
   const NICK_KEY = "roq_tools_submitter_nick_v1";
 const RESERVATION_OWNER_KEY = "roq_recipe_reservation_owners_v1";
+const COMPANY_SALARY_IDENTITY_KEY = "menelwars_company_salary_identity_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
   const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
   const BAR_COLLAPSED_KEY = "menelwars_tools_bar_collapsed_v1";
@@ -2309,6 +2310,56 @@ function gmJsonRequest(
 }
 
 
+function companySalaryIdentityToken() {
+  return localStorage.getItem(COMPANY_SALARY_IDENTITY_KEY) || "";
+}
+
+function setCompanySalaryIdentityToken(token) {
+  if (token) localStorage.setItem(COMPANY_SALARY_IDENTITY_KEY,token);
+  else localStorage.removeItem(COMPANY_SALARY_IDENTITY_KEY);
+}
+
+async function companySalaryPostAction(action,data={}) {
+  const nonce = makeGangNonce();
+
+  const start = await gmJsonRequest("POST",BACKEND_URL,{
+    action,
+    nonce,
+    ...data
+  });
+
+  if (start && start.ok === false) {
+    throw new Error(start.error || "Nie udało się rozpocząć operacji.");
+  }
+
+  let result = null;
+
+  for (let attempt=0; attempt<20; attempt++) {
+    await new Promise(resolve => setTimeout(resolve,300));
+
+    result = await gmJsonRequest(
+      "GET",
+      BACKEND_URL +
+        "?action=companySalaryActionResult" +
+        "&nonce=" + encodeURIComponent(nonce) +
+        "&_=" + Date.now()
+    );
+
+    if (result && !result.pending) break;
+  }
+
+  if (!result || result.pending) {
+    throw new Error("Serwer nie zwrócił wyniku operacji.");
+  }
+
+  if (!result.ok) {
+    throw new Error(result.error || "Operacja nie powiodła się.");
+  }
+
+  return result;
+}
+
+
 function paymentsDate(value) {
 
   const text =
@@ -2577,19 +2628,40 @@ function renderGangSection(section="payments") {
       <div class="card"><b>Budżet pensji 50%:</b> ${money(payload.salaryBudget)}</div>
       <div class="card"><b>Rozwój 50%:</b> ${money(payload.developmentBudget)}</div>
       <div class="card"><b>Udziałowcy ≥ 30 000:</b> ${Number(payload.eligibleCount) || 0}</div>
+
+      ${
+        Number(payload.waivedToFund) > 0
+          ? `
+              <div class="card" style="background:#eef7ef;border-color:#9fc3a4">
+                💚 <b>Dobrowolnie do Funduszu:</b> +${money(payload.waivedToFund)}
+                <br>
+                <span class="muted">Fundusz z częścią rozwojową: ${money(payload.fundTotal)}</span>
+              </div>
+            `
+          : ""
+      }
+
+      <div id="tmCompanySalarySelf" style="margin:8px 0"></div>
+
       <br><b>Udziały i przewidywane pensje</b>
+
       ${eligible.length
         ? eligible.map(p => `
             <div class="card" style="background:#eef8f0;border-color:#b6d9bd">
-              <b>${esc(p.nick)}</b>
+              <b>${esc(p.nick)}${p.salaryWaived ? ` 💚` : ""}</b>
               <div class="muted" style="margin-top:3px">
                 🏢 Wkład: <b>${money(p.contribution)}</b>
                 · Udział: <b>${(Number(p.share || 0)*100).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})}%</b>
-                · 💰 Pensja: <b>${money(p.salary)}</b>
+                · 💰 Należna: <b>${money(p.salary)}</b>
+                ${p.salaryWaived ? ` · 🎮 Do gry: <b>${money(p.payoutSalary)}</b> · 💚 Fundusz: <b>${money(p.waivedAmount)}</b>` : ""}
               </div>
             </div>
           `).join("")
         : `<div class="muted">Nikt nie osiągnął jeszcze progu 30 000 zł wkładu.</div>`}
+
+      <div class="muted" style="margin-top:8px">
+        Rezygnacja z pensji nie zwiększa wypłat innych graczy. Kwota ponad minimalne 160 zł trafia do Funduszu.
+      </div>
     `;
   }
 
@@ -2647,6 +2719,10 @@ function renderGangSection(section="payments") {
   }
 
   wrap.innerHTML = nav + body;
+
+  if (section === "company") {
+    renderTmCompanySalarySelf(payload);
+  }
 
   wrap.querySelectorAll("[data-gang-tab]").forEach(tab => {
     tab.onclick = () => {

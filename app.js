@@ -15,6 +15,7 @@
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
   const NICK_KEY = "roq_tools_submitter_nick_v1";
   const RESERVATION_OWNER_KEY = "roq_recipe_reservation_owners_v1";
+  const COMPANY_SALARY_IDENTITY_KEY = "menelwars_company_salary_identity_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
   const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
   const COMPANY_INCOME_KEY = "menelwars_tools_company_income_v1";
@@ -1852,6 +1853,225 @@ const MAP_POSITIONS = {
     showToolView("payments-view", "gang");
   }
 
+  function companySalaryIdentityToken() {
+    return localStorage.getItem(COMPANY_SALARY_IDENTITY_KEY) || "";
+  }
+
+  function setCompanySalaryIdentityToken(token) {
+    if (token) localStorage.setItem(COMPANY_SALARY_IDENTITY_KEY,token);
+    else localStorage.removeItem(COMPANY_SALARY_IDENTITY_KEY);
+  }
+
+  async function companySalaryPostAction(action,data={}) {
+    const nonce = makeRecipeNonce();
+
+    await fetch(BACKEND_URL,{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain;charset=UTF-8"},
+      body:JSON.stringify({action,nonce,...data})
+    });
+
+    let result = null;
+
+    for (let attempt=0; attempt<20; attempt++) {
+      await new Promise(resolve => setTimeout(resolve,350));
+      result = await jsonp("companySalaryActionResult",{nonce});
+      if (result && !result.pending) break;
+    }
+
+    if (!result || result.pending) {
+      throw new Error("Serwer nie zwrócił wyniku operacji.");
+    }
+
+    if (!result.ok) {
+      throw new Error(result.error || "Operacja nie powiodła się.");
+    }
+
+    return result;
+  }
+
+  async function companySalaryIdentityStatus() {
+    const token = companySalaryIdentityToken();
+    if (!token) return null;
+
+    try {
+      const result = await jsonp("companySalaryIdentityStatus",{
+        identityToken:token
+      });
+
+      if (!result || !result.ok || !result.authenticated) {
+        setCompanySalaryIdentityToken("");
+        return null;
+      }
+
+      return result;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  async function renderCompanySalarySelfService(payload) {
+    const box = el("company-salary-identity-box");
+    const status = el("company-salary-self-status");
+    if (!box) return;
+
+    const identity = await companySalaryIdentityStatus();
+
+    if (!identity) {
+      box.innerHTML = `
+        <div class="salary-identity-card">
+          <b>🔐 Zarządzaj swoją pensją</b>
+
+          <p class="muted">
+            Aby nikt nie mógł zrzec się pensji za inną osobę, aktywuj swój nick jednorazowym kodem otrzymanym od administratora.
+          </p>
+
+          <div class="salary-identity-grid">
+            <label>
+              <span>Twój nick</span>
+              <input id="company-salary-claim-nick" type="text" maxlength="40" placeholder="np. RoQ">
+            </label>
+
+            <label>
+              <span>Kod aktywacyjny</span>
+              <input id="company-salary-claim-code" type="text" maxlength="12" autocomplete="one-time-code" placeholder="XXXXXXXX">
+            </label>
+
+            <button id="company-salary-claim-button" class="primary-btn" type="button">
+              🔓 Aktywuj
+            </button>
+          </div>
+        </div>
+      `;
+
+      el("company-salary-claim-button")?.addEventListener("click",async event => {
+        const button = event.currentTarget;
+        const nick = el("company-salary-claim-nick").value.trim();
+        const code = el("company-salary-claim-code").value.trim();
+
+        if (!nick || !code) {
+          status.textContent = "Podaj nick i kod aktywacyjny.";
+          return;
+        }
+
+        setActionLoading(button,status,"Aktywowanie...");
+
+        try {
+          const result = await companySalaryPostAction(
+            "companyClaimSalaryIdentity",
+            {nick,code}
+          );
+
+          setCompanySalaryIdentityToken(result.token);
+          status.textContent = `✅ To urządzenie zostało przypisane do: ${result.nick}.`;
+
+          await renderCompanySalarySelfService(latestGangPayload || payload);
+        } catch (err) {
+          status.textContent = err.message || "Nie udało się aktywować dostępu.";
+        } finally {
+          clearActionLoading(button);
+        }
+      });
+
+      return;
+    }
+
+    const players = Array.isArray(payload && payload.players) ? payload.players : [];
+    const player = players.find(item =>
+      String(item.nick || "").trim().toLocaleLowerCase("pl-PL") ===
+      String(identity.nick || "").trim().toLocaleLowerCase("pl-PL")
+    );
+
+    const eligible = player && Number(player.salary) > 0;
+    const waived = Boolean(player && player.salaryWaived);
+
+    const money = value =>
+      (Number(value) || 0).toLocaleString("pl-PL",{maximumFractionDigits:2}) + " zł";
+
+    box.innerHTML = `
+      <div class="salary-waiver-card ${waived ? "waived" : ""}">
+        <b>💰 Twoja pensja — ${escapeHtml(identity.nick)}</b>
+
+        ${
+          eligible
+            ? `
+                <div class="finance-meta" style="margin-top:6px">
+                  <span>Należna pensja: <strong>${money(player.salary)}</strong></span>
+                  <span>Do wypłaty w grze: <strong>${money(player.payoutSalary ?? player.salary)}</strong></span>
+                  ${waived ? `<span>Do Funduszu: <strong>${money(player.waivedAmount)}</strong></span>` : ""}
+                </div>
+
+                <div class="salary-waiver-actions">
+                  <div class="salary-waiver-note">
+                    ${
+                      waived
+                        ? "Dobrowolnie zrzekasz się części pensji ponad minimalne 160 zł. Nie zwiększa to pensji pozostałych graczy."
+                        : "Możesz dobrowolnie zrzec się pensji ponad minimalne 160 zł. Różnica trafi do Funduszu i nie zmieni wypłat pozostałych graczy."
+                    }
+                  </div>
+
+                  <button
+                    id="company-salary-waiver-toggle"
+                    class="${waived ? "logout-btn" : "primary-btn"}"
+                    type="button">
+                    ${waived ? "↩️ Przywróć pensję" : "💚 Zrzekam się pensji"}
+                  </button>
+                </div>
+              `
+            : `<p class="muted">Ten gracz nie ma obecnie naliczanej pensji udziałowca.</p>`
+        }
+
+        <div style="margin-top:7px">
+          <button id="company-salary-identity-logout" class="logout-btn" type="button">
+            🔒 Odłącz tożsamość na tym urządzeniu
+          </button>
+        </div>
+      </div>
+    `;
+
+    el("company-salary-waiver-toggle")?.addEventListener("click",async event => {
+      const button = event.currentTarget;
+      const nextWaived = !waived;
+
+      if (!window.confirm(
+        nextWaived
+          ? "Zrzec się pensji ponad minimalne 160 zł? Różnica trafi do Funduszu."
+          : "Przywrócić pełną należną pensję?"
+      )) return;
+
+      setActionLoading(
+        button,
+        status,
+        nextWaived ? "Zapisywanie rezygnacji..." : "Przywracanie pensji..."
+      );
+
+      try {
+        await companySalaryPostAction("companySetSalaryWaiver",{
+          identityToken:companySalaryIdentityToken(),
+          waived:nextWaived
+        });
+
+        status.textContent = nextWaived
+          ? "✅ Zrzekłeś się pensji. Kwota ponad 160 zł trafi do Funduszu."
+          : "✅ Pełna pensja została przywrócona.";
+
+        await loadPayments({background:true});
+      } catch (err) {
+        status.textContent = err.message || "Nie udało się zapisać decyzji.";
+      } finally {
+        clearActionLoading(button);
+      }
+    });
+
+    el("company-salary-identity-logout")?.addEventListener("click",async () => {
+      setCompanySalaryIdentityToken("");
+      status.textContent = "Tożsamość została odłączona na tym urządzeniu.";
+      await renderCompanySalarySelfService(latestGangPayload || payload);
+    });
+  }
+
+
   function renderCompanySummary(payload) {
     const box = el("company-summary");
     if (!box) return;
@@ -1865,9 +2085,7 @@ const MAP_POSITIONS = {
       .sort((a,b) => Number(b.contribution || 0) - Number(a.contribution || 0));
 
     const money = value =>
-      (Number(value) || 0).toLocaleString("pl-PL", {
-        maximumFractionDigits:2
-      }) + " zł";
+      (Number(value) || 0).toLocaleString("pl-PL",{maximumFractionDigits:2}) + " zł";
 
     box.innerHTML = `
       <div class="company-grid">
@@ -1877,26 +2095,59 @@ const MAP_POSITIONS = {
         <div class="company-stat"><small>Udziałowcy ≥ 30 000</small><b>${Number(payload.eligibleCount) || 0}</b></div>
       </div>
 
-      <h3>Udziały i przewidywane pensje</h3>
-      <div class="company-list">
-        ${eligible.length
-          ? eligible.map(player => `
-              <div class="finance-player-row credit">
-                <div class="finance-name">${escapeHtml(player.nick)}</div>
-                <div class="finance-meta">
-                  <span>🏢 Wkład: <strong>${money(player.contribution)}</strong></span>
-                  <span>Udział: <strong>${(Number(player.share || 0) * 100).toLocaleString("pl-PL", {minimumFractionDigits:2,maximumFractionDigits:2})}%</strong></span>
-                  <span>💰 Pensja: <strong>${money(player.salary)}</strong></span>
-                </div>
+      ${
+        Number(payload.waivedToFund) > 0
+          ? `
+              <div class="salary-fund-highlight">
+                💚 Dobrowolnie przekazane pensje:
+                +${money(payload.waivedToFund)}
+                <br>
+                Fundusz łącznie z częścią rozwojową:
+                ${money(payload.fundTotal)}
               </div>
-            `).join("")
-          : `<div class="empty">Nikt nie osiągnął jeszcze progu 30 000 zł wkładu.</div>`}
+            `
+          : ""
+      }
+
+      <h3>Udziały i przewidywane pensje</h3>
+
+      <div class="company-list">
+        ${
+          eligible.length
+            ? eligible.map(player => `
+                <div class="finance-player-row credit">
+                  <div class="finance-name">
+                    ${escapeHtml(player.nick)}
+                    ${player.salaryWaived ? `<span class="salary-waived-badge">💚 pensja dla Funduszu</span>` : ""}
+                  </div>
+
+                  <div class="finance-meta">
+                    <span>🏢 Wkład: <strong>${money(player.contribution)}</strong></span>
+                    <span>Udział: <strong>${(Number(player.share || 0)*100).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})}%</strong></span>
+                    <span>💰 Należna: <strong>${money(player.salary)}</strong></span>
+
+                    ${
+                      player.salaryWaived
+                        ? `
+                            <span>🎮 Do gry: <strong>${money(player.payoutSalary)}</strong></span>
+                            <span>💚 Fundusz: <strong>${money(player.waivedAmount)}</strong></span>
+                          `
+                        : ""
+                    }
+                  </div>
+                </div>
+              `).join("")
+            : `<div class="empty">Nikt nie osiągnął jeszcze progu 30 000 zł wkładu.</div>`
+        }
       </div>
 
       <p class="muted" style="margin-top:10px">
-        To wartości wyliczane z aktualnego salda. Udział i pensja zmieniają się razem z wkładem gracza.
+        Rezygnacja z pensji nie zmienia udziałów ani należnych pensji pozostałych graczy.
+        Gracz zrzekający się pensji otrzymuje w grze minimalne 160 zł, a pozostała część jego własnej pensji trafia do Funduszu.
       </p>
     `;
+
+    renderCompanySalarySelfService(payload);
   }
 
   function gangFormatNumber(value) {
@@ -1910,7 +2161,31 @@ const MAP_POSITIONS = {
     const box = el("gang-goal-content");
     if (!box) return;
 
-    const goal = payload && payload.goal;
+    const salaryPlayerSelect = el("admin-salary-player");
+
+  if (salaryPlayerSelect) {
+    const players =
+      latestGangPayload && Array.isArray(latestGangPayload.players)
+        ? latestGangPayload.players
+        : [];
+
+    const previous = salaryPlayerSelect.value;
+
+    salaryPlayerSelect.innerHTML = players
+      .slice()
+      .sort((a,b) => String(a.nick || "").localeCompare(String(b.nick || ""),"pl"))
+      .map(player => `<option value="${escapeHtml(player.nick)}">${escapeHtml(player.nick)}</option>`)
+      .join("");
+
+    if (
+      previous &&
+      Array.from(salaryPlayerSelect.options).some(option => option.value === previous)
+    ) {
+      salaryPlayerSelect.value = previous;
+    }
+  }
+
+  const goal = payload && payload.goal;
 
     if (!goal) {
       box.innerHTML = `
@@ -4910,6 +5185,51 @@ function setupAdmin() {
       "submit",
       addAdminPlayer
     );
+
+  el("admin-salary-generate-code")
+    ?.addEventListener(
+      "click",
+      async event => {
+        const button = event.currentTarget;
+        const select = el("admin-salary-player");
+        const resultBox = el("admin-salary-code-result");
+        const nick = select && select.value ? select.value : "";
+
+        if (!nick) {
+          resultBox.hidden = false;
+          resultBox.textContent = "Brak gracza do wygenerowania kodu.";
+          return;
+        }
+
+        button.disabled = true;
+        button.textContent = "⏳ Generowanie...";
+
+        try {
+          const result = await jsonp("adminGenerateSalaryClaimCode",{
+            token:adminToken(),
+            nick
+          });
+
+          if (!result || !result.ok) {
+            throw new Error(result && result.error ? result.error : "Nie udało się wygenerować kodu.");
+          }
+
+          resultBox.hidden = false;
+          resultBox.innerHTML = `
+            Kod dla: <b>${escapeHtml(result.nick)}</b>
+            <strong>${escapeHtml(result.code)}</strong>
+            <span class="muted">Jednorazowy · ważny 24 godziny</span>
+          `;
+        } catch (err) {
+          resultBox.hidden = false;
+          resultBox.textContent = err.message || "Nie udało się wygenerować kodu.";
+        } finally {
+          button.disabled = false;
+          button.innerHTML = "🔑 Generuj kod";
+        }
+      }
+    );
+
 
   el("admin-logout")
     .addEventListener(

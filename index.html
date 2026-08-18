@@ -889,6 +889,11 @@
         <div id="company-summary">
           <div class="muted">Pobieranie danych spółki...</div>
         </div>
+
+        <div id="company-salary-self-service" class="salary-self-service">
+          <div id="company-salary-identity-box"></div>
+          <div id="company-salary-self-status" class="submit-status"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -1313,7 +1318,28 @@
 
         </div>
 
-                <details id="admin-section-players" class="admin-accordion admin-players-accordion">
+                <details id="admin-section-salary-access" class="admin-accordion">
+          <summary>
+            <span>💰 Dostęp do własnej pensji</span>
+            <span class="accordion-chevron">⌄</span>
+          </summary>
+          <div class="admin-accordion-body">
+            <p class="muted">
+              Wygeneruj jednorazowy kod dla gracza. Kod przypisuje jego nick do urządzenia i pozwala zarządzać wyłącznie własną pensją.
+            </p>
+
+            <div class="salary-admin-grid">
+              <select id="admin-salary-player"></select>
+              <button id="admin-salary-generate-code" type="button" class="primary-btn">
+                🔑 Generuj kod
+              </button>
+            </div>
+
+            <div id="admin-salary-code-result" class="salary-code-result" hidden></div>
+          </div>
+        </details>
+
+        <details id="admin-section-players" class="admin-accordion admin-players-accordion">
           <summary>
             <span>👥 Gracze</span>
             <span class="accordion-chevron">⌄</span>

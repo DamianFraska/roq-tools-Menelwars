@@ -1,4 +1,4 @@
-const CACHE = "menelwars-tools-0.0.7.5.6.1.3";
+const CACHE = "menelwars-tools-0.0.7.5.6.1.4";
 
 const ASSETS = [
   "./",
