@@ -695,6 +695,8 @@
   <nav class="tabs sub-tabs" id="gang-tabs" hidden>
     <button class="active" data-subtab="payments-view" data-group="gang">💰 Wpłaty</button>
     <button data-subtab="company-view" data-group="gang">🏢 Spółka</button>
+    <button data-subtab="polls-view" data-group="gang">📊 Ankiety</button>
+    <button data-subtab="settings-view" data-group="gang">⚙️ Ustawienia</button>
     <button data-subtab="goals-view" data-group="gang">🎯 Cele</button>
     <button data-subtab="announcements-view" data-group="gang">📢 Ogłoszenia</button>
     <button data-subtab="admin-view" data-group="gang">🛠 Admin</button>
@@ -889,6 +891,27 @@
         <div id="company-summary">
           <div class="muted">Pobieranie danych spółki...</div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="polls-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">📊 Ankiety</div>
+      <div class="panel-body">
+        <div id="gang-polls-list">
+          <div class="empty">Ładowanie ankiet...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="settings-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">⚙️ Ustawienia</div>
+      <div class="panel-body">
+        <div id="player-identity-box"></div>
+        <div id="player-identity-status" class="submit-status"></div>
       </div>
     </div>
   </section>
@@ -1322,12 +1345,12 @@
             <div class="submit-form">
               <label>
                 <span>Tytuł</span>
-                <input id="admin-poll-title" type="text" placeholder="np. Kolejny upgrade spółki">
+                <input id="admin-poll-title" type="text" maxlength="120" placeholder="np. Kolejny upgrade spółki">
               </label>
 
               <label>
                 <span>Pytanie</span>
-                <input id="admin-poll-question" type="text" placeholder="Co kupujemy jako następne?">
+                <input id="admin-poll-question" type="text" maxlength="240" placeholder="Co kupujemy jako następne?">
               </label>
 
               <label>

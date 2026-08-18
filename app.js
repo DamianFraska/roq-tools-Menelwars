@@ -1854,55 +1854,79 @@ const MAP_POSITIONS = {
     showToolView("payments-view", "gang");
   }
 
+  function playerIdentityToken() {
+    const current =
+      localStorage.getItem(
+        PLAYER_IDENTITY_KEY
+      ) || "";
+
+    if (current) return current;
+
+    const legacy =
+      localStorage.getItem(
+        COMPANY_SALARY_IDENTITY_KEY
+      ) || "";
+
+    if (legacy) {
+      localStorage.setItem(
+        PLAYER_IDENTITY_KEY,
+        legacy
+      );
+    }
+
+    return legacy;
+  }
+
+  function setPlayerIdentityToken(token) {
+    if (token) {
+      localStorage.setItem(
+        PLAYER_IDENTITY_KEY,
+        token
+      );
+
+      // zgodność z v17 — moduł pensji używał starego klucza
+      localStorage.setItem(
+        COMPANY_SALARY_IDENTITY_KEY,
+        token
+      );
+    } else {
+      localStorage.removeItem(
+        PLAYER_IDENTITY_KEY
+      );
+
+      localStorage.removeItem(
+        COMPANY_SALARY_IDENTITY_KEY
+      );
+    }
+  }
+
   function companySalaryIdentityToken() {
-    return localStorage.getItem(COMPANY_SALARY_IDENTITY_KEY) || "";
+    return playerIdentityToken();
   }
 
   function setCompanySalaryIdentityToken(token) {
-    if (token) localStorage.setItem(COMPANY_SALARY_IDENTITY_KEY,token);
-    else localStorage.removeItem(COMPANY_SALARY_IDENTITY_KEY);
+    setPlayerIdentityToken(token);
   }
 
-  async function companySalaryPostAction(action,data={}) {
-    const nonce = makeRecipeNonce();
+  async function playerIdentityStatus() {
+    const token =
+      playerIdentityToken();
 
-    await fetch(BACKEND_URL,{
-      method:"POST",
-      mode:"no-cors",
-      headers:{"Content-Type":"text/plain;charset=UTF-8"},
-      body:JSON.stringify({action,nonce,...data})
-    });
-
-    let result = null;
-
-    for (let attempt=0; attempt<20; attempt++) {
-      await new Promise(resolve => setTimeout(resolve,350));
-      result = await jsonp("companySalaryActionResult",{nonce});
-      if (result && !result.pending) break;
-    }
-
-    if (!result || result.pending) {
-      throw new Error("Serwer nie zwrócił wyniku operacji.");
-    }
-
-    if (!result.ok) {
-      throw new Error(result.error || "Operacja nie powiodła się.");
-    }
-
-    return result;
-  }
-
-  async function companySalaryIdentityStatus() {
-    const token = companySalaryIdentityToken();
     if (!token) return null;
 
     try {
-      const result = await jsonp("companySalaryIdentityStatus",{
-        identityToken:token
-      });
+      const result =
+        await jsonp(
+          "playerIdentityStatus",
+          {identityToken:token}
+        );
 
-      if (!result || !result.ok || !result.authenticated) {
-        setCompanySalaryIdentityToken("");
+      if (
+        !result ||
+        !result.ok ||
+        !result.authenticated
+      ) {
+        setPlayerIdentityToken("");
         return null;
       }
 
@@ -1912,164 +1936,524 @@ const MAP_POSITIONS = {
     }
   }
 
-  async function renderCompanySalarySelfService(payload) {
-    const box = el("company-salary-identity-box");
-    const status = el("company-salary-self-status");
+  async function playerIdentityPostAction(
+    action,
+    data={}
+  ) {
+    const nonce =
+      makeRecipeNonce();
+
+    await fetch(
+      BACKEND_URL,
+      {
+        method:"POST",
+        mode:"no-cors",
+        headers:{
+          "Content-Type":
+            "text/plain;charset=UTF-8"
+        },
+        body:
+          JSON.stringify({
+            action,
+            nonce,
+            ...data
+          })
+      }
+    );
+
+    let result = null;
+
+    for (
+      let attempt=0;
+      attempt<20;
+      attempt++
+    ) {
+      await new Promise(
+        resolve =>
+          setTimeout(resolve,350)
+      );
+
+      result =
+        await jsonp(
+          "playerIdentityActionResult",
+          {nonce}
+        );
+
+      if (
+        result &&
+        !result.pending
+      ) {
+        break;
+      }
+    }
+
+    if (
+      !result ||
+      result.pending
+    ) {
+      throw new Error(
+        "Serwer nie zwrócił wyniku operacji."
+      );
+    }
+
+    if (!result.ok) {
+      throw new Error(
+        result.error ||
+        "Operacja nie powiodła się."
+      );
+    }
+
+    return result;
+  }
+
+  async function companySalaryPostAction(
+    action,
+    data={}
+  ) {
+    // Aktywacja tożsamości jest od v18 wspólna dla całego Gangu.
+    if (
+      action ===
+      "companyClaimSalaryIdentity"
+    ) {
+      return playerIdentityPostAction(
+        "playerClaimIdentity",
+        data
+      );
+    }
+
+    const nonce =
+      makeRecipeNonce();
+
+    await fetch(
+      BACKEND_URL,
+      {
+        method:"POST",
+        mode:"no-cors",
+        headers:{
+          "Content-Type":
+            "text/plain;charset=UTF-8"
+        },
+        body:
+          JSON.stringify({
+            action,
+            nonce,
+            ...data
+          })
+      }
+    );
+
+    let result = null;
+
+    for (
+      let attempt=0;
+      attempt<20;
+      attempt++
+    ) {
+      await new Promise(
+        resolve =>
+          setTimeout(resolve,350)
+      );
+
+      result =
+        await jsonp(
+          "companySalaryActionResult",
+          {nonce}
+        );
+
+      if (
+        result &&
+        !result.pending
+      ) {
+        break;
+      }
+    }
+
+    if (
+      !result ||
+      result.pending
+    ) {
+      throw new Error(
+        "Serwer nie zwrócił wyniku operacji."
+      );
+    }
+
+    if (!result.ok) {
+      throw new Error(
+        result.error ||
+        "Operacja nie powiodła się."
+      );
+    }
+
+    return result;
+  }
+
+  async function companySalaryIdentityStatus() {
+    const token =
+      playerIdentityToken();
+
+    if (!token) return null;
+
+    try {
+      const result =
+        await jsonp(
+          "companySalaryIdentityStatus",
+          {identityToken:token}
+        );
+
+      if (
+        !result ||
+        !result.ok ||
+        !result.authenticated
+      ) {
+        setPlayerIdentityToken("");
+        return null;
+      }
+
+      return result;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  async function renderPlayerIdentitySettings() {
+    const box =
+      el("player-identity-box");
+
+    const status =
+      el("player-identity-status");
+
     if (!box) return;
 
-    const identity = await companySalaryIdentityStatus();
+    const identity =
+      await playerIdentityStatus();
 
     if (!identity) {
       box.innerHTML = `
-        <div class="salary-identity-card">
-          <b>🔐 Zarządzaj swoją pensją</b>
+        <div class="identity-card">
+          <b>🔐 Potwierdź swoją tożsamość</b>
 
           <p class="muted">
-            Aby nikt nie mógł zrzec się pensji za inną osobę, aktywuj swój nick jednorazowym kodem otrzymanym od administratora.
+            Jednorazowy kod otrzymasz od administratora.
+            Po aktywacji to urządzenie będzie mogło korzystać z funkcji przypisanych do Twojego nicku.
           </p>
 
           <div class="salary-identity-grid">
             <label>
               <span>Twój nick</span>
-              <input id="company-salary-claim-nick" type="text" maxlength="40" placeholder="np. RoQ">
+              <input
+                id="player-identity-nick"
+                type="text"
+                maxlength="40"
+                placeholder="np. RoQ">
             </label>
 
             <label>
               <span>Kod aktywacyjny</span>
-              <input id="company-salary-claim-code" type="text" maxlength="12" autocomplete="one-time-code" placeholder="XXXXXXXX">
+              <input
+                id="player-identity-code"
+                type="text"
+                maxlength="12"
+                autocomplete="one-time-code"
+                placeholder="XXXXXXXX">
             </label>
 
-            <button id="company-salary-claim-button" class="primary-btn" type="button">
+            <button
+              id="player-identity-claim"
+              class="primary-btn"
+              type="button">
               🔓 Aktywuj
             </button>
           </div>
         </div>
       `;
 
-      el("company-salary-claim-button")?.addEventListener("click",async event => {
-        const button = event.currentTarget;
-        const nick = el("company-salary-claim-nick").value.trim();
-        const code = el("company-salary-claim-code").value.trim();
+      el("player-identity-claim")
+        ?.addEventListener(
+          "click",
+          async event => {
+            const button =
+              event.currentTarget;
 
-        if (!nick || !code) {
-          status.textContent = "Podaj nick i kod aktywacyjny.";
-          return;
-        }
+            const nick =
+              el("player-identity-nick")
+                .value.trim();
 
-        setActionLoading(button,status,"Aktywowanie...");
+            const code =
+              el("player-identity-code")
+                .value.trim();
 
-        try {
-          const result = await companySalaryPostAction(
-            "companyClaimSalaryIdentity",
-            {nick,code}
-          );
+            if (!nick || !code) {
+              status.textContent =
+                "Podaj nick i kod aktywacyjny.";
+              return;
+            }
 
-          setCompanySalaryIdentityToken(result.token);
-          status.textContent = `✅ To urządzenie zostało przypisane do: ${result.nick}.`;
+            setActionLoading(
+              button,
+              status,
+              "Aktywowanie..."
+            );
 
-          await renderCompanySalarySelfService(latestGangPayload || payload);
-        } catch (err) {
-          status.textContent = err.message || "Nie udało się aktywować dostępu.";
-        } finally {
-          clearActionLoading(button);
-        }
-      });
+            try {
+              const result =
+                await playerIdentityPostAction(
+                  "playerClaimIdentity",
+                  {nick,code}
+                );
+
+              setPlayerIdentityToken(
+                result.token
+              );
+
+              status.textContent =
+                `✅ To urządzenie zostało przypisane do: ${result.nick}.`;
+
+              await renderPlayerIdentitySettings();
+
+            } catch (err) {
+              status.textContent =
+                err.message ||
+                "Nie udało się aktywować dostępu.";
+            } finally {
+              clearActionLoading(button);
+            }
+          }
+        );
 
       return;
     }
 
-    const players = Array.isArray(payload && payload.players) ? payload.players : [];
-    const player = players.find(item =>
-      String(item.nick || "").trim().toLocaleLowerCase("pl-PL") ===
-      String(identity.nick || "").trim().toLocaleLowerCase("pl-PL")
-    );
-
-    const eligible = player && Number(player.salary) > 0;
-    const waived = Boolean(player && player.salaryWaived);
-
-    const money = value =>
-      (Number(value) || 0).toLocaleString("pl-PL",{maximumFractionDigits:2}) + " zł";
-
     box.innerHTML = `
-      <div class="salary-waiver-card ${waived ? "waived" : ""}">
-        <b>💰 Twoja pensja — ${escapeHtml(identity.nick)}</b>
+      <div class="identity-card identity-ok">
+        <b>👤 Tożsamość gracza</b>
 
-        ${
-          eligible
-            ? `
-                <div class="finance-meta" style="margin-top:6px">
-                  <span>Należna pensja: <strong>${money(player.salary)}</strong></span>
-                  <span>Do wypłaty w grze: <strong>${money(player.payoutSalary ?? player.salary)}</strong></span>
-                  ${waived ? `<span>Do Funduszu: <strong>${money(player.waivedAmount)}</strong></span>` : ""}
-                </div>
-
-                <div class="salary-waiver-actions">
-                  <div class="salary-waiver-note">
-                    ${
-                      waived
-                        ? "Dobrowolnie zrzekasz się części pensji ponad minimalne 160 zł. Nie zwiększa to pensji pozostałych graczy."
-                        : "Możesz dobrowolnie zrzec się pensji ponad minimalne 160 zł. Różnica trafi do Funduszu i nie zmieni wypłat pozostałych graczy."
-                    }
-                  </div>
-
-                  <button
-                    id="company-salary-waiver-toggle"
-                    class="${waived ? "logout-btn" : "primary-btn"}"
-                    type="button">
-                    ${waived ? "↩️ Przywróć pensję" : "💚 Zrzekam się pensji"}
-                  </button>
-                </div>
-              `
-            : `<p class="muted">Ten gracz nie ma obecnie naliczanej pensji udziałowca.</p>`
-        }
-
-        <div style="margin-top:7px">
-          <button id="company-salary-identity-logout" class="logout-btn" type="button">
-            🔒 Odłącz tożsamość na tym urządzeniu
-          </button>
+        <div style="margin-top:6px">
+          Zalogowany jako:
+          <strong>${escapeHtml(identity.nick)}</strong>
         </div>
+
+        <div class="muted" style="margin-top:4px">
+          ✅ To urządzenie jest potwierdzone.
+        </div>
+
+        <button
+          id="player-identity-logout"
+          class="logout-btn"
+          type="button"
+          style="margin-top:8px">
+          🔒 Odłącz tożsamość
+        </button>
       </div>
     `;
 
-    el("company-salary-waiver-toggle")?.addEventListener("click",async event => {
-      const button = event.currentTarget;
-      const nextWaived = !waived;
+    el("player-identity-logout")
+      ?.addEventListener(
+        "click",
+        async () => {
+          setPlayerIdentityToken("");
 
-      if (!window.confirm(
-        nextWaived
-          ? "Zrzec się pensji ponad minimalne 160 zł? Różnica trafi do Funduszu."
-          : "Przywrócić pełną należną pensję?"
-      )) return;
+          status.textContent =
+            "Tożsamość została odłączona na tym urządzeniu.";
 
-      setActionLoading(
-        button,
-        status,
-        nextWaived ? "Zapisywanie rezygnacji..." : "Przywracanie pensji..."
+          await renderPlayerIdentitySettings();
+        }
       );
+  }
 
-      try {
-        await companySalaryPostAction("companySetSalaryWaiver",{
-          identityToken:companySalaryIdentityToken(),
-          waived:nextWaived
+  function pollPercent(
+    count,
+    total
+  ) {
+    return total
+      ? Math.round(
+          count /
+          total *
+          100
+        )
+      : 0;
+  }
+
+  async function loadGangPolls() {
+    const box =
+      el("gang-polls-list");
+
+    if (!box) return;
+
+    try {
+      const payload =
+        await jsonp(
+          "gangPolls",
+          {
+            identityToken:
+              playerIdentityToken()
+          }
+        );
+
+      const polls =
+        Array.isArray(
+          payload &&
+          payload.polls
+        )
+          ? payload.polls
+          : [];
+
+      box.innerHTML =
+        polls.length
+          ? polls.map(poll => {
+              const total =
+                Number(
+                  poll.totalVotes
+                ) || 0;
+
+              const isOpen =
+                poll.status === "OPEN";
+
+              return `
+                <article class="poll-card ${isOpen ? "" : "closed"}">
+                  <div class="poll-title">
+                    ${escapeHtml(poll.title)}
+                  </div>
+
+                  <div class="poll-question">
+                    ${escapeHtml(poll.question)}
+                  </div>
+
+                  ${
+                    !payload.authenticated &&
+                    isOpen
+                      ? `
+                          <div class="poll-auth-note">
+                            🔐 Potwierdź swoją tożsamość w
+                            <b>Gang → Ustawienia</b>,
+                            aby zagłosować.
+                          </div>
+                        `
+                      : ""
+                  }
+
+                  ${
+                    poll.options
+                      .map(
+                        (option,index) => {
+                          const count =
+                            Number(
+                              poll.counts &&
+                              poll.counts[index]
+                            ) || 0;
+
+                          const pct =
+                            pollPercent(
+                              count,
+                              total
+                            );
+
+                          const selected =
+                            Number(
+                              poll.myVote
+                            ) === index;
+
+                          return `
+                            <div class="poll-option">
+                              <button
+                                type="button"
+                                data-poll-id="${escapeHtml(poll.id)}"
+                                data-poll-option="${index}"
+                                class="${selected ? "selected" : ""}"
+                                ${isOpen ? "" : "disabled"}>
+                                ${selected ? "✅ " : ""}
+                                ${escapeHtml(option)}
+                              </button>
+
+                              <div class="poll-bar">
+                                <div style="width:${pct}%"></div>
+                              </div>
+
+                              <div class="poll-option-meta">
+                                <span>${count} gł.</span>
+                                <span>${pct}%</span>
+                              </div>
+                            </div>
+                          `;
+                        }
+                      )
+                      .join("")
+                  }
+
+                  <div class="muted">
+                    Głosowało:
+                    <b>${total}</b>
+                    ·
+                    ${
+                      isOpen
+                        ? "ankieta otwarta"
+                        : "ankieta zamknięta"
+                    }
+                  </div>
+                </article>
+              `;
+            }).join("")
+          : `
+              <div class="empty">
+                Brak ankiet.
+              </div>
+            `;
+
+      box
+        .querySelectorAll(
+          "[data-poll-id]"
+        )
+        .forEach(button => {
+          button.addEventListener(
+            "click",
+            async () => {
+              if (button.disabled) {
+                return;
+              }
+
+              const identity =
+                await playerIdentityStatus();
+
+              if (!identity) {
+                window.alert(
+                  "🔐 Potwierdź swoją tożsamość w Gang → Ustawienia, aby zagłosować."
+                );
+                return;
+              }
+
+              try {
+                await playerIdentityPostAction(
+                  "gangPollVote",
+                  {
+                    identityToken:
+                      playerIdentityToken(),
+                    pollId:
+                      button.dataset.pollId,
+                    optionIndex:
+                      Number(
+                        button.dataset.pollOption
+                      )
+                  }
+                );
+
+                await loadGangPolls();
+
+              } catch (err) {
+                window.alert(
+                  err.message ||
+                  "Nie udało się zapisać głosu."
+                );
+              }
+            }
+          );
         });
 
-        status.textContent = nextWaived
-          ? "✅ Zrzekłeś się pensji. Kwota ponad 160 zł trafi do Funduszu."
-          : "✅ Pełna pensja została przywrócona.";
-
-        await loadPayments({background:true});
-      } catch (err) {
-        status.textContent = err.message || "Nie udało się zapisać decyzji.";
-      } finally {
-        clearActionLoading(button);
-      }
-    });
-
-    el("company-salary-identity-logout")?.addEventListener("click",async () => {
-      setCompanySalaryIdentityToken("");
-      status.textContent = "Tożsamość została odłączona na tym urządzeniu.";
-      await renderCompanySalarySelfService(latestGangPayload || payload);
-    });
+    } catch (err) {
+      box.innerHTML = `
+        <div class="empty">
+          Nie udało się pobrać ankiet.
+        </div>
+      `;
+    }
   }
 
 
@@ -2612,6 +2996,114 @@ function adminRecipeLabel(item) {
     `P${Number(item.program) || 0}`
   ].filter(Boolean).join(" · ");
 }
+
+async function loadAdminPolls() {
+  const box =
+    el("admin-polls-list");
+
+  if (!box) return;
+
+  try {
+    const payload =
+      await jsonp(
+        "gangPolls",
+        {}
+      );
+
+    const polls =
+      Array.isArray(
+        payload &&
+        payload.polls
+      )
+        ? payload.polls
+        : [];
+
+    box.innerHTML =
+      polls.length
+        ? polls.map(poll => `
+            <div class="poll-admin-card">
+              <b>${escapeHtml(poll.title)}</b>
+
+              <div class="muted">
+                ${escapeHtml(poll.question)}
+                · ${poll.totalVotes || 0} gł.
+                · ${poll.status === "OPEN" ? "otwarta" : "zamknięta"}
+              </div>
+
+              <div class="poll-admin-actions">
+                <button
+                  type="button"
+                  data-admin-poll-toggle="${escapeHtml(poll.id)}"
+                  data-next-status="${poll.status === "OPEN" ? "CLOSED" : "OPEN"}">
+                  ${poll.status === "OPEN" ? "🔒 Zamknij" : "🔓 Otwórz"}
+                </button>
+
+                <button
+                  type="button"
+                  data-admin-poll-delete="${escapeHtml(poll.id)}">
+                  🗑 Usuń
+                </button>
+              </div>
+            </div>
+          `).join("")
+        : `<div class="muted">Brak ankiet.</div>`;
+
+    box
+      .querySelectorAll(
+        "[data-admin-poll-toggle]"
+      )
+      .forEach(button => {
+        button.onclick =
+          async () => {
+            await adminPostAction(
+              "adminSetGangPollStatus",
+              {
+                pollId:
+                  button.dataset.adminPollToggle,
+                status:
+                  button.dataset.nextStatus
+              }
+            );
+
+            await loadAdminPolls();
+            await loadGangPolls();
+          };
+      });
+
+    box
+      .querySelectorAll(
+        "[data-admin-poll-delete]"
+      )
+      .forEach(button => {
+        button.onclick =
+          async () => {
+            if (
+              !window.confirm(
+                "Usunąć tę ankietę razem z głosami?"
+              )
+            ) {
+              return;
+            }
+
+            await adminPostAction(
+              "adminDeleteGangPoll",
+              {
+                pollId:
+                  button.dataset.adminPollDelete
+              }
+            );
+
+            await loadAdminPolls();
+            await loadGangPolls();
+          };
+      });
+
+  } catch (err) {
+    box.innerHTML =
+      `<div class="muted">Nie udało się pobrać ankiet.</div>`;
+  }
+}
+
 
 function renderAdminGangTools(payload) {
   const reservations =
@@ -5236,35 +5728,19 @@ function setupAdmin() {
         );
 
         try {
-          await fetch(
-            BACKEND_URL,
+          await adminPostAction(
+            "adminCreateGangPoll",
             {
-              method:"POST",
-              mode:"no-cors",
-              headers:{
-                "Content-Type":
-                  "text/plain;charset=UTF-8"
-              },
-              body:JSON.stringify({
-                action:
-                  "adminCreateGangPoll",
-                token:adminToken(),
-                title,
-                question,
-                options,
-                endAt:
-                  endValue
-                    ? new Date(
-                        endValue
-                      ).toISOString()
-                    : ""
-              })
+              title,
+              question,
+              options,
+              endAt:
+                endValue
+                  ? new Date(
+                      endValue
+                    ).toISOString()
+                  : ""
             }
-          );
-
-          await new Promise(
-            resolve =>
-              setTimeout(resolve,500)
           );
 
           status.textContent =
@@ -5275,8 +5751,8 @@ function setupAdmin() {
           el("admin-poll-options").value = "";
           el("admin-poll-end").value = "";
 
-          loadAdminPolls();
-          loadGangPolls();
+          await loadAdminPolls();
+          await loadGangPolls();
 
         } catch (err) {
           status.textContent =
@@ -5415,6 +5891,14 @@ function setupAdmin() {
 
     // Widok przełączamy natychmiast.
     showToolView(target, "gang");
+
+    if (target === "polls-view") {
+      loadGangPolls();
+    }
+
+    if (target === "settings-view") {
+      renderPlayerIdentitySettings();
+    }
 
     if (latestGangPayload) {
       renderGangPayload(latestGangPayload);

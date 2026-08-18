@@ -533,10 +533,7 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
 }
 
 
-/* =========================================================
-   v18 — tożsamość gracza + ankiety
-   ========================================================= */
-
+/* v18.1 — Tożsamość + Ankiety */
 .identity-card{
   border:1px solid #d8c7aa;
   border-radius:10px;
@@ -557,23 +554,10 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
   margin-bottom:8px;
 }
 
-.poll-card.closed{
-  opacity:.82;
-}
-
-.poll-title{
-  font-weight:900;
-  margin-bottom:3px;
-}
-
-.poll-question{
-  margin-bottom:8px;
-  color:#5f503e;
-}
-
-.poll-option{
-  margin-bottom:8px;
-}
+.poll-card.closed{opacity:.82}
+.poll-title{font-weight:900;margin-bottom:3px}
+.poll-question{margin-bottom:8px;color:#5f503e}
+.poll-option{margin-bottom:8px}
 
 .poll-option button{
   width:100%;

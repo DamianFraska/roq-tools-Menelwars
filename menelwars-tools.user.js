@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.20.0
+// @version      0.20.1
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -2639,16 +2639,22 @@ function renderGangSection(section="payments") {
 
   if (section === "polls") {
     body = `
-      <div id="tmGangPolls">
-        <div class="muted">Ładowanie ankiet...</div>
+      <div class="card">
+        <b>📊 Ankiety</b>
+        <div class="muted">
+          Pełny moduł ankiet jest dostępny w PWA.
+        </div>
       </div>
     `;
   }
 
   if (section === "settings") {
     body = `
-      <div id="tmPlayerIdentitySettings">
-        <div class="muted">Ładowanie ustawień...</div>
+      <div class="card">
+        <b>⚙️ Ustawienia</b>
+        <div class="muted">
+          Tożsamość gracza jest współdzielona z PWA na tym urządzeniu tylko w obrębie tej przeglądarki.
+        </div>
       </div>
     `;
   }
@@ -2754,13 +2760,6 @@ function renderGangSection(section="payments") {
   }
 
   wrap.innerHTML = nav + body;
-  if (section === "polls") {
-    renderTmGangPolls();
-  }
-
-  if (section === "settings") {
-    renderTmPlayerIdentitySettings();
-  }
 
   if (section === "company") {
     renderTmCompanySalarySelf(payload);
