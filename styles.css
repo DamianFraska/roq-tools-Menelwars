@@ -636,3 +636,15 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
     width:100%;
   }
 }
+
+
+/* v19 — bezpieczeństwo tożsamości */
+.identity-admin-revoke{
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid #d8c7aa;
+}
+.identity-admin-revoke .danger-soft{
+  margin-top:6px;
+  width:100%;
+}

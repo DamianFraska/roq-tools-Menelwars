@@ -2457,6 +2457,113 @@ const MAP_POSITIONS = {
   }
 
 
+  async function renderCompanySalarySelfService(payload) {
+    const box = el("company-salary-identity-box");
+    const status = el("company-salary-self-status");
+
+    if (!box) return;
+
+    const identity = await companySalaryIdentityStatus();
+
+    if (!identity) {
+      box.innerHTML = `
+        <div class="salary-identity-card">
+          <b>🔐 Potwierdź tożsamość w Ustawieniach</b>
+          <p class="muted">
+            Aby zarządzać własną pensją, potwierdź swój nick w
+            <b>Gang → Ustawienia</b>.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const players = Array.isArray(payload && payload.players)
+      ? payload.players
+      : [];
+
+    const player = players.find(item =>
+      String(item.nick || "").trim().toLocaleLowerCase("pl-PL") ===
+      String(identity.nick || "").trim().toLocaleLowerCase("pl-PL")
+    );
+
+    const eligible = player && Number(player.salary) > 0;
+    const waived = Boolean(player && player.salaryWaived);
+
+    const money = value =>
+      (Number(value) || 0).toLocaleString("pl-PL",{maximumFractionDigits:2}) + " zł";
+
+    box.innerHTML = `
+      <div class="salary-waiver-card ${waived ? "waived" : ""}">
+        <b>💰 Twoja pensja — ${escapeHtml(identity.nick)}</b>
+
+        ${
+          eligible
+            ? `
+                <div class="finance-meta" style="margin-top:6px">
+                  <span>Należna pensja: <strong>${money(player.salary)}</strong></span>
+                  <span>Do wypłaty w grze: <strong>${money(player.payoutSalary ?? player.salary)}</strong></span>
+                  ${waived ? `<span>Do Funduszu: <strong>${money(player.waivedAmount)}</strong></span>` : ""}
+                </div>
+
+                <div class="salary-waiver-actions">
+                  <div class="salary-waiver-note">
+                    ${
+                      waived
+                        ? "Dobrowolnie zrzekasz się części pensji ponad minimalne 160 zł."
+                        : "Możesz zrzec się części pensji ponad minimalne 160 zł. Różnica trafi do Funduszu i nie zwiększy pensji pozostałych graczy."
+                    }
+                  </div>
+
+                  <button
+                    id="company-salary-waiver-toggle"
+                    class="${waived ? "logout-btn" : "primary-btn"}"
+                    type="button">
+                    ${waived ? "↩️ Przywróć pensję" : "💚 Zrzekam się pensji"}
+                  </button>
+                </div>
+              `
+            : `<p class="muted">Nie masz obecnie naliczanej pensji udziałowca.</p>`
+        }
+      </div>
+    `;
+
+    el("company-salary-waiver-toggle")?.addEventListener("click",async event => {
+      const button = event.currentTarget;
+      const nextWaived = !waived;
+
+      if (!window.confirm(
+        nextWaived
+          ? "Zrzec się pensji ponad minimalne 160 zł? Różnica trafi do Funduszu."
+          : "Przywrócić pełną należną pensję?"
+      )) return;
+
+      setActionLoading(
+        button,
+        status,
+        nextWaived ? "Zapisywanie rezygnacji..." : "Przywracanie pensji..."
+      );
+
+      try {
+        await companySalaryPostAction("companySetSalaryWaiver",{
+          identityToken:playerIdentityToken(),
+          waived:nextWaived
+        });
+
+        status.textContent = nextWaived
+          ? "✅ Zrzekłeś się pensji. Kwota ponad 160 zł trafi do Funduszu."
+          : "✅ Pełna pensja została przywrócona.";
+
+        await loadPayments({background:true});
+      } catch (err) {
+        status.textContent = err.message || "Nie udało się zapisać decyzji.";
+      } finally {
+        clearActionLoading(button);
+      }
+    });
+  }
+
+
   function renderCompanySummary(payload) {
     const box = el("company-summary");
     if (!box) return;
@@ -2532,7 +2639,7 @@ const MAP_POSITIONS = {
       </p>
     `;
 
-
+    renderCompanySalarySelfService(payload);
   }
 
   function gangFormatNumber(value) {
@@ -2569,6 +2676,8 @@ const MAP_POSITIONS = {
       salaryPlayerSelect.value = previous;
     }
   }
+
+  refreshAdminIdentityStatus();
 
   const goal = payload && payload.goal;
 
@@ -2996,6 +3105,28 @@ function adminRecipeLabel(item) {
     `P${Number(item.program) || 0}`
   ].filter(Boolean).join(" · ");
 }
+
+async function refreshAdminIdentityStatus() {
+  const select = el("admin-salary-player");
+  const box = el("admin-identity-device-count");
+
+  if (!select || !box || !select.value) return;
+
+  try {
+    const result = await jsonp("adminIdentityStatus",{
+      token:adminToken(),
+      nick:select.value
+    });
+
+    if (!result || !result.ok) throw new Error("Błąd statusu.");
+
+    box.textContent =
+      `Aktywne urządzenia: ${Number(result.deviceCount) || 0}`;
+  } catch (err) {
+    box.textContent = "Aktywne urządzenia: —";
+  }
+}
+
 
 async function loadAdminPolls() {
   const box =
@@ -5763,6 +5894,43 @@ function setupAdmin() {
         }
       }
     );
+
+
+  el("admin-salary-player")
+    ?.addEventListener("change",refreshAdminIdentityStatus);
+
+
+  el("admin-identity-revoke-all")
+    ?.addEventListener("click",async event => {
+      const button = event.currentTarget;
+      const select = el("admin-salary-player");
+      const status = el("admin-identity-revoke-status");
+      const nick = select && select.value ? select.value : "";
+
+      if (!nick) {
+        status.textContent = "Wybierz gracza.";
+        return;
+      }
+
+      if (!window.confirm(
+        `Wylogować ${nick} ze wszystkich urządzeń? Wszystkie dotychczasowe tokeny tego gracza przestaną działać.`
+      )) return;
+
+      setActionLoading(button,status,"Unieważnianie urządzeń...");
+
+      try {
+        await adminPostAction("adminRevokePlayerIdentity",{nick});
+        status.textContent =
+          `✅ Wszystkie urządzenia gracza ${nick} zostały unieważnione.`;
+
+        await refreshAdminIdentityStatus();
+      } catch (err) {
+        status.textContent =
+          err.message || "Nie udało się unieważnić urządzeń.";
+      } finally {
+        clearActionLoading(button);
+      }
+    });
 
 
   el("admin-salary-generate-code")

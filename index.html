@@ -891,6 +891,11 @@
         <div id="company-summary">
           <div class="muted">Pobieranie danych spółki...</div>
         </div>
+
+        <div id="company-salary-self-service" class="salary-self-service">
+          <div id="company-salary-identity-box"></div>
+          <div id="company-salary-self-status" class="submit-status"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -1392,6 +1397,16 @@
             </div>
 
             <div id="admin-salary-code-result" class="salary-code-result" hidden></div>
+
+            <div class="identity-admin-revoke">
+              <div id="admin-identity-device-count" class="muted">
+                Aktywne urządzenia: —
+              </div>
+              <button id="admin-identity-revoke-all" type="button" class="danger-soft">
+                🚫 Wyloguj ze wszystkich urządzeń
+              </button>
+              <div id="admin-identity-revoke-status" class="submit-status"></div>
+            </div>
           </div>
         </details>
 
