@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.17.2
+// @version      0.18.1
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -91,6 +91,7 @@ function displayName(name) {
   const PREMIUM_KEY = "roq_tools_premium_v1";
   const REMOTE_KEY = "roq_tools_remote_approved_v1";
   const NICK_KEY = "roq_tools_submitter_nick_v1";
+const RESERVATION_OWNER_KEY = "roq_recipe_reservation_owners_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
   const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
   const BAR_COLLAPSED_KEY = "menelwars_tools_bar_collapsed_v1";
@@ -691,6 +692,138 @@ function displayName(name) {
   `;
 }
 
+  function reservationOwnerMap() {
+    try {
+      const parsed =
+        JSON.parse(
+          localStorage.getItem(
+            RESERVATION_OWNER_KEY
+          ) || "{}"
+        );
+
+      return (
+        parsed &&
+        typeof parsed === "object"
+          ? parsed
+          : {}
+      );
+    } catch {
+      return {};
+    }
+  }
+
+  function saveReservationOwnerMap(map) {
+    localStorage.setItem(
+      RESERVATION_OWNER_KEY,
+      JSON.stringify(map || {})
+    );
+  }
+
+  function reservationOwnerFor(recipe) {
+    const recipeKey =
+      key(
+        recipe.baza,
+        recipe.drozdze,
+        recipe.woda,
+        recipe.program
+      );
+
+    const map =
+      reservationOwnerMap();
+
+    const owner =
+      map[recipeKey];
+
+    if (!owner || !owner.token) {
+      return null;
+    }
+
+    if (
+      Number(owner.expiresAt) &&
+      Number(owner.expiresAt) <
+        Date.now()
+    ) {
+      delete map[recipeKey];
+      saveReservationOwnerMap(map);
+      return null;
+    }
+
+    return owner;
+  }
+
+  function saveReservationOwner(
+    recipe,
+    token,
+    reservation
+  ) {
+    if (!token) return;
+
+    const recipeKey =
+      key(
+        recipe.baza,
+        recipe.drozdze,
+        recipe.woda,
+        recipe.program
+      );
+
+    const map =
+      reservationOwnerMap();
+
+    map[recipeKey] = {
+      token,
+      nick:
+        String(
+          reservation &&
+          reservation.nick ||
+          ""
+        ),
+      expiresAt:
+        Number(
+          reservation &&
+          reservation.expiresAt
+        ) || 0
+    };
+
+    saveReservationOwnerMap(map);
+  }
+
+  function clearReservationOwner(recipe) {
+    const recipeKey =
+      key(
+        recipe.baza,
+        recipe.drozdze,
+        recipe.woda,
+        recipe.program
+      );
+
+    const map =
+      reservationOwnerMap();
+
+    delete map[recipeKey];
+    saveReservationOwnerMap(map);
+  }
+
+  function ownsReservation(
+    recipe,
+    reservation
+  ) {
+    const owner =
+      reservationOwnerFor(recipe);
+
+    if (!owner || !reservation) {
+      return false;
+    }
+
+    return (
+      String(owner.nick || "")
+        .trim()
+        .toLocaleLowerCase("pl-PL") ===
+      String(reservation.nick || "")
+        .trim()
+        .toLocaleLowerCase("pl-PL")
+    );
+  }
+
   function recipeReservationFor(r) {
     return recipeReservations[
       key(r.baza,r.drozdze,r.woda,r.program)
@@ -730,6 +863,10 @@ function displayName(name) {
         "&drozdze=" + encodeURIComponent(recipe.drozdze) +
         "&woda=" + encodeURIComponent(recipe.woda) +
         "&program=" + encodeURIComponent(recipe.program) +
+        "&ownerToken=" +
+          encodeURIComponent(
+            reservationOwnerFor(recipe)?.token || ""
+          ) +
         "&_=" + Date.now();
 
       const result = await gmJsonRequest("GET", url);
@@ -742,7 +879,19 @@ function displayName(name) {
         );
       }
 
-      window.alert(result.message || "Receptura zarezerwowana na 12 godzin.");
+      if (result.ownerToken) {
+        saveReservationOwner(
+          recipe,
+          result.ownerToken,
+          result.reservation
+        );
+      }
+
+      window.alert(
+        result.message ||
+        "Receptura zarezerwowana na 12 godzin."
+      );
+
       fetchApproved();
 
     } catch (err) {
@@ -750,6 +899,160 @@ function displayName(name) {
         err && err.message
           ? err.message
           : "Nie udało się zarezerwować receptury."
+      );
+    }
+  }
+
+  async function submitReservedRecipe(
+    recipe,
+    reservation
+  ) {
+    const owner =
+      reservationOwnerFor(recipe);
+
+    if (
+      !owner ||
+      !ownsReservation(
+        recipe,
+        reservation
+      )
+    ) {
+      alert(
+        "Ten szybki zapis jest dostępny tylko na urządzeniu, " +
+        "z którego utworzono tę rezerwację."
+      );
+      return;
+    }
+
+    const raw =
+      prompt(
+        "Wpisz wynik tej receptury w litrach:",
+        ""
+      );
+
+    if (raw === null) return;
+
+    const litry =
+      Number(
+        String(raw)
+          .trim()
+          .replace(/\s+/g,"")
+          .replace(",",".")
+      );
+
+    if (
+      !Number.isFinite(litry) ||
+      litry <= 0 ||
+      litry > 50
+    ) {
+      alert(
+        "Podaj poprawny wynik w litrach."
+      );
+      return;
+    }
+
+    if (
+      !confirm(
+        `Wysłać wynik ${fmt(litry)} l do weryfikacji?\n\n` +
+        `${displayName(recipe.baza)} · ` +
+        `${displayName(recipe.drozdze)} · ` +
+        `${displayName(recipe.woda)} · P${recipe.program}`
+      )
+    ) {
+      return;
+    }
+
+    const nonce =
+      makeGangNonce();
+
+    try {
+      const start =
+        await gmJsonRequest(
+          "POST",
+          BACKEND_URL,
+          {
+            action:
+              "submitReservedRecipe",
+            nonce,
+            ownerToken:
+              owner.token,
+            baza:recipe.baza,
+            drozdze:recipe.drozdze,
+            woda:recipe.woda,
+            program:recipe.program,
+            litry
+          }
+        );
+
+      if (
+        start &&
+        start.ok === false
+      ) {
+        throw new Error(
+          start.error ||
+          "Nie udało się rozpocząć zapisu."
+        );
+      }
+
+      let result = null;
+
+      for (
+        let attempt = 0;
+        attempt < 20;
+        attempt++
+      ) {
+        await new Promise(
+          resolve =>
+            setTimeout(resolve,300)
+        );
+
+        result =
+          await gmJsonRequest(
+            "GET",
+            BACKEND_URL +
+              "?action=reservedSubmitResult" +
+              "&nonce=" +
+              encodeURIComponent(nonce) +
+              "&_=" +
+              Date.now()
+          );
+
+        if (
+          result &&
+          !result.pending
+        ) {
+          break;
+        }
+      }
+
+      if (
+        !result ||
+        result.pending
+      ) {
+        throw new Error(
+          "Serwer nie zwrócił wyniku zapisu."
+        );
+      }
+
+      if (!result.ok) {
+        throw new Error(
+          result.error ||
+          "Nie udało się wysłać wyniku."
+        );
+      }
+
+      alert(
+        "✅ Wynik został wysłany do weryfikacji.\n\n" +
+        "Rezerwacja pozostaje aktywna do czasu decyzji administratora."
+      );
+
+      fetchApproved();
+
+    } catch (err) {
+      alert(
+        err && err.message
+          ? err.message
+          : "Nie udało się wysłać wyniku."
       );
     }
   }
@@ -900,15 +1203,55 @@ function displayName(name) {
       (!unknownFilterProgram || String(r.program) === unknownFilterProgram)
     );
 
-    const recipeHtml = (r,reservation,index,clickable) => `
-      <div class="card" ${clickable ? `data-reserve-index="${index}" style="cursor:pointer"` : `style="background:#fff6dc;border-color:#d7b768"`}>
+    const recipeHtml = (r,reservation,index,clickable) => {
+      const isOwner =
+        reservation &&
+        ownsReservation(
+          r,
+          reservation
+        );
+
+      const isSubmitted =
+        reservation &&
+        String(
+          reservation.state ||
+          "reserved"
+        ) === "submitted";
+
+      const canEnterResult =
+        isOwner &&
+        !isSubmitted;
+
+      return `
+      <div
+        class="card"
+        ${
+          clickable
+            ? `data-reserve-index="${index}" style="cursor:pointer"`
+            : isSubmitted
+              ? `style="background:#edf4ff;border-color:#8eadd1"`
+              : canEnterResult
+                ? `data-owned-research="${esc(key(r.baza,r.drozdze,r.woda,r.program))}" style="cursor:pointer;background:#edf8ef;border-color:#83af8b"`
+                : `style="background:#fff6dc;border-color:#d7b768"`
+        }>
         <div><b>${esc(displayName(r.baza))}</b></div>
         <div>${esc(displayName(r.drozdze))} · ${esc(displayName(r.woda))} · P${r.program}</div>
         ${r.trioMax !== null && r.trioMax >= th ? `<div class="star">⭐ Interesująca do zbadania</div><div class="muted">Inny program tej trójki: do ${fmt(r.trioMax)} l.</div>` : ""}
         <div class="muted" style="margin-top:6px">
-          ${reservation ? `🔒 <b>${esc(reservation.nick)}</b> bada tę recepturę · do ${reservationClock(reservation.expiresAt)}` : "🔓 Wolna · kliknij, aby zaklepać na 12 h"}
+          ${
+            reservation
+              ? isSubmitted
+                ? isOwner
+                  ? `📨 <b>Wynik wprowadzony</b> · ${reservation.submittedLiters != null ? `${fmt(Number(reservation.submittedLiters))} l · ` : ""}oczekuje na akceptację`
+                  : `📨 <b>${esc(reservation.nick)}</b> wprowadził wynik · oczekuje na akceptację`
+                : isOwner
+                  ? `🧪 <b>Oczekuje na wynik</b> · Twoja rezerwacja · kliknij, aby wprowadzić wynik · do ${reservationClock(reservation.expiresAt)}`
+                  : `⏳ <b>Oczekuje na wynik</b> · ${esc(reservation.nick)} bada tę recepturę · do ${reservationClock(reservation.expiresAt)}`
+              : "🔓 Wolna · kliknij, aby zaklepać na 12 h"
+          }
         </div>
       </div>`;
+    };
 
     body = `
       <details open style="margin-bottom:8px">
@@ -1273,6 +1616,36 @@ function displayName(name) {
           const selectedKey = freeKeys[Number(card.dataset.reserveIndex)];
           const recipe = ranked.find(r => key(r.baza,r.drozdze,r.woda,r.program) === selectedKey);
           if (recipe) reserveUnknownRecipe(recipe);
+        };
+      });
+
+    optPanel
+      .querySelectorAll(
+        "[data-owned-research]"
+      )
+      .forEach(card => {
+        card.onclick = () => {
+          const recipeKey =
+            card.dataset
+              .ownedResearch;
+
+          const recipe =
+            ranked.find(
+              item =>
+                key(
+                  item.baza,
+                  item.drozdze,
+                  item.woda,
+                  item.program
+                ) === recipeKey
+            );
+
+          if (!recipe) return;
+
+          submitReservedRecipe(
+            recipe,
+            recipeReservationFor(recipe)
+          );
         };
       });
   }

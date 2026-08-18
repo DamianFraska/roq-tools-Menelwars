@@ -391,3 +391,37 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
     margin-top:6px;
   }
 }
+
+
+/* v16 — własna rezerwacja gotowa do wpisania wyniku */
+.research-owned{
+  border-color:#83af8b!important;
+  background:#edf8ef!important;
+  box-shadow:0 3px 10px rgba(53,106,60,.10);
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+.research-owned:hover{
+  transform:translateY(-1px);
+  box-shadow:0 5px 13px rgba(53,106,60,.14);
+}
+.research-owned .research-status{
+  color:#356a3c!important;
+}
+
+
+/* v16.1 — stany badania receptury */
+.research-waiting{
+  background:#fff6dc!important;
+  border-color:#d7b768!important;
+}
+.research-waiting .research-status{
+  color:#765b2d!important;
+}
+.research-submitted{
+  background:#edf4ff!important;
+  border-color:#8eadd1!important;
+  box-shadow:0 3px 10px rgba(55,91,135,.09);
+}
+.research-submitted .research-status{
+  color:#315f8f!important;
+}
