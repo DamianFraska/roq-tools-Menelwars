@@ -16,6 +16,7 @@
   const NICK_KEY = "roq_tools_submitter_nick_v1";
   const RESERVATION_OWNER_KEY = "roq_recipe_reservation_owners_v1";
   const COMPANY_SALARY_IDENTITY_KEY = "menelwars_company_salary_identity_v1";
+  const PLAYER_IDENTITY_KEY = "menelwars_player_identity_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
   const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
   const COMPANY_INCOME_KEY = "menelwars_tools_company_income_v1";
@@ -2147,7 +2148,7 @@ const MAP_POSITIONS = {
       </p>
     `;
 
-    renderCompanySalarySelfService(payload);
+
   }
 
   function gangFormatNumber(value) {
@@ -2814,6 +2815,7 @@ async function loadAdminGangTools() {
     }
 
     renderAdminGangTools(payload);
+    loadAdminPolls();
 
     if (status) status.textContent = "";
 
@@ -5185,6 +5187,107 @@ function setupAdmin() {
       "submit",
       addAdminPlayer
     );
+
+  el("admin-poll-create")
+    ?.addEventListener(
+      "click",
+      async event => {
+        const button =
+          event.currentTarget;
+
+        const status =
+          el("admin-poll-status");
+
+        const title =
+          el("admin-poll-title")
+            .value.trim();
+
+        const question =
+          el("admin-poll-question")
+            .value.trim();
+
+        const options =
+          el("admin-poll-options")
+            .value
+            .split(/\r?\n/)
+            .map(value =>
+              value.trim()
+            )
+            .filter(Boolean);
+
+        const endValue =
+          el("admin-poll-end")
+            .value;
+
+        if (
+          !title ||
+          !question ||
+          options.length < 2
+        ) {
+          status.textContent =
+            "Podaj tytuł, pytanie i co najmniej 2 odpowiedzi.";
+          return;
+        }
+
+        setActionLoading(
+          button,
+          status,
+          "Tworzenie ankiety..."
+        );
+
+        try {
+          await fetch(
+            BACKEND_URL,
+            {
+              method:"POST",
+              mode:"no-cors",
+              headers:{
+                "Content-Type":
+                  "text/plain;charset=UTF-8"
+              },
+              body:JSON.stringify({
+                action:
+                  "adminCreateGangPoll",
+                token:adminToken(),
+                title,
+                question,
+                options,
+                endAt:
+                  endValue
+                    ? new Date(
+                        endValue
+                      ).toISOString()
+                    : ""
+              })
+            }
+          );
+
+          await new Promise(
+            resolve =>
+              setTimeout(resolve,500)
+          );
+
+          status.textContent =
+            "✅ Ankieta została utworzona.";
+
+          el("admin-poll-title").value = "";
+          el("admin-poll-question").value = "";
+          el("admin-poll-options").value = "";
+          el("admin-poll-end").value = "";
+
+          loadAdminPolls();
+          loadGangPolls();
+
+        } catch (err) {
+          status.textContent =
+            err.message ||
+            "Nie udało się utworzyć ankiety.";
+        } finally {
+          clearActionLoading(button);
+        }
+      }
+    );
+
 
   el("admin-salary-generate-code")
     ?.addEventListener(

@@ -889,11 +889,6 @@
         <div id="company-summary">
           <div class="muted">Pobieranie danych spółki...</div>
         </div>
-
-        <div id="company-salary-self-service" class="salary-self-service">
-          <div id="company-salary-identity-box"></div>
-          <div id="company-salary-self-status" class="submit-status"></div>
-        </div>
       </div>
     </div>
   </section>
@@ -1318,7 +1313,45 @@
 
         </div>
 
-                <details id="admin-section-salary-access" class="admin-accordion">
+                <details id="admin-section-polls" class="admin-accordion">
+          <summary>
+            <span>📊 Ankiety</span>
+            <span class="accordion-chevron">⌄</span>
+          </summary>
+          <div class="admin-accordion-body">
+            <div class="submit-form">
+              <label>
+                <span>Tytuł</span>
+                <input id="admin-poll-title" type="text" placeholder="np. Kolejny upgrade spółki">
+              </label>
+
+              <label>
+                <span>Pytanie</span>
+                <input id="admin-poll-question" type="text" placeholder="Co kupujemy jako następne?">
+              </label>
+
+              <label>
+                <span>Odpowiedzi — jedna na linię</span>
+                <textarea id="admin-poll-options" rows="5" placeholder="Destylator II&#10;Większy magazyn&#10;Reklama trunku"></textarea>
+              </label>
+
+              <label>
+                <span>Koniec ankiety — opcjonalnie</span>
+                <input id="admin-poll-end" type="datetime-local">
+              </label>
+
+              <button id="admin-poll-create" type="button" class="primary-btn">
+                ➕ Utwórz ankietę
+              </button>
+
+              <div id="admin-poll-status" class="submit-status"></div>
+            </div>
+
+            <div id="admin-polls-list" style="margin-top:10px"></div>
+          </div>
+        </details>
+
+        <details id="admin-section-salary-access" class="admin-accordion">
           <summary>
             <span>💰 Dostęp do własnej pensji</span>
             <span class="accordion-chevron">⌄</span>

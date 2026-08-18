@@ -531,3 +531,124 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
   .salary-waiver-actions{align-items:stretch;flex-direction:column}
   .salary-admin-grid{grid-template-columns:1fr}
 }
+
+
+/* =========================================================
+   v18 — tożsamość gracza + ankiety
+   ========================================================= */
+
+.identity-card{
+  border:1px solid #d8c7aa;
+  border-radius:10px;
+  background:#fffaf2;
+  padding:10px;
+}
+
+.identity-ok{
+  background:#eef7ef;
+  border-color:#9fc3a4;
+}
+
+.poll-card{
+  border:1px solid #d8c7aa;
+  border-radius:10px;
+  background:#fffdf8;
+  padding:10px;
+  margin-bottom:8px;
+}
+
+.poll-card.closed{
+  opacity:.82;
+}
+
+.poll-title{
+  font-weight:900;
+  margin-bottom:3px;
+}
+
+.poll-question{
+  margin-bottom:8px;
+  color:#5f503e;
+}
+
+.poll-option{
+  margin-bottom:8px;
+}
+
+.poll-option button{
+  width:100%;
+  text-align:left;
+  border:1px solid #d8c7aa;
+  border-radius:8px;
+  background:#fff;
+  color:#332a20;
+  padding:8px 9px;
+  cursor:pointer;
+}
+
+.poll-option button.selected{
+  border-color:#7fa787;
+  background:#eef7ef;
+  font-weight:800;
+}
+
+.poll-option button:disabled{
+  cursor:default;
+}
+
+.poll-bar{
+  height:9px;
+  background:#e6dccb;
+  border-radius:999px;
+  overflow:hidden;
+  margin-top:5px;
+}
+
+.poll-bar>div{
+  height:100%;
+  background:#6d8c55;
+}
+
+.poll-option-meta{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:3px;
+  font-size:11px;
+  color:#776955;
+}
+
+.poll-auth-note{
+  border:1px solid #d7b768;
+  background:#fff6dc;
+  border-radius:8px;
+  padding:8px;
+  margin-bottom:8px;
+  color:#765b2d;
+  font-size:12px;
+}
+
+.poll-admin-card{
+  border:1px solid #d8c7aa;
+  border-radius:8px;
+  padding:8px;
+  margin-top:6px;
+  background:#fffdf8;
+}
+
+.poll-admin-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:6px;
+}
+
+@media(max-width:600px){
+  .poll-admin-actions{
+    flex-direction:column;
+  }
+
+  .poll-admin-actions button{
+    width:100%;
+  }
+}

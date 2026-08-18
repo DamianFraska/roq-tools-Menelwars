@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.19.0
+// @version      0.20.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -93,6 +93,7 @@ function displayName(name) {
   const NICK_KEY = "roq_tools_submitter_nick_v1";
 const RESERVATION_OWNER_KEY = "roq_recipe_reservation_owners_v1";
 const COMPANY_SALARY_IDENTITY_KEY = "menelwars_company_salary_identity_v1";
+const PLAYER_IDENTITY_KEY = "menelwars_player_identity_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
   const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
   const BAR_COLLAPSED_KEY = "menelwars_tools_bar_collapsed_v1";
@@ -2310,13 +2311,31 @@ function gmJsonRequest(
 }
 
 
+function playerIdentityToken() {
+  const current = localStorage.getItem(PLAYER_IDENTITY_KEY) || "";
+  if (current) return current;
+
+  const legacy = localStorage.getItem(COMPANY_SALARY_IDENTITY_KEY) || "";
+  if (legacy) localStorage.setItem(PLAYER_IDENTITY_KEY,legacy);
+  return legacy;
+}
+
+function setPlayerIdentityToken(token) {
+  if (token) {
+    localStorage.setItem(PLAYER_IDENTITY_KEY,token);
+    localStorage.setItem(COMPANY_SALARY_IDENTITY_KEY,token);
+  } else {
+    localStorage.removeItem(PLAYER_IDENTITY_KEY);
+    localStorage.removeItem(COMPANY_SALARY_IDENTITY_KEY);
+  }
+}
+
 function companySalaryIdentityToken() {
-  return localStorage.getItem(COMPANY_SALARY_IDENTITY_KEY) || "";
+  return playerIdentityToken();
 }
 
 function setCompanySalaryIdentityToken(token) {
-  if (token) localStorage.setItem(COMPANY_SALARY_IDENTITY_KEY,token);
-  else localStorage.removeItem(COMPANY_SALARY_IDENTITY_KEY);
+  setPlayerIdentityToken(token);
 }
 
 async function companySalaryPostAction(action,data={}) {
@@ -2618,6 +2637,22 @@ function renderGangSection(section="payments") {
     `;
   }
 
+  if (section === "polls") {
+    body = `
+      <div id="tmGangPolls">
+        <div class="muted">Ładowanie ankiet...</div>
+      </div>
+    `;
+  }
+
+  if (section === "settings") {
+    body = `
+      <div id="tmPlayerIdentitySettings">
+        <div class="muted">Ładowanie ustawień...</div>
+      </div>
+    `;
+  }
+
   if (section === "company") {
     const eligible = players
       .filter(p => Number(p.share) > 0 || Number(p.salary) > 0)
@@ -2719,6 +2754,13 @@ function renderGangSection(section="payments") {
   }
 
   wrap.innerHTML = nav + body;
+  if (section === "polls") {
+    renderTmGangPolls();
+  }
+
+  if (section === "settings") {
+    renderTmPlayerIdentitySettings();
+  }
 
   if (section === "company") {
     renderTmCompanySalarySelf(payload);
