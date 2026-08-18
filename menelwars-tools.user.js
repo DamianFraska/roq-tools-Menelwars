@@ -1938,15 +1938,51 @@ function gmJsonRequest(
 
 function paymentsDate(value) {
 
-  const m =
-    /^(\d{4})-(\d{2})-(\d{2})$/
-      .exec(
-        String(value || "")
-      );
+  const text =
+    String(value || "").trim();
 
-  return m
-    ? `${m[3]}.${m[2]}.${m[1]}`
-    : "—";
+  if (!text) {
+    return "—";
+  }
+
+  const display =
+    /^(\d{2})\.(\d{2})\.(\d{4}),\s*(\d{2}):(\d{2})(?::(\d{2}))?$/
+      .exec(text);
+
+  if (display) {
+    return (
+      `${display[1]}.${display[2]}.${display[3]} ` +
+      `${display[4]}:${display[5]}` +
+      (display[6] ? `:${display[6]}` : "")
+    );
+  }
+
+  const dateOnly =
+    /^(\d{4})-(\d{2})-(\d{2})$/
+      .exec(text);
+
+  if (dateOnly) {
+    return `${dateOnly[3]}.${dateOnly[2]}.${dateOnly[1]}`;
+  }
+
+  const date =
+    new Date(text);
+
+  if (Number.isFinite(date.getTime())) {
+    return date.toLocaleString(
+      "pl-PL",
+      {
+        day:"2-digit",
+        month:"2-digit",
+        year:"numeric",
+        hour:"2-digit",
+        minute:"2-digit",
+        second:"2-digit"
+      }
+    );
+  }
+
+  return text;
 }
 
 
@@ -2132,7 +2168,7 @@ function renderGangSection(section="payments") {
     body = `
       <div class="paymentsTop">
         <div class="paymentsMeta">
-          <b>Stan na: ${paymentsDate(payload.saldoDate || payload.updatedAt)}</b><br>
+          <b>Stan na: ${paymentsDate(payload.updatedAtDisplay || payload.updatedAt || payload.saldoDate)}</b><br>
           <span class="muted">Graczy: ${players.length}</span>
         </div>
         <div class="paymentsActions">
