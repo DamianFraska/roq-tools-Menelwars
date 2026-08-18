@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.20.1
+// @version      0.20.2
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -2599,8 +2599,10 @@ function renderGangSection(section="payments") {
     <div class="tabs" style="margin-bottom:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">
       <div class="tab ${section === "payments" ? "active" : ""}" data-gang-tab="payments">Wpłaty</div>
       <div class="tab ${section === "company" ? "active" : ""}" data-gang-tab="company">Spółka</div>
+      <div class="tab ${section === "polls" ? "active" : ""}" data-gang-tab="polls">Ankiety</div>
       <div class="tab ${section === "goals" ? "active" : ""}" data-gang-tab="goals">Cele</div>
       <div class="tab ${section === "announcements" ? "active" : ""}" data-gang-tab="announcements">Ogłoszenia</div>
+      <div class="tab ${section === "settings" ? "active" : ""}" data-gang-tab="settings">Ustawienia</div>
       <div class="tab" data-gang-tab="admin">Admin</div>
     </div>
   `;
