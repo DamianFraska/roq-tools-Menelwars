@@ -766,3 +766,9 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
     grid-column:auto;
   }
 }
+
+
+/* v20.8 — domknięcie migracji systemu kont */
+#account-logout-others{
+  background:#f7f1e6;
+}

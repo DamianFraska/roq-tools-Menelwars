@@ -2211,6 +2211,7 @@ const MAP_POSITIONS = {
         <div style="margin-top:7px"><span class="account-session-stat">📱 Aktywne sesje: ${Number(account.sessionCount)||0}</span></div>
         <div class="account-actions">
           <button id="account-change-open" type="button">🔑 Zmień hasło</button>
+          <button id="account-logout-others" type="button">📱 Wyloguj inne sesje</button>
           <button id="account-logout" class="logout-btn" type="button">🚪 Wyloguj</button>
         </div>
         ${account.bootstrapAvailable ? `<div class="account-admin-link"><b>🛠 Pierwsza konfiguracja administratora</b><div class="account-note">Jednorazowa migracja. Wpisz dotychczasowe hasło Admina, aby nadać temu kontu pierwsze uprawnienia administracyjne.</div><div class="account-form" style="margin-top:7px"><input id="account-bootstrap-password" type="password" placeholder="Dotychczasowe hasło Admina"><button id="account-bootstrap-admin" class="primary-btn" type="button">🛠 Nadaj temu kontu Admina</button></div></div>` : ""}
@@ -2247,6 +2248,60 @@ const MAP_POSITIONS = {
       } catch(err) { status.textContent=err.message || "Nie udało się zmienić hasła."; }
       finally { clearActionLoading(button); }
     });
+
+    el("account-logout-others")
+      ?.addEventListener(
+        "click",
+        async event => {
+          const button = event.currentTarget;
+
+          if (
+            !window.confirm(
+              "Wylogować wszystkie pozostałe sesje tego konta?"
+            )
+          ) return;
+
+          setActionLoading(
+            button,
+            status,
+            "Wylogowywanie innych sesji..."
+          );
+
+          try {
+            await fetch(
+              BACKEND_URL,
+              {
+                method:"POST",
+                mode:"no-cors",
+                headers:{
+                  "Content-Type":
+                    "text/plain;charset=UTF-8"
+                },
+                body:
+                  JSON.stringify({
+                    action:
+                      "playerAccountLogoutOtherSessions",
+                    sessionToken:
+                      playerAccountSessionToken()
+                  })
+              }
+            );
+
+            status.textContent =
+              "✅ Pozostałe sesje zostały wylogowane.";
+
+            await renderAccountView();
+
+          } catch (err) {
+            status.textContent =
+              err.message ||
+              "Nie udało się wylogować innych sesji.";
+          } finally {
+            clearActionLoading(button);
+          }
+        }
+      );
+
 
     el("account-logout")?.addEventListener("click",async ()=>{
       try { await playerAccountPostAction("playerAccountLogout",{sessionToken:playerAccountSessionToken()}); } catch(err) {}
@@ -2714,6 +2769,19 @@ const MAP_POSITIONS = {
   }
 
   async function companySalaryIdentityStatus() {
+    const account =
+      await playerAccountStatus();
+
+    if (account) {
+      return {
+        ok:true,
+        authenticated:true,
+        nick:account.nick,
+        expiresAt:account.expiresAt
+      };
+    }
+
+    // Tymczasowy fallback dla urządzeń ze starej wersji.
     const token =
       playerIdentityToken();
 
@@ -3038,12 +3106,12 @@ const MAP_POSITIONS = {
                 return;
               }
 
-              const identity =
-                await playerIdentityStatus();
+              const account =
+                await playerAccountStatus();
 
-              if (!identity) {
+              if (!account) {
                 window.alert(
-                  "🔐 Potwierdź swoją tożsamość w Gang → Ustawienia, aby zagłosować."
+                  "🔐 Zaloguj się na Konto, aby zagłosować."
                 );
                 return;
               }
@@ -3053,7 +3121,7 @@ const MAP_POSITIONS = {
                   "gangPollVote",
                   {
                     identityToken:
-                      playerIdentityToken(),
+                      playerAccountSessionToken(),
                     pollId:
                       button.dataset.pollId,
                     optionIndex:
@@ -3096,10 +3164,10 @@ const MAP_POSITIONS = {
     if (!identity) {
       box.innerHTML = `
         <div class="salary-identity-card">
-          <b>🔐 Potwierdź tożsamość w Ustawieniach</b>
+          <b>🔐 Zaloguj się na swoje Konto</b>
           <p class="muted">
-            Aby zarządzać własną pensją, potwierdź swój nick w
-            <b>Gang → Ustawienia</b>.
+            Aby zarządzać własną pensją, zaloguj się w
+            <b>Konto</b>.
           </p>
         </div>
       `;
@@ -3174,7 +3242,9 @@ const MAP_POSITIONS = {
 
       try {
         await companySalaryPostAction("companySetSalaryWaiver",{
-          identityToken:playerIdentityToken(),
+          identityToken:
+            playerAccountSessionToken() ||
+            playerIdentityToken(),
           waived:nextWaived
         });
 
@@ -4186,128 +4256,6 @@ async function checkAdminAccess() {
   }
 }
 
-
-async function loginToAdmin(event) {
-
-  event.preventDefault();
-
-  const password =
-    el("admin-password").value;
-
-  const status =
-    el("admin-login-status");
-
-  if (!password) {
-
-    status.textContent =
-      "Wpisz hasło administratora.";
-
-    return;
-  }
-
-  if (!backendConfigured()) {
-
-    status.textContent =
-      "Backend nie jest skonfigurowany.";
-
-    return;
-  }
-
-  const nonce =
-    makeNonce();
-
-  status.textContent =
-    "Sprawdzanie hasła...";
-
-  try {
-
-    await fetch(
-      BACKEND_URL,
-      {
-        method: "POST",
-        mode: "no-cors",
-
-        headers: {
-          "Content-Type":
-            "text/plain;charset=UTF-8"
-        },
-
-        body: JSON.stringify({
-          action: "adminLogin",
-          nonce,
-          password
-        })
-      }
-    );
-
-
-    let result = null;
-
-    for (let i=0; i<12; i++) {
-
-      await new Promise(
-        resolve =>
-          setTimeout(resolve,500)
-      );
-
-      result =
-        await jsonp(
-          "adminLoginResult",
-          {nonce}
-        );
-
-      if (
-        !result ||
-        !result.pending
-      ) {
-        break;
-      }
-    }
-
-
-    if (
-      !result ||
-      result.pending
-    ) {
-
-      throw new Error(
-        "Serwer nie zwrócił wyniku logowania. Spróbuj ponownie."
-      );
-    }
-
-
-    if (
-      !result.ok ||
-      !result.token
-    ) {
-
-      status.textContent =
-        result.error ||
-        "Nieprawidłowe hasło administratora.";
-
-      return;
-    }
-
-
-    setAdminToken(
-      result.token
-    );
-
-    el("admin-password").value = "";
-
-    status.textContent = "";
-
-    await checkAdminAccess();
-
-
-  } catch (err) {
-
-    status.textContent =
-      err && err.message
-        ? err.message
-        : "Nie udało się zalogować.";
-  }
-}
 
 function adminSubmissionCard(item) {
 
@@ -6168,12 +6116,6 @@ async function importAdminPayments() {
 
 function setupAdmin() {
 
-  el("admin-login-form")
-    .addEventListener(
-      "submit",
-      loginToAdmin
-    );
-
   el("admin-refresh")
     .addEventListener(
       "click",
@@ -6629,14 +6571,18 @@ function setupAdmin() {
 
 
   el("admin-logout")
-    .addEventListener(
+    ?.addEventListener(
       "click",
       () => {
+        const panel =
+          el("admin-view");
 
-        setAdminToken("");
+        if (panel) {
+          panel.hidden = true;
+        }
 
-        showAdminLogin(
-          "Wylogowano administratora."
+        showToolView(
+          "account-view"
         );
       }
     );
@@ -6649,8 +6595,7 @@ function setupAdmin() {
       "25000";
   }
 
-  // Na czas testu zawsze pokaż ekran logowania.
-  showAdminLogin();
+  // v20.8 — osobne logowanie Admina nie jest już używane.
 }
   // ============================================================
   // NAWIGACJA MODUŁOWA
