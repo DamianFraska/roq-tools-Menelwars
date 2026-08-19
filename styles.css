@@ -669,3 +669,37 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
   .account-actions{flex-direction:column}.account-actions button{width:100%}
   .account-admin-player{grid-template-columns:1fr}.account-admin-player button{width:100%}
 }
+
+
+/* v20.1 — szybka informacja o operacjach receptur */
+.recipe-action-notice{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  z-index:9999;
+  max-width:min(92vw,460px);
+  padding:10px 13px;
+  border-radius:10px;
+  border:1px solid #c7b697;
+  background:#fffaf0;
+  color:#332a20;
+  font-weight:800;
+  font-size:13px;
+  box-shadow:0 6px 20px #0003;
+  text-align:center;
+}
+.recipe-action-notice[data-type="loading"]{
+  background:#fff4cf;
+  border-color:#d8bb68;
+}
+.recipe-action-notice[data-type="success"]{
+  background:#eef7ef;
+  border-color:#9fc3a4;
+  color:#356a3c;
+}
+.recipe-action-notice[data-type="error"]{
+  background:#f9e1dd;
+  border-color:#d5988e;
+  color:#75352e;
+}
