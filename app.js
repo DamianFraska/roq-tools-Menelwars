@@ -168,66 +168,114 @@ const MAP_POSITIONS = {
 
   function compute() {
 
-    const recipes = allRecipes();
+    const recipes =
+      allRecipes();
 
-    const avail = recipes.filter(available);
+    // Pełna baza — niezależna od zaznaczonych premium.
+    const known =
+      recipes
+        .filter(
+          recipe =>
+            recipe.litry !== null
+        )
+        .sort(
+          (a,b) =>
+            b.litry - a.litry
+        );
 
-    const known = avail
-      .filter(x => x.litry !== null)
-      .sort((a,b) => b.litry - a.litry);
+    const unknown =
+      recipes
+        .filter(
+          recipe =>
+            recipe.litry === null
+        );
 
-    const unknown = avail
-      .filter(x => x.litry === null);
+    // TYLKO podium / Top 3 respektuje zaznaczone składniki premium.
+    const topKnown =
+      recipes
+        .filter(available)
+        .filter(
+          recipe =>
+            recipe.litry !== null
+        )
+        .sort(
+          (a,b) =>
+            b.litry - a.litry
+        );
 
-    const trioMax = new Map();
+    const trioMax =
+      new Map();
 
-    for (const r of recipes.filter(x => x.litry !== null)) {
-
+    for (
+      const r of known
+    ) {
       trioMax.set(
         trio(r),
         Math.max(
-          trioMax.get(trio(r)) ?? -Infinity,
+          trioMax.get(
+            trio(r)
+          ) ?? -Infinity,
           r.litry
         )
       );
     }
 
-    const vals = known
-      .map(x => x.litry)
-      .sort((a,b) => a-b);
+    const vals =
+      known
+        .map(
+          x => x.litry
+        )
+        .sort(
+          (a,b) => a-b
+        );
 
-    const threshold = vals.length
-      ? vals[
-          Math.min(
-            Math.floor(vals.length * .8),
-            vals.length - 1
-          )
-        ]
-      : Infinity;
+    const threshold =
+      vals.length
+        ? vals[
+            Math.min(
+              Math.floor(
+                vals.length * .8
+              ),
+              vals.length - 1
+            )
+          ]
+        : Infinity;
 
-    for (const r of unknown) {
-
+    for (
+      const r of unknown
+    ) {
       r.trioMax =
-        trioMax.get(trio(r)) ?? null;
+        trioMax.get(
+          trio(r)
+        ) ?? null;
 
       r.interesting =
         r.trioMax !== null &&
-        r.trioMax >= threshold;
+        r.trioMax >=
+          threshold;
     }
 
     unknown.sort(
       (a,b) =>
         (b.trioMax ?? -1) -
         (a.trioMax ?? -1) ||
-        a.baza.localeCompare(b.baza) ||
-        a.program - b.program
+        a.baza.localeCompare(
+          b.baza
+        ) ||
+        a.program -
+        b.program
     );
 
     return {
       recipes,
-      avail,
+
+      // Zachowujemy "avail" dla starszego renderProgress().
+      // Od v20.6 oznacza całą bazę, nie filtr premium.
+      avail:recipes,
+
       known,
-      unknown
+      unknown,
+      topKnown
     };
   }
 
@@ -375,7 +423,11 @@ const MAP_POSITIONS = {
 
   function renderTop(data) {
 
-    const top = data.known.slice(0,3);
+    const top =
+      data.topKnown.slice(
+        0,
+        3
+      );
 
     const medal = ["🥇","🥈","🥉"];
     const place = ["1. miejsce","2. miejsce","3. miejsce"];
@@ -413,7 +465,7 @@ const MAP_POSITIONS = {
           `
         : `
             <div class="empty">
-              Brak znanych receptur dla wybranych składników.
+              Brak znanych receptur dla zaznaczonych składników premium.
             </div>
           `;
   }
@@ -1169,7 +1221,7 @@ const MAP_POSITIONS = {
       </div>
 
       <p class="muted">
-        Nieodkryte dla Twoich składników:
+        Nieodkryte receptury:
         <b>${data.unknown.length}</b>
       </p>
 
@@ -2298,6 +2350,13 @@ const MAP_POSITIONS = {
                     data-account-logout="${escapeHtml(player.nick)}">
                     🚫 Wyloguj
                   </button>
+
+                  <button
+                    type="button"
+                    class="account-player-delete"
+                    data-account-delete-player="${escapeHtml(player.nick)}">
+                    🗑 Usuń
+                  </button>
                 </div>
               `)
               .join("")
@@ -2378,6 +2437,27 @@ const MAP_POSITIONS = {
                 }
               );
 
+              loadAccountAdminPermissions();
+            };
+        });
+
+      holder
+        .querySelectorAll(
+          "[data-account-delete-player]"
+        )
+        .forEach(button => {
+          button.onclick =
+            async () => {
+              const nick =
+                button.dataset
+                  .accountDeletePlayer;
+
+              await deleteAdminPlayer(
+                nick
+              );
+
+              // deleteAdminPlayer odświeża stare źródło danych;
+              // tu odświeżamy również nową, wspólną listę Gracze.
               loadAccountAdminPermissions();
             };
         });
@@ -3377,9 +3457,16 @@ const goal = payload && payload.goal;
           String(payload.error || "").toLowerCase().includes("brak dostępu")
         ) {
           setGangToken("");
-          showPaymentsLogin(
-            "Dostęp wygasł. Wpisz hasło ponownie."
+          setPlayerAccountSessionToken("");
+
+          el("gang-tabs").hidden =
+            true;
+
+          showToolView(
+            "gang-gate-view",
+            "gang"
           );
+
           return;
         }
 
@@ -3391,6 +3478,7 @@ const goal = payload && payload.goal;
       }
 
       latestGangPayload = payload;
+      latestGangPayloadAt = Date.now();
       renderGangPayload(payload);
 
       if (!background) {
@@ -3508,6 +3596,8 @@ const goal = payload && payload.goal;
 
 let adminPaymentsSnapshot = null;
 let latestGangPayload = null;
+let latestGangPayloadAt = 0;
+let gangSessionValidationAt = 0;
 
 function adminToken() {
   return playerAccountSessionToken() || localStorage.getItem(ADMIN_TOKEN_KEY) || "";
@@ -4699,35 +4789,10 @@ async function loadAdminPlayers() {
         : [];
 
 
-    box.innerHTML =
-      players.length
-        ? players
-            .map(adminPlayerRow)
-            .join("")
-        : `
-            <div class="empty">
-              Brak graczy.
-            </div>
-          `;
-
-
-    box
-      .querySelectorAll(
-        "[data-delete-player]"
-      )
-      .forEach(button => {
-
-        button.addEventListener(
-          "click",
-          () => {
-
-            deleteAdminPlayer(
-              button.dataset
-                .deletePlayer
-            );
-          }
-        );
-      });
+    // Lista graczy jest od v20.5 renderowana wspólnie
+    // z uprawnieniami w account-admin-permissions.
+    // Ten element zostaje tylko dla kompatybilności starego kodu.
+    box.innerHTML = "";
 
 
     status.textContent = "";
@@ -4818,6 +4883,7 @@ async function addAdminPlayer(event) {
 
 
     await loadAdminPlayers();
+    await loadAccountAdminPermissions();
 
     await loadAdminPaymentsStatus();
 
@@ -4933,6 +4999,7 @@ async function deleteAdminPlayer(
 
 
     await loadAdminPlayers();
+    await loadAccountAdminPermissions();
 
     await loadAdminPaymentsStatus();
 
@@ -6601,20 +6668,104 @@ function setupAdmin() {
     });
   }
 
-  async function openGangModule(target="payments-view") {
-    const account=await playerAccountStatus();
-    if (!account) {
-      el("gang-tabs").hidden=true;
-      showToolView("gang-gate-view","gang");
+  function validateGangSessionInBackground() {
+    const now =
+      Date.now();
+
+    // Nie sprawdzaj sesji przy każdym kliknięciu.
+    // Jedno sprawdzenie maksymalnie raz na 60 sekund.
+    if (
+      now -
+      gangSessionValidationAt <
+      60000
+    ) {
       return;
     }
 
-    el("gang-tabs").hidden=false;
-    showToolView(target,"gang");
+    gangSessionValidationAt =
+      now;
 
-    if (target === "polls-view") loadGangPolls();
-    if (latestGangPayload) renderGangPayload(latestGangPayload);
-    loadPayments({background:true});
+    playerAccountStatus()
+      .then(account => {
+        if (account) return;
+
+        // Jeśli sesja faktycznie wygasła / została cofnięta,
+        // backend potwierdzi to w tle i dopiero wtedy wracamy do bramki.
+        el("gang-tabs").hidden =
+          true;
+
+        showToolView(
+          "gang-gate-view",
+          "gang"
+        );
+      })
+      .catch(() => {
+        // Błąd sieci nie blokuje lokalnej nawigacji.
+      });
+  }
+
+
+  function openGangModule(
+    target="payments-view"
+  ) {
+    // Obecność tokenu lokalnego pozwala przełączyć widok NATYCHMIAST.
+    // Bez requestu do Apps Script przed pokazaniem kafelka.
+    if (
+      !playerAccountSessionToken()
+    ) {
+      el("gang-tabs").hidden =
+        true;
+
+      showToolView(
+        "gang-gate-view",
+        "gang"
+      );
+
+      return;
+    }
+
+    el("gang-tabs").hidden =
+      false;
+
+    showToolView(
+      target,
+      "gang"
+    );
+
+    // Pokazujemy już pobrane dane bez czekania na backend.
+    if (latestGangPayload) {
+      renderGangPayload(
+        latestGangPayload
+      );
+    }
+
+    // Ankiety mają osobny endpoint, ale sam widok pokazuje się od razu.
+    if (
+      target ===
+      "polls-view"
+    ) {
+      loadGangPolls();
+    }
+
+    // Nie odświeżamy wpłat/spółki/celów przy KAŻDYM kliknięciu.
+    // Odświeżenie tylko gdy danych jeszcze nie ma albo mają >30 s.
+    const dataIsStale =
+      !latestGangPayload ||
+      (
+        Date.now() -
+        latestGangPayloadAt >
+        30000
+      );
+
+    if (dataIsStale) {
+      loadPayments({
+        background:true
+      });
+    }
+
+    // Autoryzację nadal weryfikuje backend,
+    // ale robi się to w tle i nie opóźnia kliknięcia.
+    validateGangSessionInBackground();
   }
 
   document.querySelectorAll("[data-module]").forEach(button=>{

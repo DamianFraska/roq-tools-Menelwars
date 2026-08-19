@@ -729,3 +729,40 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
   display:grid;
   gap:6px;
 }
+
+
+/* v20.5 — jedna lista Gracze: konto, Admin, sesje i usuwanie */
+.account-admin-player{
+  grid-template-columns:minmax(150px,1fr) auto auto auto;
+}
+
+.account-player-delete{
+  background:#fff0f0;
+  border-color:#d9aaaa;
+  color:#8f342f;
+  white-space:nowrap;
+}
+
+@media(max-width:700px){
+  .account-admin-player{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .account-admin-player > div{
+    grid-column:1 / -1;
+  }
+
+  .account-admin-player button{
+    width:100%;
+  }
+}
+
+@media(max-width:430px){
+  .account-admin-player{
+    grid-template-columns:1fr;
+  }
+
+  .account-admin-player > div{
+    grid-column:auto;
+  }
+}
