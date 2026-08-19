@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.22.1
+// @version      0.22.3
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -890,29 +890,12 @@ const PLAYER_ACCOUNT_SESSION_KEY = "menelwars_player_account_session_v1";
         );
       }
 
-      recipeReservations[
-        key(
-          recipe.baza,
-          recipe.drozdze,
-          recipe.woda,
-          recipe.program
-        )
-      ] = {
-        ...(result.reservation || {}),
-        state:
-          String(
-            result.reservation &&
-            result.reservation.state ||
-            "reserved"
-          )
-      };
-
-      renderOptimizer();
-
-      setTimeout(
-        fetchApproved,
-        1600
+      window.alert(
+        result.message ||
+        "Receptura zarezerwowana na 12 godzin."
       );
+
+      fetchApproved();
 
     } catch (err) {
       window.alert(
@@ -1010,51 +993,38 @@ const PLAYER_ACCOUNT_SESSION_KEY = "menelwars_player_account_session_v1";
       ) {
         throw new Error(
           start.error ||
-          "Nie udało się wysłać wyniku."
+          "Nie udało się rozpocząć zapisu."
         );
       }
 
-      // Od v20.1 backend zwraca właściwy wynik już w odpowiedzi POST.
-      // To usuwa dodatkowy round-trip do Apps Script w Tampermonkey.
-      let result =
-        start &&
-        typeof start === "object"
-          ? start
-          : null;
+      let result = null;
 
-      if (!result) {
-        for (
-          let attempt = 0;
-          attempt < 5;
-          attempt++
+      for (
+        let attempt = 0;
+        attempt < 20;
+        attempt++
+      ) {
+        await new Promise(
+          resolve =>
+            setTimeout(resolve,300)
+        );
+
+        result =
+          await gmJsonRequest(
+            "GET",
+            BACKEND_URL +
+              "?action=reservedSubmitResult" +
+              "&nonce=" +
+              encodeURIComponent(nonce) +
+              "&_=" +
+              Date.now()
+          );
+
+        if (
+          result &&
+          !result.pending
         ) {
-          if (attempt > 0) {
-            await new Promise(
-              resolve =>
-                setTimeout(
-                  resolve,
-                  150 * attempt
-                )
-            );
-          }
-
-          result =
-            await gmJsonRequest(
-              "GET",
-              BACKEND_URL +
-                "?action=reservedSubmitResult" +
-                "&nonce=" +
-                encodeURIComponent(nonce) +
-                "&_=" +
-                Date.now()
-            );
-
-          if (
-            result &&
-            !result.pending
-          ) {
-            break;
-          }
+          break;
         }
       }
 
@@ -1074,26 +1044,12 @@ const PLAYER_ACCOUNT_SESSION_KEY = "menelwars_player_account_session_v1";
         );
       }
 
-      recipeReservations[
-        key(
-          recipe.baza,
-          recipe.drozdze,
-          recipe.woda,
-          recipe.program
-        )
-      ] = {
-        ...(reservation || {}),
-        state:"submitted",
-        submittedAt:Date.now(),
-        submittedLiters:litry
-      };
-
-      renderOptimizer();
-
-      setTimeout(
-        fetchApproved,
-        3500
+      alert(
+        "✅ Wynik został wysłany do weryfikacji.\n\n" +
+        "Rezerwacja pozostaje aktywna do czasu decyzji administratora."
       );
+
+      fetchApproved();
 
     } catch (err) {
       alert(
