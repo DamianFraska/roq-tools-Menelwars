@@ -2282,6 +2282,12 @@ const MAP_POSITIONS = {
         panel.hidden=false;
         el("admin-login").hidden=true;
         el("admin-content").hidden=false;
+
+        // v20.7 — przy wejściu do Admina przez Konto
+        // od razu pobieramy również zgłoszenia oczekujące
+        // na akceptację / odrzucenie.
+        loadAdminSubmissions();
+
         loadAccountAdminPermissions();
         loadAdminGangTools();
         loadAdminPaymentsStatus();
@@ -6175,6 +6181,7 @@ function setupAdmin() {
         loadAdminSubmissions();
         loadAdminPaymentsStatus();
         loadAdminPlayers();
+        loadAccountAdminPermissions();
         loadAdminGangTools();
       }
     );
