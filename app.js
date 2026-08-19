@@ -2378,6 +2378,56 @@ const MAP_POSITIONS = {
         );
       }
 
+      // v20.9 — ta sama lista graczy zasila również
+      // "Kody kont i reset hasła". Nie zależymy już od tego,
+      // czy wcześniej załadowano dane Wpłat/Spółki.
+      const salaryPlayerSelect =
+        el("admin-salary-player");
+
+      if (salaryPlayerSelect) {
+        const previous =
+          salaryPlayerSelect.value;
+
+        salaryPlayerSelect.innerHTML =
+          result.players
+            .slice()
+            .sort(
+              (a,b) =>
+                String(a.nick || "")
+                  .localeCompare(
+                    String(b.nick || ""),
+                    "pl"
+                  )
+            )
+            .map(
+              player => `
+                <option
+                  value="${escapeHtml(player.nick)}"
+                  data-account-active="${player.accountActive ? "1" : "0"}"
+                  data-account-sessions="${Number(player.sessions) || 0}">
+                  ${escapeHtml(player.nick)}
+                </option>
+              `
+            )
+            .join("");
+
+        if (
+          previous &&
+          Array.from(
+            salaryPlayerSelect.options
+          ).some(
+            option =>
+              option.value === previous
+          )
+        ) {
+          salaryPlayerSelect.value =
+            previous;
+        }
+
+        refreshAdminAccountCodeStatus();
+      }
+
+
       holder.innerHTML = `
         <div class="admin-player-permissions-head">
           <b>🛠 Uprawnienia graczy</b>
@@ -3773,52 +3823,43 @@ function adminRecipeLabel(item) {
   ].filter(Boolean).join(" · ");
 }
 
-async function refreshAdminIdentityStatus() {
-  const select = el("admin-salary-player");
-  const box = el("admin-identity-device-count");
+function refreshAdminAccountCodeStatus() {
+  const select =
+    el("admin-salary-player");
+
+  const box =
+    el("admin-identity-device-count");
 
   if (!select || !box) return;
 
-  if (!select.value) {
+  const option =
+    select.options[
+      select.selectedIndex
+    ];
+
+  if (!option) {
     box.textContent =
-      "Aktywne urządzenia: 0";
+      "Konto: — · Aktywne sesje: 0";
     return;
   }
 
+  const active =
+    option.dataset.accountActive === "1";
+
+  const sessions =
+    Number(
+      option.dataset.accountSessions
+    ) || 0;
+
   box.textContent =
-    "Aktywne urządzenia: ładowanie...";
-
-  try {
-    const result =
-      await jsonp(
-        "adminIdentityStatus",
-        {
-          token:adminToken(),
-          nick:select.value
-        }
-      );
-
-    if (
-      !result ||
-      !result.ok
-    ) {
-      throw new Error(
-        result &&
-        result.error
-          ? result.error
-          : "Błąd statusu."
-      );
-    }
-
-    box.textContent =
-      `Aktywne urządzenia: ${Number(result.deviceCount) || 0}`;
-
-  } catch (err) {
-    box.textContent =
-      "Aktywne urządzenia: błąd pobierania";
-  }
+    `Konto: ${active ? "aktywne" : "nieaktywne"} · Aktywne sesje: ${sessions}`;
 }
 
+
+async function refreshAdminIdentityStatus() {
+  // Alias pozostawiony dla zgodności starszych wywołań.
+  refreshAdminAccountCodeStatus();
+}
 
 async function loadAdminPolls() {
   const box =
@@ -3930,53 +3971,9 @@ async function loadAdminPolls() {
 
 function renderAdminGangTools(payload) {
 
-  const salaryPlayerSelect =
-    el("admin-salary-player");
-
-  if (salaryPlayerSelect) {
-    const players =
-      latestGangPayload &&
-      Array.isArray(
-        latestGangPayload.players
-      )
-        ? latestGangPayload.players
-        : [];
-
-    const previous =
-      salaryPlayerSelect.value;
-
-    salaryPlayerSelect.innerHTML =
-      players
-        .slice()
-        .sort(
-          (a,b) =>
-            String(a.nick || "")
-              .localeCompare(
-                String(b.nick || ""),
-                "pl"
-              )
-        )
-        .map(
-          player =>
-            `<option value="${escapeHtml(player.nick)}">${escapeHtml(player.nick)}</option>`
-        )
-        .join("");
-
-    if (
-      previous &&
-      Array.from(
-        salaryPlayerSelect.options
-      ).some(
-        option =>
-          option.value === previous
-      )
-    ) {
-      salaryPlayerSelect.value =
-        previous;
-    }
-  }
-
-  refreshAdminIdentityStatus();
+  // v20.9 — lista graczy do kodów kont jest ładowana
+  // przez loadAccountAdminPermissions(), a nie przez latestGangPayload.
+  // Dzięki temu wejście bezpośrednio Konto → Admin nie czyści selecta.
 
 
   const reservations =
@@ -6489,40 +6486,86 @@ function setupAdmin() {
 
 
   el("admin-salary-player")
-    ?.addEventListener("change",refreshAdminIdentityStatus);
+    ?.addEventListener(
+      "change",
+      refreshAdminAccountCodeStatus
+    );
 
 
   el("admin-identity-revoke-all")
-    ?.addEventListener("click",async event => {
-      const button = event.currentTarget;
-      const select = el("admin-salary-player");
-      const status = el("admin-identity-revoke-status");
-      const nick = select && select.value ? select.value : "";
+    ?.addEventListener(
+      "click",
+      async event => {
+        const button =
+          event.currentTarget;
 
-      if (!nick) {
-        status.textContent = "Wybierz gracza.";
-        return;
+        const select =
+          el("admin-salary-player");
+
+        const status =
+          el("admin-identity-revoke-status");
+
+        const nick =
+          select && select.value
+            ? select.value
+            : "";
+
+        if (!nick) {
+          status.textContent =
+            "Wybierz gracza.";
+          return;
+        }
+
+        if (
+          !window.confirm(
+            `Wylogować ${nick} ze wszystkich sesji konta?`
+          )
+        ) {
+          return;
+        }
+
+        setActionLoading(
+          button,
+          status,
+          "Wylogowywanie sesji..."
+        );
+
+        try {
+          await fetch(
+            BACKEND_URL,
+            {
+              method:"POST",
+              mode:"no-cors",
+              headers:{
+                "Content-Type":
+                  "text/plain;charset=UTF-8"
+              },
+              body:
+                JSON.stringify({
+                  action:
+                    "accountAdminLogoutAll",
+                  sessionToken:
+                    playerAccountSessionToken(),
+                  nick
+                })
+            }
+          );
+
+          status.textContent =
+            `✅ Wylogowano wszystkie sesje konta ${nick}.`;
+
+          // Odświeżamy źródło danych dropdownu i liczbę sesji.
+          await loadAccountAdminPermissions();
+
+        } catch (err) {
+          status.textContent =
+            err.message ||
+            "Nie udało się wylogować sesji.";
+        } finally {
+          clearActionLoading(button);
+        }
       }
-
-      if (!window.confirm(
-        `Wylogować ${nick} ze wszystkich urządzeń? Wszystkie dotychczasowe tokeny tego gracza przestaną działać.`
-      )) return;
-
-      setActionLoading(button,status,"Unieważnianie urządzeń...");
-
-      try {
-        await adminPostAction("adminRevokePlayerIdentity",{nick});
-        status.textContent =
-          `✅ Wszystkie urządzenia gracza ${nick} zostały unieważnione.`;
-
-        await refreshAdminIdentityStatus();
-      } catch (err) {
-        status.textContent =
-          err.message || "Nie udało się unieważnić urządzeń.";
-      } finally {
-        clearActionLoading(button);
-      }
-    });
+    );
 
 
   el("admin-salary-generate-code")
