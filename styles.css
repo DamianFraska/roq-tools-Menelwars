@@ -648,3 +648,24 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
   margin-top:6px;
   width:100%;
 }
+
+
+/* v20 — Konto jako główny moduł */
+#main-tabs{grid-template-columns:repeat(4,1fr)}
+.account-card{border:1px solid #d8c7aa;border-radius:12px;background:#fffaf2;padding:12px;margin-bottom:10px}
+.account-card.logged{background:#eef7ef;border-color:#9fc3a4}
+.account-form{display:grid;gap:8px}
+.account-form label{display:grid;gap:4px}
+.account-form input{width:100%;border:1px solid #ccb797;border-radius:9px;background:#fffdf8;color:#332a20;padding:10px 11px}
+.account-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.account-note{margin-top:7px;color:#6d5f4d;font-size:12px;line-height:1.4}
+.account-session-stat{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:999px;background:#e8efe2;font-size:11px;font-weight:800}
+.account-admin-link{margin-top:10px;padding-top:10px;border-top:1px solid #c8d8ca}
+.account-admin-permissions{margin-bottom:12px}
+.account-admin-player{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;border:1px solid #d8c7aa;border-radius:8px;padding:7px;background:#fffdf8;margin-bottom:5px}
+.account-admin-player small{display:block;color:#756753}
+@media(max-width:600px){
+  #main-tabs{grid-template-columns:repeat(2,1fr)}
+  .account-actions{flex-direction:column}.account-actions button{width:100%}
+  .account-admin-player{grid-template-columns:1fr}.account-admin-player button{width:100%}
+}

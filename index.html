@@ -683,6 +683,7 @@
     <button class="active" data-module="distillery">⚗ Destylarnia</button>
     <button data-module="gang">👥 Gang</button>
     <button data-module="map">🗺 Mapa</button>
+    <button data-module="account">👤 Konto</button>
   </nav>
 
   <nav class="tabs sub-tabs" id="distillery-tabs">
@@ -698,8 +699,6 @@
     <button data-subtab="polls-view" data-group="gang">📊 Ankiety</button>
     <button data-subtab="goals-view" data-group="gang">🎯 Cele</button>
     <button data-subtab="announcements-view" data-group="gang">📢 Ogłoszenia</button>
-    <button data-subtab="settings-view" data-group="gang">⚙️ Ustawienia</button>
-    <button data-subtab="admin-view" data-group="gang">🛠 Admin</button>
   </nav>
 
   <section id="optimizer-view" class="view">
@@ -834,27 +833,26 @@
   </section>
 
 
-  <section id="gang-gate-view" class="view" hidden>
+    <section id="account-view" class="view" hidden>
+    <div class="panel">
+      <div class="panel-head">👤 Konto</div>
+      <div class="panel-body">
+        <div id="account-content"><div class="empty">Ładowanie konta...</div></div>
+        <div id="account-status" class="submit-status"></div>
+        <div id="account-admin-host"></div>
+      </div>
+    </div>
+  </section>
+
+<section id="gang-gate-view" class="view" hidden>
     <div class="panel">
       <div class="panel-head">👥 Gang</div>
       <div class="panel-body">
-        <div id="payments-login">
-          <p class="muted">
-            🔐 Ta część MenelWars Tools jest tylko dla członków gangu. Zaloguj się raz, aby odblokować Wpłaty, Spółkę, Cele i Ogłoszenia na tym urządzeniu.
-          </p>
-
-          <form id="payments-login-form" class="submit-form">
-            <label>
-              <span>Hasło gangu</span>
-              <input id="payments-password" type="password" autocomplete="current-password" placeholder="Hasło gangu" required>
-            </label>
-
-            <button class="primary-btn" type="submit">
-              🔓 Wejdź do modułu Gang
-            </button>
-
-            <div id="payments-login-status" class="submit-status"></div>
-          </form>
+        <div class="empty">
+          🔒 <b>Strefa gangu</b><br><br>
+          Proszę się zalogować, aby uzyskać dostęp.
+          <br><br>
+          <button id="gang-go-account" type="button" class="primary-btn">👤 Przejdź do Konta</button>
         </div>
       </div>
     </div>
@@ -873,7 +871,7 @@
 
             <div style="display:flex;gap:8px">
               <button id="payments-refresh" class="primary-btn" type="button">↻ Odśwież</button>
-              <button id="payments-logout" class="logout-btn" type="button">↪ Wyloguj Gang</button>
+
             </div>
           </div>
 
@@ -911,15 +909,7 @@
     </div>
   </section>
 
-  <section id="settings-view" class="view" hidden>
-    <div class="panel">
-      <div class="panel-head">⚙️ Ustawienia</div>
-      <div class="panel-body">
-        <div id="player-identity-box"></div>
-        <div id="player-identity-status" class="submit-status"></div>
-      </div>
-    </div>
-  </section>
+  
 
   <section id="goals-view" class="view" hidden>
     <div class="panel">
@@ -1381,12 +1371,12 @@
 
         <details id="admin-section-salary-access" class="admin-accordion">
           <summary>
-            <span>💰 Dostęp do własnej pensji</span>
+            <span>👤 Kody kont i reset hasła</span>
             <span class="accordion-chevron">⌄</span>
           </summary>
           <div class="admin-accordion-body">
             <p class="muted">
-              Wygeneruj jednorazowy kod dla gracza. Kod przypisuje jego nick do urządzenia i pozwala zarządzać wyłącznie własną pensją.
+              Wygeneruj jednorazowy kod ważny 24 godziny. Gracz używa go przy pierwszej aktywacji konta albo do ustawienia nowego hasła.
             </p>
 
             <div class="salary-admin-grid">
@@ -1397,16 +1387,6 @@
             </div>
 
             <div id="admin-salary-code-result" class="salary-code-result" hidden></div>
-
-            <div class="identity-admin-revoke">
-              <div id="admin-identity-device-count" class="muted">
-                Aktywne urządzenia: —
-              </div>
-              <button id="admin-identity-revoke-all" type="button" class="danger-soft">
-                🚫 Wyloguj ze wszystkich urządzeń
-              </button>
-              <div id="admin-identity-revoke-status" class="submit-status"></div>
-            </div>
           </div>
         </details>
 

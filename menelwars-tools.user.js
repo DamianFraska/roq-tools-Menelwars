@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.20.2
+// @version      0.22.0
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -94,6 +94,7 @@ function displayName(name) {
 const RESERVATION_OWNER_KEY = "roq_recipe_reservation_owners_v1";
 const COMPANY_SALARY_IDENTITY_KEY = "menelwars_company_salary_identity_v1";
 const PLAYER_IDENTITY_KEY = "menelwars_player_identity_v1";
+const PLAYER_ACCOUNT_SESSION_KEY = "menelwars_player_account_session_v1";
   const GANG_TOKEN_KEY = "menelwars_tools_gang_token_v1";
   const ADMIN_TOKEN_KEY = "menelwars_tools_admin_token_v1";
   const BAR_COLLAPSED_KEY = "menelwars_tools_bar_collapsed_v1";
@@ -2193,20 +2194,14 @@ if (paymentsPanel) {
 // ============================================================
 
 function gangToken() {
-  return localStorage.getItem(GANG_TOKEN_KEY) || "";
+  return localStorage.getItem(PLAYER_ACCOUNT_SESSION_KEY) || "";
 }
 
 function setGangToken(token) {
-
   if (token) {
-    localStorage.setItem(
-      GANG_TOKEN_KEY,
-      token
-    );
+    localStorage.setItem(PLAYER_ACCOUNT_SESSION_KEY,token);
   } else {
-    localStorage.removeItem(
-      GANG_TOKEN_KEY
-    );
+    localStorage.removeItem(PLAYER_ACCOUNT_SESSION_KEY);
   }
 }
 
@@ -2331,7 +2326,7 @@ function setPlayerIdentityToken(token) {
 }
 
 function companySalaryIdentityToken() {
-  return playerIdentityToken();
+  return gangToken() || playerIdentityToken();
 }
 
 function setCompanySalaryIdentityToken(token) {
@@ -2523,66 +2518,22 @@ function paymentRow(player,index=0) {
 }
 
 
-function renderPaymentsLogin(
-  message=""
-) {
+function renderPaymentsLogin(message="") {
+  if (!paymentsPanel) return;
 
-  if (!paymentsPanel) {
-    return;
-  }
+  paymentsPanel.querySelector(".paymentsWrap").innerHTML = `
+    <form id="gangLoginForm" class="paymentsLogin">
+      <div><b>🔐 Zaloguj się na konto MenelWars Tools</b></div>
+      <div class="muted">Gang jest dostępny wyłącznie dla zalogowanych kont graczy.</div>
+      <input id="gangAccountNick" type="text" placeholder="Nick z gry" required>
+      <input id="gangAccountPassword" type="password" autocomplete="current-password" placeholder="Hasło konta" required>
+      <button class="sendBtn" type="submit">🔐 Zaloguj</button>
+      <div class="paymentsStatus">${esc(message)}</div>
+    </form>
+  `;
 
-  paymentsPanel
-    .querySelector(
-      ".paymentsWrap"
-    )
-    .innerHTML = `
-
-      <form
-        id="gangLoginForm"
-        class="paymentsLogin">
-
-        <div>
-          <b>
-            🔐 Dostęp tylko dla członków gangu
-          </b>
-        </div>
-
-        <div class="muted">
-          Wpisz hasło gangu.
-          Dostęp zostanie zapamiętany
-          na tym urządzeniu.
-        </div>
-
-        <input
-          id="gangPassword"
-          type="password"
-          autocomplete="current-password"
-          placeholder="Hasło gangu"
-          required>
-
-        <button
-          class="sendBtn"
-          type="submit">
-
-          Odblokuj wpłaty
-
-        </button>
-
-        <div class="paymentsStatus">
-          ${esc(message)}
-        </div>
-
-      </form>
-    `;
-
-  paymentsPanel
-    .querySelector(
-      "#gangLoginForm"
-    )
-    .onsubmit =
-      loginPayments;
+  paymentsPanel.querySelector("#gangLoginForm").onsubmit = loginPayments;
 }
-
 
 function renderGangSection(section="payments") {
 
@@ -2602,8 +2553,6 @@ function renderGangSection(section="payments") {
       <div class="tab ${section === "polls" ? "active" : ""}" data-gang-tab="polls">Ankiety</div>
       <div class="tab ${section === "goals" ? "active" : ""}" data-gang-tab="goals">Cele</div>
       <div class="tab ${section === "announcements" ? "active" : ""}" data-gang-tab="announcements">Ogłoszenia</div>
-      <div class="tab ${section === "settings" ? "active" : ""}" data-gang-tab="settings">Ustawienia</div>
-      <div class="tab" data-gang-tab="admin">Admin</div>
     </div>
   `;
 
@@ -2795,136 +2744,48 @@ function renderPaymentsData(payload) {
 }
 
 
-async function loginPayments(
-  event
-) {
-
+async function loginPayments(event) {
   event.preventDefault();
+  if (!paymentsPanel) return;
 
-  if (!paymentsPanel) {
+  const nick = paymentsPanel.querySelector("#gangAccountNick").value.trim();
+  const password = paymentsPanel.querySelector("#gangAccountPassword").value;
+  const status = paymentsPanel.querySelector(".paymentsStatus");
+
+  if (!nick || !password) {
+    status.textContent = "Podaj nick i hasło konta.";
     return;
   }
 
-  const password =
-    paymentsPanel
-      .querySelector(
-        "#gangPassword"
-      )
-      .value;
-
-  const status =
-    paymentsPanel
-      .querySelector(
-        ".paymentsStatus"
-      );
-
-  if (!password) {
-
-    status.textContent =
-      "Wpisz hasło gangu.";
-
-    return;
-  }
-
-  status.textContent =
-    "Sprawdzanie hasła...";
-
-  const nonce =
-    makeGangNonce();
+  status.textContent = "Logowanie...";
+  const nonce = makeGangNonce();
 
   try {
+    await gmJsonRequest("POST",BACKEND_URL,{
+      action:"playerAccountLogin",
+      nonce,
+      nick,
+      password
+    });
 
-    await gmJsonRequest(
-      "POST",
-      BACKEND_URL,
-      {
-        action:
-          "gangLogin",
-
-        nonce,
-
-        password
-      }
-    );
-
-    let result = null;
-
-    for (
-      let i=0;
-      i<12;
-      i++
-    ) {
-
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            500
-          )
-      );
-
-      result =
-        await gmJsonRequest(
-          "GET",
-
-          BACKEND_URL +
-            "?action=gangLoginResult" +
-            "&nonce=" +
-            encodeURIComponent(
-              nonce
-            ) +
-            "&_=" +
-            Date.now()
-        );
-
-      if (
-        !result ||
-        !result.pending
-      ) {
-        break;
-      }
+    let result=null;
+    for (let i=0;i<20;i++) {
+      await new Promise(resolve=>setTimeout(resolve,300));
+      result=await gmJsonRequest("GET",BACKEND_URL+"?action=playerAccountActionResult&nonce="+encodeURIComponent(nonce)+"&_="+Date.now());
+      if (result && !result.pending) break;
     }
 
-    if (
-      !result ||
-      result.pending
-    ) {
-
-      throw new Error(
-        "Serwer nie zwrócił wyniku logowania."
-      );
+    if (!result || result.pending) throw new Error("Serwer nie zwrócił wyniku logowania.");
+    if (!result.ok || !result.session || !result.session.token) {
+      throw new Error(result.error || "Nieprawidłowy nick lub hasło.");
     }
 
-    if (
-      !result.ok ||
-      !result.token
-    ) {
-
-      status.textContent =
-        result.error ||
-        "Nieprawidłowe hasło.";
-
-      return;
-    }
-
-    setGangToken(
-      result.token
-    );
-
+    setGangToken(result.session.token);
     await loadPayments();
-
-  } catch (err) {
-
-    status.textContent =
-      err &&
-      err.message
-
-        ? err.message
-
-        : "Nie udało się zalogować.";
+  } catch(err) {
+    status.textContent=err && err.message ? err.message : "Nie udało się zalogować.";
   }
 }
-
 
 async function loadPayments() {
 
@@ -3105,7 +2966,7 @@ function openPayments() {
 // ============================================================
 
 function adminToken() {
-  return localStorage.getItem(ADMIN_TOKEN_KEY) || "";
+  return gangToken();
 }
 
 function setAdminToken(token) {
@@ -3149,39 +3010,15 @@ function adminMoney(value) {
 
 function renderAdminLogin(message="") {
   if (!adminPanel) return;
-
   adminPanel.querySelector(".adminWrap").innerHTML = `
-    <form id="adminLoginForm" class="paymentsLogin">
-      <div>
-        <b>🔐 Dostęp administratora</b>
+    <div class="card">
+      <b>🔐 Panel administratora</b>
+      <div class="muted" style="margin-top:6px">
+        Zaloguj się najpierw w module Gang na konto posiadające uprawnienie Admin.
       </div>
-
-      <div class="muted">
-        Zaloguj się hasłem administratora.
-        Sesja jest zapamiętywana na tym urządzeniu.
-      </div>
-
-      <input
-        id="adminPassword"
-        type="password"
-        autocomplete="current-password"
-        placeholder="Hasło administratora"
-        required>
-
-      <button
-        class="sendBtn"
-        type="submit">
-        🔓 Zaloguj
-      </button>
-
-      <div class="adminStatus">
-        ${esc(message)}
-      </div>
-    </form>
+      <div class="adminStatus">${esc(message)}</div>
+    </div>
   `;
-
-  adminQ("#adminLoginForm").onsubmit =
-    loginAdmin;
 }
 
 async function loginAdmin(event) {
