@@ -4728,6 +4728,7 @@ async function setAdminSubmissionStatus(
 
   const isApprove =
     newStatus === "ZATWIERDZONE";
+
   const isDuplicate =
     newStatus === "DUPLIKAT";
 
@@ -4767,10 +4768,32 @@ async function setAdminSubmissionStatus(
   );
 
 
-  el("admin-status").textContent =
+  const loadingText =
+    isDuplicate
+      ? "♻️ Oznaczam duplikat..."
+      : isApprove
+        ? (
+            correction
+              ? "✅ Zatwierdzam korektę receptury..."
+              : "✅ Zatwierdzam recepturę..."
+          )
+        : "❌ Odrzucam recepturę...";
+
+  const funnyText =
     isApprove
-      ? "Zatwierdzanie receptury..."
-      : "Odrzucanie receptury...";
+      ? "🧪 Destylator miesza w papierach, już kończę..."
+      : isDuplicate
+        ? "♻️ Szukam bliźniaka tej recepty w stercie kartek..."
+        : "🗑️ Wyrzucam receptę do kosza, kosz stawia opór...";
+
+
+  el("admin-status").textContent =
+    loadingText;
+
+  runtimeLoaderStart(
+    loadingText,
+    funnyText
+  );
 
 
   try {
@@ -4804,23 +4827,36 @@ async function setAdminSubmissionStatus(
     );
 
 
-    // Dajemy Apps Script chwilę
-    // na zapisanie zmiany w arkuszu.
-    await new Promise(
-      resolve =>
-        setTimeout(resolve, 500)
-    );
-
-
+    // Backend v20.19 robi SpreadsheetApp.flush()
+    // przed odpowiedzią, więc nie potrzebujemy już
+    // sztucznego dodatkowego oczekiwania 500 ms.
     await loadAdminSubmissions();
 
 
-    // Odświeżamy też wspólną bazę receptur,
-    // dzięki czemu zatwierdzona receptura
-    // pojawi się od razu w PWA.
+    // Zatwierdzona receptura ma od razu trafić
+    // również do wspólnej bazy widocznej w PWA.
     if (isApprove) {
       fetchApprovedRecipes();
     }
+
+
+    const finalText =
+      isDuplicate
+        ? "✅ Duplikat oznaczony"
+        : isApprove
+          ? (
+              correction
+                ? "✅ Korekta zatwierdzona"
+                : "✅ Receptura zatwierdzona"
+            )
+          : "✅ Receptura odrzucona";
+
+    await runtimeLoaderFinish(
+      finalText
+    );
+
+    adminWarmLoadedAt =
+      Date.now();
 
 
   } catch (err) {
@@ -4832,6 +4868,10 @@ async function setAdminSubmissionStatus(
 
     buttons.forEach(
       btn => btn.disabled = false
+    );
+
+    await runtimeLoaderFinish(
+      "❌ Operacja nieudana"
     );
   }
 }
@@ -7116,7 +7156,9 @@ function setupAdmin() {
       }, 3000);
   }
 
-  async function runtimeLoaderFinish() {
+  async function runtimeLoaderFinish(
+    finalText="✅ Gotowe"
+  ) {
     if (!runtimeLoaderActive) {
       return;
     }
@@ -7134,7 +7176,7 @@ function setupAdmin() {
       return;
     }
 
-    appBootSetText("✅ Gotowe");
+    appBootSetText(finalText);
     box.classList.add("finishing");
 
     const from =
