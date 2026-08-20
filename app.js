@@ -2430,7 +2430,9 @@ const MAP_POSITIONS = {
 
         // v20.11 — dane Admina są rozgrzewane wcześniej.
         // Jeśli preload jeszcze trwa, korzystamy z tego samego promise.
-        warmAdminData();
+        warmAdminData({
+          silent:false
+        });
       }
     });
   }
@@ -2438,6 +2440,9 @@ const MAP_POSITIONS = {
   async function warmAdminData(options={}) {
     const force =
       Boolean(options.force);
+
+    const silent =
+      Boolean(options.silent);
 
     if (
       !force &&
@@ -2457,6 +2462,12 @@ const MAP_POSITIONS = {
 
     adminWarmPromise =
       (async () => {
+        const previousSilent =
+          adminWarmSilent;
+
+        adminWarmSilent =
+          silent;
+
         const results =
           await Promise.allSettled([
             loadAccountAdminPermissions(),
@@ -2486,6 +2497,9 @@ const MAP_POSITIONS = {
             adminStatus.textContent = "";
           }
         }
+
+        adminWarmSilent =
+          previousSilent;
 
         return anyOk;
       })();
@@ -3909,6 +3923,7 @@ let gangSessionValidationAt = 0;
 // Kliknięcie panelu podczas prefetchu nie uruchamia drugiego kompletu requestów.
 let adminWarmPromise = null;
 let adminWarmLoadedAt = 0;
+let adminWarmSilent = false;
 
 function adminToken() {
   return playerAccountSessionToken() || localStorage.getItem(ADMIN_TOKEN_KEY) || "";
@@ -4813,10 +4828,12 @@ async function loadAdminSubmissions() {
 
   } catch (err) {
 
-    el("admin-status").textContent =
-      err && err.message
-        ? err.message
-        : "Nie udało się pobrać zgłoszeń.";
+    if (!adminWarmSilent) {
+      el("admin-status").textContent =
+        err && err.message
+          ? err.message
+          : "Nie udało się pobrać zgłoszeń.";
+    }
   }
 }
 
@@ -6978,7 +6995,279 @@ function setupAdmin() {
       showToolView("pc-view", "distillery");
     });
 
+  
   // ============================================================
+  // GLOBALNY PRELOAD / PASEK POSTĘPU
+  // ============================================================
+
+  let appBootProgress = 5;
+  let appBootTarget = 5;
+  let appBootTimer = null;
+  let appBootFinished = false;
+
+  function appBootSetText(text) {
+    const label =
+      el("app-preload-text");
+
+    if (label) {
+      label.textContent = text;
+    }
+  }
+
+  function appBootRender() {
+    const box =
+      el("app-preload");
+
+    const bar =
+      el("app-preload-bar");
+
+    const percent =
+      el("app-preload-percent");
+
+    if (!box || !bar || !percent) {
+      return;
+    }
+
+    box.hidden = false;
+    bar.style.width =
+      `${Math.round(appBootProgress)}%`;
+
+    percent.textContent =
+      `${Math.round(appBootProgress)}%`;
+  }
+
+  function appBootReach(value,text) {
+    appBootTarget =
+      Math.max(
+        appBootTarget,
+        Math.min(
+          94,
+          Number(value) || 0
+        )
+      );
+
+    if (text) {
+      appBootSetText(text);
+    }
+
+    appBootRender();
+  }
+
+  function appBootStart() {
+    const box =
+      el("app-preload");
+
+    if (!box) return;
+
+    box.hidden = false;
+    box.classList.remove(
+      "done",
+      "hiding"
+    );
+
+    appBootProgress = 5;
+    appBootTarget = 14;
+    appBootFinished = false;
+
+    appBootSetText(
+      "⏳ Przygotowuję konto..."
+    );
+
+    appBootRender();
+
+    clearInterval(
+      appBootTimer
+    );
+
+    const startedAt =
+      Date.now();
+
+    appBootTimer =
+      setInterval(
+        () => {
+          if (appBootFinished) {
+            return;
+          }
+
+          const elapsed =
+            Date.now() -
+            startedAt;
+
+          // Symulowany wzrost przez ok. 5 s.
+          // Nigdy nie dobija sam do 100%.
+          const simulated =
+            Math.min(
+              90,
+              5 +
+              (
+                elapsed /
+                5000
+              ) *
+              83
+            );
+
+          appBootTarget =
+            Math.max(
+              appBootTarget,
+              simulated
+            );
+
+          if (
+            appBootProgress <
+            appBootTarget
+          ) {
+            const distance =
+              appBootTarget -
+              appBootProgress;
+
+            appBootProgress +=
+              Math.max(
+                .35,
+                distance * .12
+              );
+
+            appBootProgress =
+              Math.min(
+                appBootProgress,
+                94
+              );
+
+            appBootRender();
+          }
+        },
+        120
+      );
+  }
+
+  function appBootDone() {
+    if (appBootFinished) {
+      return;
+    }
+
+    appBootFinished = true;
+
+    clearInterval(
+      appBootTimer
+    );
+
+    appBootProgress = 100;
+    appBootTarget = 100;
+
+    const box =
+      el("app-preload");
+
+    if (box) {
+      box.classList.add(
+        "done"
+      );
+    }
+
+    appBootSetText(
+      "✅ Dane gotowe"
+    );
+
+    appBootRender();
+
+    setTimeout(
+      () => {
+        if (!box) return;
+
+        box.classList.add(
+          "hiding"
+        );
+
+        setTimeout(
+          () => {
+            box.hidden = true;
+            box.classList.remove(
+              "done",
+              "hiding"
+            );
+          },
+          280
+        );
+      },
+      1300
+    );
+  }
+
+  async function preloadApplicationData() {
+    if (
+      !playerAccountSessionToken()
+    ) {
+      // Niezalogowany nie ma danych Gangu/Admina do rozgrzewania.
+      appBootSetText(
+        "✅ Strona gotowa"
+      );
+      appBootDone();
+      return;
+    }
+
+    let account = null;
+
+    appBootReach(
+      12,
+      "⏳ Przygotowuję konto..."
+    );
+
+    try {
+      account =
+        await playerAccountStatus();
+
+      appBootReach(
+        28,
+        "⏳ Ładuję dane Gangu..."
+      );
+
+      await loadPayments({
+        background:true
+      });
+
+      appBootReach(
+        58,
+        "⏳ Ładuję ankiety..."
+      );
+
+      await loadGangPolls();
+
+      if (
+        account &&
+        account.admin
+      ) {
+        appBootReach(
+          73,
+          "⏳ Przygotowuję panel Admina..."
+        );
+
+        await warmAdminData({
+          silent:true
+        });
+
+        appBootReach(
+          94,
+          "⏳ Kończę przygotowanie..."
+        );
+      } else {
+        appBootReach(
+          92,
+          "⏳ Kończę przygotowanie..."
+        );
+      }
+
+    } catch (err) {
+      // Sam pasek nie blokuje aplikacji.
+      // Konkretna zakładka pokaże swój błąd, jeśli dane naprawdę się nie pobrały.
+      console.warn(
+        "[MenelWars Tools] Preload:",
+        err
+      );
+    }
+
+    appBootDone();
+  }
+
+
+// ============================================================
   // START
   // ============================================================
 
@@ -6991,41 +7280,9 @@ setupAdmin();
 showToolView("optimizer-view", "distillery");
 if (el("admin-view")) el("admin-view").hidden = true;
 
-// v20.11 — kolejność prefetchu:
-// 1) konto natychmiast,
-// 2) dane Gangu,
-// 3) ankiety,
-// 4) jeśli konto jest Adminem — cały panel Admina.
-// Dzięki temu nie trzeba wcześniej otwierać poszczególnych kart.
-if (playerAccountSessionToken()) {
-  setTimeout(
-    async () => {
-      const account =
-        await playerAccountStatus();
+appBootStart();
+preloadApplicationData();
 
-      if (
-        account &&
-        account.admin
-      ) {
-        setTimeout(
-          () => warmAdminData(),
-          900
-        );
-      }
-    },
-    20
-  );
-
-  setTimeout(
-    () => loadPayments({background:true}),
-    180
-  );
-
-  setTimeout(
-    () => loadGangPolls(),
-    650
-  );
-}
 
   // Pobieramy nowe zatwierdzone dane także co 5 minut.
   setInterval(

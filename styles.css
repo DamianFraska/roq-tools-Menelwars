@@ -772,3 +772,80 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
 #account-logout-others{
   background:#f7f1e6;
 }
+
+
+/* =========================================================
+   v20.12 — globalny pasek przygotowania danych
+   ========================================================= */
+.app-preload{
+  position:sticky;
+  top:58px;
+  z-index:19;
+  width:min(760px,calc(100% - 24px));
+  margin:0 auto 6px;
+  padding:6px 9px 7px;
+  border:1px solid #d8c7aa;
+  border-top:0;
+  border-radius:0 0 9px 9px;
+  background:rgba(255,248,235,.96);
+  box-shadow:0 3px 10px #5a402015;
+  pointer-events:none;
+  transition:
+    opacity .25s ease,
+    transform .25s ease;
+}
+
+.app-preload.done{
+  background:rgba(239,247,238,.97);
+  border-color:#a8c5a8;
+}
+
+.app-preload-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:4px;
+  font-size:11px;
+  line-height:1.2;
+  color:#62523f;
+}
+
+.app-preload-line strong{
+  flex:0 0 auto;
+  font-size:10px;
+  color:#574737;
+}
+
+.app-preload-track{
+  height:4px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#ded3c1;
+}
+
+.app-preload-bar{
+  width:5%;
+  height:100%;
+  border-radius:999px;
+  background:#6d8c55;
+  transition:width .32s ease;
+}
+
+.app-preload.hiding{
+  opacity:0;
+  transform:translateY(-4px);
+}
+
+@media(max-width:480px){
+  .app-preload{
+    top:56px;
+    width:calc(100% - 16px);
+    margin-bottom:4px;
+    padding:5px 8px 6px;
+  }
+
+  .app-preload-line{
+    font-size:10px;
+  }
+}
