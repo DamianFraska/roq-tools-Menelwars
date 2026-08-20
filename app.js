@@ -51,13 +51,13 @@ function displayName(name) {
   const MAP = [
     ["Wilanów", "Agresywny", "⚔️"],
     ["Mokotów", "Przyjacielski", "🤝"],
-    ["Ursynów", "Błagalny", "🙏"],
+    ["Ursynów", "Przyjacielski", "🤝"],
     ["Ochota", "Neutralny", "⚪"],
-    ["Śródmieście", "Przyjacielski", "🤝"],
-    ["Bemowo", "Przyjacielski", "🤝"],
+    ["Śródmieście", "Agresywny", "⚔️"],
+    ["Bemowo", "Błagalny", "🙏"],
     ["Wola", "Błagalny", "🙏"],
-    ["Żoliborz", "Neutralny", "⚪"],
-    ["Bielany", "Błagalny", "🙏"],
+    ["Żoliborz", "Przyjacielski", "🤝"],
+    ["Bielany", "Przyjacielski", "🤝"],
     ["Praga", "Błagalny", "🙏"],
     ["Białołęka", "Neutralny", "⚪"],
     ["Targówek", "Błagalny", "🙏"]
@@ -7101,7 +7101,7 @@ function setupAdmin() {
               5 +
               (
                 elapsed /
-                5000
+                6500
               ) *
               83
             );
@@ -7195,7 +7195,6 @@ function setupAdmin() {
     if (
       !playerAccountSessionToken()
     ) {
-      // Niezalogowany nie ma danych Gangu/Admina do rozgrzewania.
       appBootSetText(
         "✅ Strona gotowa"
       );
@@ -7204,62 +7203,196 @@ function setupAdmin() {
     }
 
     let account = null;
+    let finished = 0;
+    let expected = 2;
 
-    appBootReach(
-      12,
-      "⏳ Przygotowuję konto..."
-    );
+    const playfulTexts = [
+      "⏳ Zbieram puszki z serwera...",
+      "⏳ Szukam zagubionych recept...",
+      "⏳ Liczę drobniaki w kasie gangu...",
+      "⏳ Sprawdzam, kto znowu nie wpłacił...",
+      "⏳ Przewracam beczki w magazynie...",
+      "⏳ Popijam coś mocniejszego i czekam na serwer...",
+      "⏳ Odkurzam panel administratora...",
+      "⏳ Jeszcze chwila, serwer też ma kaca..."
+    ];
+
+    let playfulIndex = 0;
+    let playfulTimer = null;
+
+    const startPlayful =
+      () => {
+        clearInterval(
+          playfulTimer
+        );
+
+        playfulTimer =
+          setInterval(
+            () => {
+              if (appBootFinished) {
+                clearInterval(
+                  playfulTimer
+                );
+                return;
+              }
+
+              appBootSetText(
+                playfulTexts[
+                  playfulIndex %
+                  playfulTexts.length
+                ]
+              );
+
+              playfulIndex += 1;
+            },
+            1100
+          );
+      };
+
+    const finishOne =
+      (label) => {
+        finished += 1;
+
+        const base =
+          30;
+
+        const span =
+          62;
+
+        const target =
+          base +
+          (
+            finished /
+            expected
+          ) *
+          span;
+
+        appBootReach(
+          Math.min(
+            94,
+            target
+          ),
+          label
+        );
+      };
 
     try {
+      appBootReach(
+        12,
+        "⏳ Sprawdzam konto i sesję..."
+      );
+
       account =
         await playerAccountStatus();
 
       appBootReach(
         28,
-        "⏳ Ładuję dane Gangu..."
+        account &&
+        account.admin
+          ? "⏳ Rozgrzewam Gang, ankiety i Admina..."
+          : "⏳ Rozgrzewam Gang i ankiety..."
       );
-
-      await loadPayments({
-        background:true
-      });
-
-      appBootReach(
-        58,
-        "⏳ Ładuję ankiety..."
-      );
-
-      await loadGangPolls();
 
       if (
         account &&
         account.admin
       ) {
-        appBootReach(
-          73,
-          "⏳ Przygotowuję panel Admina..."
-        );
+        expected = 3;
+      }
 
-        await warmAdminData({
-          silent:true
-        });
+      startPlayful();
 
-        appBootReach(
-          94,
-          "⏳ Kończę przygotowanie..."
-        );
-      } else {
-        appBootReach(
-          92,
-          "⏳ Kończę przygotowanie..."
+      const tasks = [
+        loadPayments({
+          background:true
+        })
+          .then(
+            () => finishOne(
+              "💰 Wpłaty i Spółka gotowe"
+            )
+          )
+          .catch(
+            err => {
+              console.warn(
+                "[MenelWars Tools] Gang preload:",
+                err
+              );
+
+              finishOne(
+                "💰 Wpłaty sprawdzone"
+              );
+            }
+          ),
+
+        loadGangPolls()
+          .then(
+            () => finishOne(
+              "📊 Ankiety sprawdzone"
+            )
+          )
+          .catch(
+            err => {
+              console.warn(
+                "[MenelWars Tools] Poll preload:",
+                err
+              );
+
+              finishOne(
+                "📊 Ankiety sprawdzone"
+              );
+            }
+          )
+      ];
+
+      if (
+        account &&
+        account.admin
+      ) {
+        tasks.push(
+          warmAdminData({
+            silent:true
+          })
+            .then(
+              () => finishOne(
+                "🛠 Panel Admina gotowy"
+              )
+            )
+            .catch(
+              err => {
+                console.warn(
+                  "[MenelWars Tools] Admin preload:",
+                  err
+                );
+
+                finishOne(
+                  "🛠 Panel Admina sprawdzony"
+                );
+              }
+            )
         );
       }
 
+      await Promise.allSettled(
+        tasks
+      );
+
+      clearInterval(
+        playfulTimer
+      );
+
+      appBootReach(
+        96,
+        "⏳ Ostatnie porządki..."
+      );
+
     } catch (err) {
-      // Sam pasek nie blokuje aplikacji.
-      // Konkretna zakładka pokaże swój błąd, jeśli dane naprawdę się nie pobrały.
       console.warn(
         "[MenelWars Tools] Preload:",
         err
+      );
+    } finally {
+      clearInterval(
+        playfulTimer
       );
     }
 
