@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MenelWars Tools
 // @namespace    menelwars.tools
-// @version      0.23.4
+// @version      0.23.6
 // @author       RoQ
 // @description  Optymalizator receptur i dodatkowe narzędzia do MenelWars.
 // @match        https://menelwars.pl/*
@@ -37,13 +37,13 @@
   const MAP = [
     ["Wilanów", "Agresywny", "⚔️"],
     ["Mokotów", "Przyjacielski", "🤝"],
-    ["Ursynów", "Błagalny", "🙏"],
+    ["Ursynów", "Przyjacielski", "🤝"],
     ["Ochota", "Neutralny", "⚪"],
-    ["Śródmieście", "Przyjacielski", "🤝"],
-    ["Bemowo", "Przyjacielski", "🤝"],
+    ["Śródmieście", "Agresywny", "⚔️"],
+    ["Bemowo", "Błagalny", "🙏"],
     ["Wola", "Błagalny", "🙏"],
-    ["Żoliborz", "Neutralny", "⚪"],
-    ["Bielany", "Błagalny", "🙏"],
+    ["Żoliborz", "Przyjacielski", "🤝"],
+    ["Bielany", "Przyjacielski", "🤝"],
     ["Praga", "Błagalny", "🙏"],
     ["Białołęka", "Neutralny", "⚪"],
     ["Targówek", "Błagalny", "🙏"]

@@ -859,3 +859,35 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
 .app-preload.finishing .app-preload-bar{
   transition:none;
 }
+
+
+/* v20.16 — własna pensja wysoko w widoku Spółki */
+.company-fund-top{
+  margin-top:12px;
+  margin-bottom:10px;
+}
+
+.company-salary-top{
+  margin-top:0;
+  margin-bottom:16px;
+}
+
+.company-salary-top .salary-waiver-card,
+.company-salary-top .salary-identity-card{
+  margin-top:0;
+}
+
+.company-shares-title{
+  margin-top:14px;
+}
+
+@media(max-width:480px){
+  .company-fund-top{
+    margin-top:10px;
+    margin-bottom:8px;
+  }
+
+  .company-salary-top{
+    margin-bottom:13px;
+  }
+}

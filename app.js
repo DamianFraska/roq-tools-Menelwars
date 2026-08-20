@@ -582,24 +582,83 @@ const MAP_POSITIONS = {
     saveReservationOwnerMap(map);
   }
 
-  function ownsReservation(
-    recipe,
+  function normalizedPlayerNick(value) {
+    return String(value || "")
+      .trim()
+      .toLocaleLowerCase("pl-PL");
+  }
+
+  function cachedAccountNick() {
+    if (
+      !cachedAccountStatus ||
+      !cachedAccountStatus.nick ||
+      cachedAccountStatusToken !==
+        playerAccountSessionToken()
+    ) {
+      return "";
+    }
+
+    return String(
+      cachedAccountStatus.nick || ""
+    ).trim();
+  }
+
+  function accountOwnsReservation(
     reservation
   ) {
-    const owner =
-      reservationOwnerFor(recipe);
+    const nick =
+      cachedAccountNick();
 
-    if (!owner || !reservation) {
+    if (
+      !nick ||
+      !reservation ||
+      !reservation.nick
+    ) {
       return false;
     }
 
     return (
-      String(owner.nick || "")
-        .trim()
-        .toLocaleLowerCase("pl-PL") ===
-      String(reservation.nick || "")
-        .trim()
-        .toLocaleLowerCase("pl-PL")
+      normalizedPlayerNick(nick) ===
+      normalizedPlayerNick(
+        reservation.nick
+      )
+    );
+  }
+
+  function ownsReservation(
+    recipe,
+    reservation
+  ) {
+    if (!reservation) {
+      return false;
+    }
+
+    // v20.15 — zalogowane konto tego samego nicku
+    // może obsłużyć rezerwację na każdym urządzeniu.
+    if (
+      accountOwnsReservation(
+        reservation
+      )
+    ) {
+      return true;
+    }
+
+    // Dla niezalogowanych zachowujemy dotychczasowy
+    // mechanizm urządzenia / ownerToken.
+    const owner =
+      reservationOwnerFor(recipe);
+
+    if (!owner) {
+      return false;
+    }
+
+    return (
+      normalizedPlayerNick(
+        owner.nick
+      ) ===
+      normalizedPlayerNick(
+        reservation.nick
+      )
     );
   }
 
@@ -701,24 +760,63 @@ const MAP_POSITIONS = {
 
   async function reserveUnknownRecipe(recipe) {
     if (!backendConfigured()) {
-      window.alert("Backend nie jest skonfigurowany.");
+      window.alert(
+        "Backend nie jest skonfigurowany."
+      );
       return;
     }
 
-    const savedNick = localStorage.getItem(NICK_KEY) || "";
-    const nick = window.prompt(
-      "Kto rezerwuje tę recepturę na 12 godzin?",
-      savedNick
-    );
+    const accountNick =
+      cachedAccountNick();
 
-    if (nick === null) return;
-    const cleanNick = String(nick || "").trim();
-    if (!cleanNick) {
-      window.alert("Podaj nick.");
-      return;
+    let cleanNick = "";
+
+    if (accountNick) {
+      const accepted =
+        window.confirm(
+          "Zarezerwować tę receptę?\n\n" +
+          `Rezerwacja zostanie przypisana do ${accountNick} na 12 godzin.`
+        );
+
+      if (!accepted) {
+        return;
+      }
+
+      cleanNick =
+        accountNick;
+
+    } else {
+      const savedNick =
+        localStorage.getItem(
+          NICK_KEY
+        ) || "";
+
+      const nick =
+        window.prompt(
+          "Kto rezerwuje tę recepturę na 12 godzin?",
+          savedNick
+        );
+
+      if (nick === null) {
+        return;
+      }
+
+      cleanNick =
+        String(nick || "")
+          .trim();
+
+      if (!cleanNick) {
+        window.alert(
+          "Podaj nick."
+        );
+        return;
+      }
+
+      localStorage.setItem(
+        NICK_KEY,
+        cleanNick
+      );
     }
-
-    localStorage.setItem(NICK_KEY, cleanNick);
 
     showRecipeActionNotice(
       "⏳ Rezerwuję recepturę...",
@@ -727,23 +825,38 @@ const MAP_POSITIONS = {
 
     try {
       const owner =
-        reservationOwnerFor(recipe);
+        reservationOwnerFor(
+          recipe
+        );
 
-      const result = await jsonp("reserveRecipe", {
-        nick:cleanNick,
-        baza:recipe.baza,
-        drozdze:recipe.drozdze,
-        woda:recipe.woda,
-        program:recipe.program,
-        ownerToken:
-          owner && owner.token
-            ? owner.token
-            : ""
-      });
+      const result =
+        await jsonp(
+          "reserveRecipe",
+          {
+            nick:cleanNick,
+            baza:recipe.baza,
+            drozdze:recipe.drozdze,
+            woda:recipe.woda,
+            program:recipe.program,
+            ownerToken:
+              owner &&
+              owner.token
+                ? owner.token
+                : "",
+            sessionToken:
+              accountNick
+                ? playerAccountSessionToken()
+                : ""
+          }
+        );
 
-      if (!result || !result.ok) {
+      if (
+        !result ||
+        !result.ok
+      ) {
         throw new Error(
-          result && result.error
+          result &&
+          result.error
             ? result.error
             : "Nie udało się zarezerwować receptury."
         );
@@ -763,12 +876,12 @@ const MAP_POSITIONS = {
         "success"
       );
 
-      // Zachowujemy sprawdzone pełne odświeżenie danych z v20.
       fetchApprovedRecipes();
 
     } catch (err) {
       const message =
-        err && err.message
+        err &&
+        err.message
           ? err.message
           : "Nie udało się zarezerwować receptury.";
 
@@ -788,16 +901,20 @@ const MAP_POSITIONS = {
     const owner =
       reservationOwnerFor(recipe);
 
+    const accountOwner =
+      accountOwnsReservation(
+        reservation
+      );
+
     if (
-      !owner ||
       !ownsReservation(
         recipe,
         reservation
       )
     ) {
       window.alert(
-        "Ten szybki zapis jest dostępny tylko na urządzeniu, " +
-        "z którego utworzono tę rezerwację."
+        "Wynik może wprowadzić tylko urządzenie, które utworzyło rezerwację, " +
+        "albo zalogowane konto gracza przypisanego do tej rezerwacji."
       );
       return;
     }
@@ -864,7 +981,14 @@ const MAP_POSITIONS = {
                 "submitReservedRecipe",
               nonce,
               ownerToken:
-                owner.token,
+                owner &&
+                owner.token
+                  ? owner.token
+                  : "",
+              sessionToken:
+                accountOwner
+                  ? playerAccountSessionToken()
+                  : "",
               baza:recipe.baza,
               drozdze:recipe.drozdze,
               woda:recipe.woda,
@@ -3514,18 +3638,37 @@ const MAP_POSITIONS = {
       ${
         Number(payload.waivedToFund) > 0
           ? `
-              <div class="salary-fund-highlight">
-                💚 Dobrowolnie przekazane pensje:
-                +${money(payload.waivedToFund)}
+              <div class="salary-fund-highlight company-fund-top">
+                <strong>
+                  💚 Dobrowolnie przekazane pensje:
+                  +${money(payload.waivedToFund)}
+                </strong>
                 <br>
-                Fundusz łącznie z częścią rozwojową:
-                ${money(payload.fundTotal)}
+                <strong>
+                  Fundusz łącznie z częścią rozwojową:
+                  ${money(payload.fundTotal)}
+                </strong>
               </div>
             `
           : ""
       }
 
-      <h3>Udziały i przewidywane pensje</h3>
+      <div
+        id="company-salary-self-service"
+        class="salary-self-service company-salary-top">
+        <div id="company-salary-identity-box">
+          <div class="muted">
+            Przygotowuję Twoją pensję...
+          </div>
+        </div>
+        <div
+          id="company-salary-self-status"
+          class="submit-status"></div>
+      </div>
+
+      <h3 class="company-shares-title">
+        Udziały i przewidywane pensje
+      </h3>
 
       <div class="company-list">
         ${
@@ -7422,6 +7565,12 @@ function setupAdmin() {
     try {
       account =
         await playerAccountStatus();
+
+      // Nick konta jest już w cache. Odświeżamy lokalnie
+      // oznaczenia "Twoja rezerwacja" bez dodatkowego requestu.
+      if (account) {
+        renderAll();
+      }
 
       if (
         account &&
