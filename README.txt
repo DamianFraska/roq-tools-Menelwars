@@ -1,201 +1,131 @@
 # MenelWars Tools
 
-**MenelWars Tools** to PWA oraz skrypt Tampermonkey rozszerzający MenelWars o wspólne narzędzia dla destylarni i gangu.
+**MenelWars Tools** to PWA rozszerzające MenelWars o wspólne narzędzia dla destylarni i gangu.
 
-Aplikacja korzysta ze wspólnego backendu, dzięki czemu dane są synchronizowane pomiędzy użytkownikami oraz wersją PWA i Tampermonkey.
+Aplikacja korzysta ze wspólnego backendu Apps Script i Google Sheets, dzięki czemu dane są synchronizowane pomiędzy użytkownikami bez konieczności publikowania nowej wersji strony przy każdej zmianie danych.
 
 ## Najważniejsze moduły
 
 ### ⚗ Destylarnia
 
-**Dostępne recepty** — pokazuje najlepsze zatwierdzone receptury dla aktualnie posiadanych składników.
+**Dostępne recepty** — pełna lista zatwierdzonych receptur z filtrami. Składniki premium wpływają wyłącznie na podium Top 3.
 
-**Nieodkryte** — lista kombinacji, których wynik nie został jeszcze odkryty.
+**Nieodkryte** — lista kombinacji do zbadania, filtrowanie oraz sekcja recept aktualnie badanych przez innych graczy.
 
-**Rezerwacje receptur** — gracz może zarezerwować nieodkrytą recepturę na 12 godzin, żeby inni wiedzieli, że ktoś już nad nią pracuje.
+**Rezerwacje receptur** — gracz może zaklepać nieodkrytą recepturę na 12 godzin. Po wykonaniu recepty może przesłać wynik bezpośrednio z rezerwacji.
 
-**Dodaj** — zgłoszenie nowo odkrytej receptury do wspólnej bazy i późniejszej weryfikacji przez administratora.
+Jeżeli gracz jest zalogowany, rezerwacja przypisana do jego nicku może być obsługiwana na każdym urządzeniu, na którym zalogowane jest to samo konto. Dla użytkowników niezalogowanych pozostaje zabezpieczenie urządzenia, z którego utworzono rezerwację.
 
-**Postęp** — statystyki odkrywania receptur oraz ranking graczy, których unikalne receptury zostały zaakceptowane.
+**Dodaj** — zgłoszenie nowo odkrytej receptury do weryfikacji.
 
----
+**Postęp** — statystyki odkryć oraz ranking osób, których unikalne receptury zostały zaakceptowane.
 
 ### 👥 Gang
 
-Prywatna część aplikacji przeznaczona dla członków gangu.
+Prywatny moduł dostępny wyłącznie dla zalogowanych członków gangu.
 
-Dostęp do danych zależy od konta oraz aktywnej sesji użytkownika.
+**Wpłaty** — dożywotnie saldo `Nadpłata / Dług`, ranking graczy i informacje o ostatniej aktualizacji.
 
-**Wpłaty** — dożywotnie saldo `Nadpłata / Dług`, ranking wpłat oraz informacje związane z rozliczeniami graczy.
+**Spółka** — wkład w firmę, udział procentowy i przewidywana pensja. Aktualny podział dochodu: 50% pensje / 50% rozwój. Gracz może dobrowolnie zrzec się części własnej pensji ponad minimalne 160 zł; środki trafiają wtedy do Funduszu.
 
-**Spółka** — informacje o wkładzie graczy w firmę, procentowym udziale oraz przewidywanej pensji.
+**Ankiety** — głosowania dostępne dla zalogowanych graczy. Każdy może głosować wyłącznie jako nick przypisany do swojego konta.
 
-**Cele** — wspólne cele gangu z aktualną wartością, wartością docelową oraz paskiem postępu.
+**Cele** — wspólny cel gangu z wartością aktualną, docelową i paskiem postępu.
 
-**Ogłoszenia** — komunikaty dla członków gangu, w tym możliwość oznaczenia najważniejszych informacji jako `📌 Ważne`.
+**Ogłoszenia** — kilka aktywnych komunikatów, w tym możliwość oznaczenia `📌 Ważne`.
 
-**Ankiety** — głosowania dostępne dla członków gangu. Aplikacja pobiera aktywne ankiety wraz z pozostałymi danymi gangu.
+### 👤 Konto
 
----
+Każdy gracz posiada konto przypisane do nicku z gry.
+
+Pierwsze ustawienie hasła odbywa się przez kod wygenerowany przez administratora. Konto pozwala korzystać z prywatnych modułów gangu na wielu urządzeniach, zmieniać hasło, sprawdzać aktywne sesje i wylogować pozostałe urządzenia.
 
 ### 🛠 Panel administratora
 
-Panel administracyjny umożliwia zarządzanie danymi wykorzystywanymi przez MenelWars Tools.
+Dostęp do Admina jest uprawnieniem konkretnego konta — nie istnieje osobne hasło administratora.
 
-Administrator może zarządzać m.in.:
-
-- recepturami i ich zgłoszeniami,
-- rezerwacjami receptur,
-- wpłatami,
-- spółką,
-- celami,
-- ogłoszeniami,
+Panel pozwala zarządzać m.in.:
+- zgłoszeniami i wynikami receptur,
+- rezerwacjami,
+- wpłatami i rankingiem,
+- Spółką,
 - ankietami,
-- graczami i ich dostępem do systemu.
-
-Panel korzysta z osobnej autoryzacji administratora.
-
----
+- celami i ogłoszeniami,
+- graczami,
+- kontami, kodami resetu i uprawnieniami Admin.
 
 ### 🗺 Mapa
 
 Szybka ściąga aktualnych ustawień mapy MenelWars.
 
-Pozwala sprawdzić potrzebne informacje bez szukania ich ręcznie podczas gry.
+## System receptur
 
----
-
-## 🔐 Konta i dostęp
-
-MenelWars Tools posiada system kont i sesji użytkowników.
-
-Po uruchomieniu aplikacja sprawdza aktualną sesję oraz dostęp użytkownika do prywatnych modułów.
-
-Dane publiczne Destylarni mogą być dostępne niezależnie od prywatnych danych gangu, natomiast moduły gangu i panel administratora wymagają odpowiednich uprawnień.
-
----
-
-## 🚀 Uruchamianie aplikacji
-
-Podczas startu MenelWars Tools automatycznie przygotowuje dane potrzebne do działania aplikacji.
-
-Ekran ładowania pokazuje aktualny etap oraz procent postępu, m.in.:
-
-- sprawdzanie konta i sesji,
-- przygotowanie danych gangu,
-- pobieranie danych z serwera,
-- przygotowanie receptur,
-- ładowanie ankiet,
-- pobieranie danych dotyczących wpłat,
-- przygotowanie panelu administratora.
-
-Część danych jest pobierana równolegle, aby ograniczyć czas oczekiwania użytkownika.
-
-Po zakończeniu procesu aplikacja wyświetla:
-
-`✅ Dane gotowe — 100%`
-
-i udostępnia przygotowany interfejs.
-
----
-
-## 🧪 System receptur
-
-Zgłoszenia receptur trafiają do Google Sheets i mogą otrzymać status:
-
+Zgłoszenia trafiają do Google Sheets i mają statusy:
 - `OCZEKUJE`
 - `ZATWIERDZONE`
 - `ODRZUCONE`
 - `DUPLIKAT`
 
-Do wspólnej bazy wyników trafiają wyłącznie zatwierdzone receptury.
+Do wspólnej bazy trafiają tylko zatwierdzone wyniki. Identyczne zgłoszenie może zostać oznaczone jako duplikat, a inny wynik tej samej receptury może zostać zatwierdzony jako korekta.
 
-Identyczne zgłoszenie może zostać oznaczone jako duplikat, natomiast inny wynik tej samej receptury może zostać zaakceptowany jako korekta wcześniejszych danych.
+PWA automatycznie pobiera zatwierdzone receptury, dlatego aktualizacja samych wyników nie wymaga ponownego wdrażania strony.
 
-PWA i Tampermonkey pobierają zatwierdzone receptury automatycznie, dlatego aktualizacja samych wyników nie wymaga publikowania nowej wersji aplikacji.
+## Rezerwacje
 
----
+Rezerwacje nieodkrytych receptur są przechowywane po stronie Apps Script i standardowo wygasają po 12 godzinach.
 
-## ⏳ Rezerwacje receptur
+Administrator może zwolnić pojedynczą rezerwację albo wyczyścić wszystkie naraz.
 
-Nieodkrytą recepturę można zarezerwować na **12 godzin**.
+Po przesłaniu wyniku rezerwacja pozostaje aktywna do czasu decyzji administratora.
 
-Rezerwacje przechowywane są po stronie backendu i po upływie czasu automatycznie wygasają.
+## Wpłaty i Spółka
 
-Dzięki temu kilku graczy nie musi jednocześnie sprawdzać tej samej kombinacji.
+System opiera się na rankingu łącznych wpłat graczy. Kolejny snapshot jest porównywany z poprzednim, dzięki czemu naliczane jest dożywotnie saldo gracza.
 
-Administrator może również:
+- dodatnie saldo = **Nadpłata**
+- ujemne saldo = **Dług**
+- próg udziału w Spółce = **30 000 zł**
+- minimalna pensja zakwalifikowanego gracza = **160 zł**
+- dzienny dochód Spółki = **50% pensje / 50% rozwój**
 
-- zwolnić pojedynczą rezerwację,
-- wyczyścić wszystkie aktywne rezerwacje.
+Dobrowolna rezygnacja z części pensji nie zwiększa pensji innych graczy — różnica trafia do Funduszu.
 
----
+## Uruchamianie i ładowanie
 
-## 💰 Wpłaty
+Po otwarciu PWA aplikacja sprawdza konto i równolegle przygotowuje dane Gangu, ankiet oraz — dla uprawnionych kont — panelu Admina.
 
-System rozliczeń wykorzystuje ranking łącznych wpłat graczy.
+Pasek postępu pokazuje wizualny stan ładowania i kończy się na `✅ Dane gotowe`. Warstwa wizualna nie opóźnia faktycznego działania aplikacji.
 
-Kolejny zapis stanu jest porównywany z wcześniejszymi danymi, dzięki czemu system może śledzić wpłaty oraz dożywotnie saldo poszczególnych graczy.
+## Bezpieczeństwo
 
-Interpretacja salda:
+Prywatne dane Gangu i funkcje administratora wymagają poprawnej sesji konta.
 
-`saldo > 0` → **Nadpłata**
+Stary dostęp przez hasło gangu, stare tokeny administratora oraz wcześniejszy skrypt Tampermonkey są wycofane i nie mogą uzyskać dostępu do chronionych danych po wdrożeniu aktualnego backendu.
 
-`saldo < 0` → **Dług**
+Publiczna część Destylarni pozostaje dostępna bez konta.
 
-Dane wykorzystywane są również do tworzenia rankingu oraz raportów dotyczących wpłat.
+## PWA
 
----
+MenelWars Tools działa jako samodzielna aplikacja PWA publikowana przez GitHub Pages i może być używana na komputerze oraz telefonie.
 
-## 🏢 Spółka
+Projekt nie korzysta już ze skryptu Tampermonkey.
 
-Spółka pokazuje udział graczy we wspólnym kapitale oraz wynikający z niego podział części dochodu.
+## Aktualizacje
 
-Aktualne zasady:
+Po opublikowaniu nowej wersji PWA aktualizuje się przez GitHub Pages.
 
-- próg udziału w spółce — **30 000 zł**,
-- minimalna pensja zakwalifikowanego gracza — **160 zł**,
-- **50%** dziennego dochodu przeznaczane jest na pensje,
-- **50%** dziennego dochodu przeznaczane jest na rozwój.
+Zmiany samych danych receptur, wpłat, celów czy ogłoszeń mogą być wykonywane po stronie backendu bez publikowania nowej wersji frontendu.
 
-Aplikacja automatycznie wylicza procentowy udział oraz przewidywaną pensję na podstawie aktualnych danych.
+## Architektura
 
----
+**PWA**  
+↓  
+**Backend Google Apps Script**  
+↓  
+**Google Sheets**
 
-## 📱 PWA i Tampermonkey
-
-MenelWars Tools dostępny jest w dwóch wariantach.
-
-### PWA
-
-PWA działa jako samodzielna aplikacja internetowa publikowana przez GitHub Pages.
-
-Może być używana zarówno na komputerze, jak i urządzeniach mobilnych.
-
-### Tampermonkey
-
-Na komputerze można zainstalować wersję działającą bezpośrednio wewnątrz MenelWars.
-
-Instalator dostępny jest z PWA przez przycisk:
-
-`💻 Zainstaluj na PC`
-
-Skrypt Tampermonkey korzysta z tego samego backendu co PWA, dlatego dane są wspólne dla obu wersji.
+Frontend odpowiada za interfejs, Apps Script za logikę serwera i autoryzację, a Google Sheets pełni rolę wspólnego magazynu danych.
 
 ---
-
-## 🔄 Aktualizacje
-
-Po opublikowaniu nowej wersji:
-
-- PWA aktualizuje się przez GitHub Pages,
-- Tampermonkey może pobrać nowszą wersję `menelwars-tools.user.js`,
-- zmiany danych po stronie backendu nie wymagają ponownego publikowania całej aplikacji,
-- aktualizacje samych receptur nie wymagają nowej wersji PWA ani skryptu.
-
-Dzięki temu baza receptur, dane gangu i pozostałe informacje mogą być aktualizowane niezależnie od kodu aplikacji.
-
----
-
 
 **MenelWars Tools · autor: RoQ**

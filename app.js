@@ -3108,41 +3108,16 @@ const MAP_POSITIONS = {
     const account =
       await playerAccountStatus();
 
-    if (account) {
-      return {
-        ok:true,
-        authenticated:true,
-        nick:account.nick,
-        expiresAt:account.expiresAt
-      };
-    }
-
-    // Tymczasowy fallback dla urządzeń ze starej wersji.
-    const token =
-      playerIdentityToken();
-
-    if (!token) return null;
-
-    try {
-      const result =
-        await jsonp(
-          "companySalaryIdentityStatus",
-          {identityToken:token}
-        );
-
-      if (
-        !result ||
-        !result.ok ||
-        !result.authenticated
-      ) {
-        setPlayerIdentityToken("");
-        return null;
-      }
-
-      return result;
-    } catch (err) {
+    if (!account) {
       return null;
     }
+
+    return {
+      ok:true,
+      authenticated:true,
+      nick:account.nick,
+      expiresAt:account.expiresAt
+    };
   }
 
   async function renderPlayerIdentitySettings() {
@@ -3593,8 +3568,7 @@ const MAP_POSITIONS = {
       try {
         await companySalaryPostAction("companySetSalaryWaiver",{
           identityToken:
-            playerAccountSessionToken() ||
-            playerIdentityToken(),
+            playerAccountSessionToken(),
           waived:nextWaived
         });
 
@@ -7132,14 +7106,7 @@ function setupAdmin() {
     showToolView("account-view","account");
     renderAccountView();
   });
-
-  el("pc-utility-btn")
-    .addEventListener("click", () => {
-      showToolView("pc-view", "distillery");
-    });
-
-  
-  // ============================================================
+// ============================================================
   // GLOBALNY PRELOAD / PASEK POSTĘPU
   // ============================================================
 
