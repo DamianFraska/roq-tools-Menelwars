@@ -37,13 +37,13 @@
   const MAP = [
     ["Wilanów", "Agresywny", "⚔️"],
     ["Mokotów", "Przyjacielski", "🤝"],
-    ["Ursynów", "Błagalny", "🙏"],
+    ["Ursynów", "Przyjacielski", "🤝"],
     ["Ochota", "Neutralny", "⚪"],
-    ["Śródmieście", "Przyjacielski", "🤝"],
-    ["Bemowo", "Przyjacielski", "🤝"],
+    ["Śródmieście", "Agresywny", "⚔️"],
+    ["Bemowo", "Błagalny", "🙏"],
     ["Wola", "Błagalny", "🙏"],
-    ["Żoliborz", "Neutralny", "⚪"],
-    ["Bielany", "Błagalny", "🙏"],
+    ["Żoliborz", "Przyjacielski", "🤝"],
+    ["Bielany", "Przyjacielski", "🤝"],
     ["Praga", "Błagalny", "🙏"],
     ["Białołęka", "Neutralny", "⚪"],
     ["Targówek", "Błagalny", "🙏"]
