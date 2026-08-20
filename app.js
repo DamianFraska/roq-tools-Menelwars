@@ -1995,8 +1995,21 @@ const MAP_POSITIONS = {
   }
 
   function setPlayerAccountSessionToken(token) {
-    if (token) localStorage.setItem(PLAYER_ACCOUNT_SESSION_KEY,token);
-    else localStorage.removeItem(PLAYER_ACCOUNT_SESSION_KEY);
+    if (token) {
+      localStorage.setItem(
+        PLAYER_ACCOUNT_SESSION_KEY,
+        token
+      );
+    } else {
+      localStorage.removeItem(
+        PLAYER_ACCOUNT_SESSION_KEY
+      );
+    }
+
+    cachedAccountStatus = null;
+    cachedAccountStatusAt = 0;
+    cachedAccountStatusToken = "";
+    accountStatusInFlight = null;
   }
 
   async function playerAccountPostAction(action,data={}) {
@@ -2025,27 +2038,96 @@ const MAP_POSITIONS = {
     return result;
   }
 
-  async function playerAccountStatus() {
-    const token = playerAccountSessionToken();
-    if (!token) return null;
+  let cachedAccountStatus = null;
+  let cachedAccountStatusAt = 0;
+  let cachedAccountStatusToken = "";
+  let accountStatusInFlight = null;
 
-    try {
-      const result = await jsonp("playerAccountStatus",{sessionToken:token});
-      if (!result || !result.ok || !result.authenticated) {
-        setPlayerAccountSessionToken("");
-        return null;
-      }
-      return result;
-    } catch (err) {
+  async function playerAccountStatus(options={}) {
+    const token = playerAccountSessionToken();
+
+    if (!token) {
+      cachedAccountStatus = null;
+      cachedAccountStatusAt = 0;
+      cachedAccountStatusToken = "";
       return null;
     }
+
+    const force = Boolean(options.force);
+
+    if (
+      !force &&
+      cachedAccountStatus &&
+      cachedAccountStatusToken === token &&
+      Date.now() - cachedAccountStatusAt < 60000
+    ) {
+      return cachedAccountStatus;
+    }
+
+    if (!force && accountStatusInFlight) {
+      return accountStatusInFlight;
+    }
+
+    accountStatusInFlight = (async () => {
+      try {
+        const result =
+          await jsonp(
+            "playerAccountStatus",
+            {sessionToken:token}
+          );
+
+        if (
+          !result ||
+          !result.ok ||
+          !result.authenticated
+        ) {
+          cachedAccountStatus = null;
+          cachedAccountStatusAt = 0;
+          cachedAccountStatusToken = "";
+          setPlayerAccountSessionToken("");
+          return null;
+        }
+
+        cachedAccountStatus = result;
+        cachedAccountStatusAt = Date.now();
+        cachedAccountStatusToken = token;
+        return result;
+
+      } catch (err) {
+        return cachedAccountStatusToken === token
+          ? cachedAccountStatus
+          : null;
+      } finally {
+        accountStatusInFlight = null;
+      }
+    })();
+
+    return accountStatusInFlight;
   }
+
+  let accountViewRenderInFlight = null;
 
   async function renderAccountView() {
     const box = el("account-content");
     const status = el("account-status");
     const adminHost = el("account-admin-host");
     if (!box) return;
+
+    // Jeśli status nie jest jeszcze w cache, pokaż od razu jasny stan ładowania
+    // zamiast pozostawiać użytkownika z wrażeniem zawieszenia.
+    if (
+      playerAccountSessionToken() &&
+      !cachedAccountStatus
+    ) {
+      box.innerHTML = `
+        <div class="account-card">
+          <div class="loading-inline">
+            <span class="loading-spinner" aria-hidden="true"></span>
+            Ładowanie konta...
+          </div>
+        </div>
+      `;
+    }
 
     if (adminHost) {
       const adminPanel = el("admin-view");
@@ -2338,17 +2420,83 @@ const MAP_POSITIONS = {
         el("admin-login").hidden=true;
         el("admin-content").hidden=false;
 
-        // v20.7 — przy wejściu do Admina przez Konto
-        // od razu pobieramy również zgłoszenia oczekujące
-        // na akceptację / odrzucenie.
-        loadAdminSubmissions();
+        if (
+          !adminWarmLoadedAt &&
+          el("admin-status")
+        ) {
+          el("admin-status").textContent =
+            "⏳ Ładowanie panelu administratora...";
+        }
 
-        loadAccountAdminPermissions();
-        loadAdminGangTools();
-        loadAdminPaymentsStatus();
+        // v20.11 — dane Admina są rozgrzewane wcześniej.
+        // Jeśli preload jeszcze trwa, korzystamy z tego samego promise.
+        warmAdminData();
       }
     });
   }
+
+  async function warmAdminData(options={}) {
+    const force =
+      Boolean(options.force);
+
+    if (
+      !force &&
+      adminWarmLoadedAt &&
+      Date.now() - adminWarmLoadedAt < 30000
+    ) {
+      return true;
+    }
+
+    if (adminWarmPromise) {
+      return adminWarmPromise;
+    }
+
+    if (!playerAccountSessionToken()) {
+      return false;
+    }
+
+    adminWarmPromise =
+      (async () => {
+        const results =
+          await Promise.allSettled([
+            loadAccountAdminPermissions(),
+            loadAdminGangTools(),
+            loadAdminPaymentsStatus(),
+            loadAdminSubmissions()
+          ]);
+
+        const anyOk =
+          results.some(
+            item =>
+              item.status === "fulfilled"
+          );
+
+        if (anyOk) {
+          adminWarmLoadedAt =
+            Date.now();
+
+          const adminStatus =
+            el("admin-status");
+
+          if (
+            adminStatus &&
+            adminStatus.textContent
+              .includes("Ładowanie panelu administratora")
+          ) {
+            adminStatus.textContent = "";
+          }
+        }
+
+        return anyOk;
+      })();
+
+    try {
+      return await adminWarmPromise;
+    } finally {
+      adminWarmPromise = null;
+    }
+  }
+
 
   async function loadAccountAdminPermissions() {
     const holder =
@@ -3017,7 +3165,14 @@ const MAP_POSITIONS = {
       : 0;
   }
 
+  let gangPollsLoadInFlight = null;
+
   async function loadGangPolls() {
+    if (gangPollsLoadInFlight) {
+      return gangPollsLoadInFlight;
+    }
+
+    gangPollsLoadInFlight = (async () => {
     const box =
       el("gang-polls-list");
 
@@ -3200,8 +3355,15 @@ const MAP_POSITIONS = {
         </div>
       `;
     }
-  }
+  
+    })();
 
+    try {
+      return await gangPollsLoadInFlight;
+    } finally {
+      gangPollsLoadInFlight = null;
+    }
+  }
 
   async function renderCompanySalarySelfService(payload) {
     const box = el("company-salary-identity-box");
@@ -3542,7 +3704,17 @@ const goal = payload && payload.goal;
         : `<div class="empty">Brak danych do wyświetlenia.</div>`;
   }
 
+  let paymentsLoadInFlight = null;
+
   async function loadPayments(options={}) {
+    if (paymentsLoadInFlight) {
+      if (latestGangPayload) {
+        renderGangPayload(latestGangPayload);
+      }
+      return paymentsLoadInFlight;
+    }
+
+    paymentsLoadInFlight = (async () => {
 
     const token = gangToken();
 
@@ -3619,6 +3791,14 @@ const goal = payload && payload.goal;
             ? err.message
             : "Nie udało się pobrać danych.";
       }
+    }
+  
+    })();
+
+    try {
+      return await paymentsLoadInFlight;
+    } finally {
+      paymentsLoadInFlight = null;
     }
   }
 
@@ -3724,6 +3904,11 @@ let adminPaymentsSnapshot = null;
 let latestGangPayload = null;
 let latestGangPayloadAt = 0;
 let gangSessionValidationAt = 0;
+
+// v20.11 — jeden wspólny preload Admina.
+// Kliknięcie panelu podczas prefetchu nie uruchamia drugiego kompletu requestów.
+let adminWarmPromise = null;
+let adminWarmLoadedAt = 0;
 
 function adminToken() {
   return playerAccountSessionToken() || localStorage.getItem(ADMIN_TOKEN_KEY) || "";
@@ -6117,11 +6302,9 @@ function setupAdmin() {
     .addEventListener(
       "click",
       () => {
-        loadAdminSubmissions();
-        loadAdminPaymentsStatus();
+        adminWarmLoadedAt = 0;
+        warmAdminData({force:true});
         loadAdminPlayers();
-        loadAccountAdminPermissions();
-        loadAdminGangTools();
       }
     );
 
@@ -6807,6 +6990,42 @@ fetchApprovedRecipes();
 setupAdmin();
 showToolView("optimizer-view", "distillery");
 if (el("admin-view")) el("admin-view").hidden = true;
+
+// v20.11 — kolejność prefetchu:
+// 1) konto natychmiast,
+// 2) dane Gangu,
+// 3) ankiety,
+// 4) jeśli konto jest Adminem — cały panel Admina.
+// Dzięki temu nie trzeba wcześniej otwierać poszczególnych kart.
+if (playerAccountSessionToken()) {
+  setTimeout(
+    async () => {
+      const account =
+        await playerAccountStatus();
+
+      if (
+        account &&
+        account.admin
+      ) {
+        setTimeout(
+          () => warmAdminData(),
+          900
+        );
+      }
+    },
+    20
+  );
+
+  setTimeout(
+    () => loadPayments({background:true}),
+    180
+  );
+
+  setTimeout(
+    () => loadGangPolls(),
+    650
+  );
+}
 
   // Pobieramy nowe zatwierdzone dane także co 5 minut.
   setInterval(
