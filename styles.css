@@ -885,3 +885,13 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
     margin-bottom:13px;
   }
 }
+
+
+/* v20.18 — loader używany także przy doczytywaniu danych po starcie */
+#app-preload:not([hidden]){
+  pointer-events:auto;
+}
+
+#app-preload.done #app-preload-text{
+  font-weight:700;
+}

@@ -2538,25 +2538,38 @@ const MAP_POSITIONS = {
     el("account-admin-open")?.addEventListener("click",()=>{
       const host=el("account-admin-host");
       const panel=el("admin-view");
+
       if (host && panel) {
         host.appendChild(panel);
         panel.hidden=false;
         el("admin-login").hidden=true;
         el("admin-content").hidden=false;
 
+        const adminNeedsRequest =
+          !adminWarmLoadedAt ||
+          Date.now() - adminWarmLoadedAt >= 30000;
+
         if (
-          !adminWarmLoadedAt &&
+          adminNeedsRequest &&
           el("admin-status")
         ) {
           el("admin-status").textContent =
             "⏳ Ładowanie panelu administratora...";
         }
 
-        // v20.11 — dane Admina są rozgrzewane wcześniej.
-        // Jeśli preload jeszcze trwa, korzystamy z tego samego promise.
-        warmAdminData({
-          silent:false
-        });
+        if (adminNeedsRequest) {
+          withRuntimeLoader(
+            () => warmAdminData({
+              silent:false
+            }),
+            "🛠️ Odświeżam panel Admina...",
+            "🥫 Admin gdzieś zapodział puszki z serwera..."
+          );
+        } else {
+          warmAdminData({
+            silent:false
+          });
+        }
       }
     });
   }
@@ -6437,8 +6450,15 @@ function setupAdmin() {
       "click",
       () => {
         adminWarmLoadedAt = 0;
-        warmAdminData({force:true});
-        loadAdminPlayers();
+
+        withRuntimeLoader(
+          () => Promise.allSettled([
+            warmAdminData({force:true}),
+            loadAdminPlayers()
+          ]),
+          "🛠️ Odświeżam panel Admina...",
+          "🍺 Panel Admina robi dolewkę, już kończę..."
+        );
       }
     );
 
@@ -7017,16 +7037,194 @@ function setupAdmin() {
   }
 
 
+  let runtimeLoaderTimer = null;
+  let runtimeLoaderFunnyTimer = null;
+  let runtimeLoaderProgress = 0;
+  let runtimeLoaderActive = false;
+
+  function runtimeLoaderStart(
+    text="⏳ Odświeżam dane...",
+    funnyText="🥫 Serwer szuka ostatniej puszki..."
+  ) {
+    const box = el("app-preload");
+    const bar = el("app-preload-bar");
+    const percent = el("app-preload-percent");
+
+    if (!box || !bar || !percent) {
+      return;
+    }
+
+    clearInterval(runtimeLoaderTimer);
+    clearTimeout(runtimeLoaderFunnyTimer);
+
+    runtimeLoaderActive = true;
+    runtimeLoaderProgress = 8;
+
+    box.hidden = false;
+    box.classList.remove(
+      "done",
+      "hiding",
+      "finishing"
+    );
+
+    appBootSetText(text);
+    bar.style.width = "8%";
+    percent.textContent = "8%";
+
+    const startedAt = Date.now();
+
+    runtimeLoaderTimer =
+      setInterval(() => {
+        if (!runtimeLoaderActive) return;
+
+        const elapsed =
+          Date.now() - startedAt;
+
+        // Szybki loader dla pojedynczego doczytania.
+        // Sam dochodzi maksymalnie do 90%.
+        const target =
+          Math.min(
+            90,
+            8 + (elapsed / 3200) * 78
+          );
+
+        runtimeLoaderProgress +=
+          Math.max(
+            .8,
+            (target - runtimeLoaderProgress) * .18
+          );
+
+        runtimeLoaderProgress =
+          Math.min(
+            runtimeLoaderProgress,
+            90
+          );
+
+        bar.style.width =
+          `${runtimeLoaderProgress}%`;
+
+        percent.textContent =
+          `${Math.round(runtimeLoaderProgress)}%`;
+      }, 90);
+
+    // Zabawny tekst dopiero wtedy, gdy backend faktycznie każe czekać.
+    runtimeLoaderFunnyTimer =
+      setTimeout(() => {
+        if (runtimeLoaderActive) {
+          appBootSetText(funnyText);
+        }
+      }, 3000);
+  }
+
+  async function runtimeLoaderFinish() {
+    if (!runtimeLoaderActive) {
+      return;
+    }
+
+    runtimeLoaderActive = false;
+
+    clearInterval(runtimeLoaderTimer);
+    clearTimeout(runtimeLoaderFunnyTimer);
+
+    const box = el("app-preload");
+    const bar = el("app-preload-bar");
+    const percent = el("app-preload-percent");
+
+    if (!box || !bar || !percent) {
+      return;
+    }
+
+    appBootSetText("✅ Gotowe");
+    box.classList.add("finishing");
+
+    const from =
+      Math.max(
+        0,
+        Math.min(
+          99,
+          runtimeLoaderProgress
+        )
+      );
+
+    const duration = 260;
+    const started = performance.now();
+
+    await new Promise(resolve => {
+      const tick = now => {
+        const t =
+          Math.min(
+            1,
+            (now - started) / duration
+          );
+
+        const eased =
+          1 - Math.pow(1 - t, 3);
+
+        const value =
+          from + (100 - from) * eased;
+
+        bar.style.width = `${value}%`;
+        percent.textContent =
+          `${Math.round(value)}%`;
+
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          resolve();
+        }
+      };
+
+      requestAnimationFrame(tick);
+    });
+
+    bar.style.width = "100%";
+    percent.textContent = "100%";
+    box.classList.remove("finishing");
+    box.classList.add("done");
+
+    await new Promise(
+      resolve => setTimeout(resolve, 420)
+    );
+
+    box.classList.add("hiding");
+
+    await new Promise(
+      resolve => setTimeout(resolve, 280)
+    );
+
+    box.hidden = true;
+    box.classList.remove(
+      "done",
+      "hiding",
+      "finishing"
+    );
+  }
+
+  async function withRuntimeLoader(
+    promiseFactory,
+    text,
+    funnyText
+  ) {
+    runtimeLoaderStart(
+      text,
+      funnyText
+    );
+
+    try {
+      return await promiseFactory();
+    } finally {
+      await runtimeLoaderFinish();
+    }
+  }
+
+
   function openGangModule(
     target="payments-view"
   ) {
-    // Obecność tokenu lokalnego pozwala przełączyć widok NATYCHMIAST.
-    // Bez requestu do Apps Script przed pokazaniem kafelka.
     if (
       !playerAccountSessionToken()
     ) {
-      el("gang-tabs").hidden =
-        true;
+      el("gang-tabs").hidden = true;
 
       showToolView(
         "gang-gate-view",
@@ -7036,31 +7234,19 @@ function setupAdmin() {
       return;
     }
 
-    el("gang-tabs").hidden =
-      false;
+    el("gang-tabs").hidden = false;
 
     showToolView(
       target,
       "gang"
     );
 
-    // Pokazujemy już pobrane dane bez czekania na backend.
     if (latestGangPayload) {
       renderGangPayload(
         latestGangPayload
       );
     }
 
-    // Ankiety mają osobny endpoint, ale sam widok pokazuje się od razu.
-    if (
-      target ===
-      "polls-view"
-    ) {
-      loadGangPolls();
-    }
-
-    // Nie odświeżamy wpłat/spółki/celów przy KAŻDYM kliknięciu.
-    // Odświeżenie tylko gdy danych jeszcze nie ma albo mają >30 s.
     const dataIsStale =
       !latestGangPayload ||
       (
@@ -7069,14 +7255,73 @@ function setupAdmin() {
         30000
       );
 
+    const requests = [];
+
     if (dataIsStale) {
-      loadPayments({
-        background:true
-      });
+      requests.push(
+        loadPayments({
+          background:true
+        })
+      );
     }
 
-    // Autoryzację nadal weryfikuje backend,
-    // ale robi się to w tle i nie opóźnia kliknięcia.
+    // Ankiety mają osobny endpoint.
+    // Jeśli użytkownik wchodzi w Ankiety, ten request również
+    // jest objęty wspólnym paskiem.
+    if (
+      target ===
+      "polls-view"
+    ) {
+      requests.push(
+        loadGangPolls()
+      );
+    }
+
+    if (requests.length) {
+      const labels = {
+        "payments-view":
+          [
+            "💰 Odświeżam wpłaty...",
+            "🪙 Liczę drobniaki pod kanapą serwera..."
+          ],
+        "company-view":
+          [
+            "🏢 Odświeżam Spółkę...",
+            "💸 Księgowy zgubił kalkulator, już szukam..."
+          ],
+        "polls-view":
+          [
+            "📊 Odświeżam ankiety...",
+            "🗳️ Liczę głosy, nawet te oddane po pijaku..."
+          ],
+        "goals-view":
+          [
+            "🎯 Odświeżam cele gangu...",
+            "🥫 Zbieram puszki na realizację celu..."
+          ],
+        "announcements-view":
+          [
+            "📢 Odświeżam ogłoszenia...",
+            "📯 Wołam gońca, chyba zasnął po drodze..."
+          ]
+      };
+
+      const pair =
+        labels[target] ||
+        [
+          "⏳ Odświeżam dane Gangu...",
+          "🥫 Serwer szuka ostatniej puszki..."
+        ];
+
+      withRuntimeLoader(
+        () => Promise.allSettled(
+          requests
+        ),
+        pair[0],
+        pair[1]
+      );
+    }
+
     validateGangSessionInBackground();
   }
 
@@ -7088,7 +7333,29 @@ function setupAdmin() {
       else if (moduleName === "map") showToolView("map-view","map");
       else if (moduleName === "account") {
         showToolView("account-view","account");
-        renderAccountView();
+
+        const token =
+          playerAccountSessionToken();
+
+        const accountNeedsRequest =
+          Boolean(
+            token &&
+            (
+              !cachedAccountStatus ||
+              cachedAccountStatusToken !== token ||
+              Date.now() - cachedAccountStatusAt >= 60000
+            )
+          );
+
+        if (accountNeedsRequest) {
+          withRuntimeLoader(
+            () => renderAccountView(),
+            "👤 Odświeżam konto...",
+            "🔑 Szukam kluczy do konta, ktoś je znowu przełożył..."
+          );
+        } else {
+          renderAccountView();
+        }
       }
     });
   });
@@ -7104,7 +7371,29 @@ function setupAdmin() {
 
   el("gang-go-account")?.addEventListener("click",()=>{
     showToolView("account-view","account");
-    renderAccountView();
+
+    const token =
+      playerAccountSessionToken();
+
+    const accountNeedsRequest =
+      Boolean(
+        token &&
+        (
+          !cachedAccountStatus ||
+          cachedAccountStatusToken !== token ||
+          Date.now() - cachedAccountStatusAt >= 60000
+        )
+      );
+
+    if (accountNeedsRequest) {
+      withRuntimeLoader(
+        () => renderAccountView(),
+        "👤 Odświeżam konto...",
+        "🔑 Szukam kluczy do konta, ktoś je znowu przełożył..."
+      );
+    } else {
+      renderAccountView();
+    }
   });
 // ============================================================
   // GLOBALNY PRELOAD / PASEK POSTĘPU
