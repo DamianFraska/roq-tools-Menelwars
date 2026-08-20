@@ -7140,6 +7140,11 @@ function setupAdmin() {
   }
 
   function appBootDone() {
+    appBootFinishSmooth();
+  }
+
+
+  async function appBootFinishSmooth() {
     if (appBootFinished) {
       return;
     }
@@ -7150,28 +7155,116 @@ function setupAdmin() {
       appBootTimer
     );
 
-    appBootProgress = 100;
-    appBootTarget = 100;
-
     const box =
       el("app-preload");
 
-    if (box) {
-      box.classList.add(
-        "done"
-      );
+    const bar =
+      el("app-preload-bar");
+
+    const percent =
+      el("app-preload-percent");
+
+    if (
+      !box ||
+      !bar ||
+      !percent
+    ) {
+      return;
     }
 
+    // Najpierw komunikat końcowy, potem krótki płynny dojazd do 100%.
     appBootSetText(
       "✅ Dane gotowe"
     );
 
-    appBootRender();
+    box.classList.add(
+      "finishing"
+    );
+
+    const from =
+      Math.max(
+        0,
+        Math.min(
+          99,
+          appBootProgress
+        )
+      );
+
+    const duration =
+      320;
+
+    const started =
+      performance.now();
+
+    await new Promise(
+      resolve => {
+        const tick =
+          now => {
+            const t =
+              Math.min(
+                1,
+                (
+                  now -
+                  started
+                ) /
+                duration
+              );
+
+            const eased =
+              1 -
+              Math.pow(
+                1 - t,
+                3
+              );
+
+            appBootProgress =
+              from +
+              (
+                100 -
+                from
+              ) *
+              eased;
+
+            bar.style.width =
+              `${appBootProgress}%`;
+
+            percent.textContent =
+              `${Math.round(appBootProgress)}%`;
+
+            if (t < 1) {
+              requestAnimationFrame(
+                tick
+              );
+            } else {
+              resolve();
+            }
+          };
+
+        requestAnimationFrame(
+          tick
+        );
+      }
+    );
+
+    appBootProgress = 100;
+    appBootTarget = 100;
+
+    bar.style.width =
+      "100%";
+
+    percent.textContent =
+      "100%";
+
+    box.classList.remove(
+      "finishing"
+    );
+
+    box.classList.add(
+      "done"
+    );
 
     setTimeout(
       () => {
-        if (!box) return;
-
         box.classList.add(
           "hiding"
         );
@@ -7179,17 +7272,20 @@ function setupAdmin() {
         setTimeout(
           () => {
             box.hidden = true;
+
             box.classList.remove(
               "done",
-              "hiding"
+              "hiding",
+              "finishing"
             );
           },
           280
         );
       },
-      1300
+      1100
     );
   }
+
 
   async function preloadApplicationData() {
     if (
@@ -7198,7 +7294,8 @@ function setupAdmin() {
       appBootSetText(
         "✅ Strona gotowa"
       );
-      appBootDone();
+
+      await appBootFinishSmooth();
       return;
     }
 
@@ -7206,70 +7303,116 @@ function setupAdmin() {
     let finished = 0;
     let expected = 2;
 
-    const playfulTexts = [
-      "⏳ Zbieram puszki z serwera...",
-      "⏳ Szukam zagubionych recept...",
-      "⏳ Liczę drobniaki w kasie gangu...",
-      "⏳ Sprawdzam, kto znowu nie wpłacił...",
-      "⏳ Przewracam beczki w magazynie...",
-      "⏳ Popijam coś mocniejszego i czekam na serwer...",
-      "⏳ Odkurzam panel administratora...",
-      "⏳ Jeszcze chwila, serwer też ma kaca..."
+    const visualSteps = [
+      {
+        after:0,
+        target:8,
+        text:"🔐 Sprawdzam konto i sesję..."
+      },
+      {
+        after:550,
+        target:16,
+        text:"🔑 Szukam kluczy do gangu..."
+      },
+      {
+        after:650,
+        target:26,
+        text:"🔥 Rozgrzewam serwer..."
+      },
+      {
+        after:800,
+        target:38,
+        text:"💰 Liczę drobniaki w kasie gangu..."
+      },
+      {
+        after:950,
+        target:50,
+        text:"🥫 Zbieram puszki z serwera..."
+      },
+      {
+        after:1050,
+        target:62,
+        text:"🧪 Szukam zagubionych recept..."
+      },
+      {
+        after:1100,
+        target:72,
+        text:"📊 Przeglądam ankiety..."
+      },
+      {
+        after:1150,
+        target:82,
+        text:"🛠️ Odkurzam panel Admina..."
+      },
+      {
+        after:1200,
+        target:88,
+        text:"🍺 Popijam coś mocniejszego, serwer jeszcze pracuje..."
+      },
+      {
+        after:1250,
+        target:92,
+        text:"🥴 Jeszcze chwila, serwer też ma kaca..."
+      }
     ];
 
-    let playfulIndex = 0;
-    let playfulTimer = null;
+    let visualCancelled = false;
 
-    const startPlayful =
-      () => {
-        clearInterval(
-          playfulTimer
-        );
+    const runVisualSteps =
+      async () => {
+        for (
+          const step of
+          visualSteps
+        ) {
+          if (
+            visualCancelled ||
+            appBootFinished
+          ) {
+            return;
+          }
 
-        playfulTimer =
-          setInterval(
-            () => {
-              if (appBootFinished) {
-                clearInterval(
-                  playfulTimer
-                );
-                return;
-              }
-
-              appBootSetText(
-                playfulTexts[
-                  playfulIndex %
-                  playfulTexts.length
-                ]
-              );
-
-              playfulIndex += 1;
-            },
-            1100
+          await new Promise(
+            resolve =>
+              setTimeout(
+                resolve,
+                step.after
+              )
           );
+
+          if (
+            visualCancelled ||
+            appBootFinished
+          ) {
+            return;
+          }
+
+          appBootReach(
+            step.target,
+            step.text
+          );
+        }
       };
+
+    const visualPromise =
+      runVisualSteps();
 
     const finishOne =
       (label) => {
         finished += 1;
 
-        const base =
-          30;
-
-        const span =
-          62;
-
+        // Realny postęp może podbić pasek,
+        // ale nie wymusza pokazania wszystkich etapów.
         const target =
-          base +
+          34 +
           (
             finished /
             expected
           ) *
-          span;
+          54;
 
         appBootReach(
           Math.min(
-            94,
+            92,
             target
           ),
           label
@@ -7277,21 +7420,8 @@ function setupAdmin() {
       };
 
     try {
-      appBootReach(
-        12,
-        "⏳ Sprawdzam konto i sesję..."
-      );
-
       account =
         await playerAccountStatus();
-
-      appBootReach(
-        28,
-        account &&
-        account.admin
-          ? "⏳ Rozgrzewam Gang, ankiety i Admina..."
-          : "⏳ Rozgrzewam Gang i ankiety..."
-      );
 
       if (
         account &&
@@ -7299,8 +7429,6 @@ function setupAdmin() {
       ) {
         expected = 3;
       }
-
-      startPlayful();
 
       const tasks = [
         loadPayments({
@@ -7376,27 +7504,23 @@ function setupAdmin() {
         tasks
       );
 
-      clearInterval(
-        playfulTimer
-      );
-
-      appBootReach(
-        96,
-        "⏳ Ostatnie porządki..."
-      );
-
     } catch (err) {
       console.warn(
         "[MenelWars Tools] Preload:",
         err
       );
-    } finally {
-      clearInterval(
-        playfulTimer
-      );
     }
 
-    appBootDone();
+    visualCancelled = true;
+
+    // Nie czekamy na dokończenie "historii" tekstów.
+    // Dane są gotowe -> płynne domknięcie do 100%.
+    await appBootFinishSmooth();
+
+    // Sprzątamy asynchroniczny narrator, jeśli jeszcze kończy timeout.
+    Promise.resolve(
+      visualPromise
+    ).catch(() => {});
   }
 
 

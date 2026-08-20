@@ -849,3 +849,13 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
     font-size:10px;
   }
 }
+
+
+/* v20.14 — żywszy loader */
+.app-preload-bar{
+  transition:width .22s ease;
+}
+
+.app-preload.finishing .app-preload-bar{
+  transition:none;
+}
