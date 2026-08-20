@@ -2474,6 +2474,9 @@ const MAP_POSITIONS = {
           );
 
           try {
+          adminLoaderTexts(
+            "sessions"
+          );
             await fetch(
               BACKEND_URL,
               {
@@ -2563,7 +2566,7 @@ const MAP_POSITIONS = {
               silent:false
             }),
             "🛠️ Odświeżam panel Admina...",
-            "🥫 Admin gdzieś zapodział puszki z serwera..."
+            ['🥫 Admin gdzieś zapodział puszki z serwera...','🧹 Odkurzam ostatnie zakamarki panelu...','🍺 Panel Admina robi dolewkę...','🥴 Backend twierdzi, że już prawie...']
           );
         } else {
           warmAdminData({
@@ -4249,7 +4252,12 @@ async function loadAdminPolls() {
       .forEach(button => {
         button.onclick =
           async () => {
-            await adminPostAction(
+            adminLoaderTexts(
+              "poll"
+            );
+
+            try {
+              await adminPostAction(
               "adminSetGangPollStatus",
               {
                 pollId:
@@ -4259,8 +4267,20 @@ async function loadAdminPolls() {
               }
             );
 
-            await loadAdminPolls();
-            await loadGangPolls();
+              await Promise.allSettled([
+                loadAdminPolls(),
+                loadGangPolls()
+              ]);
+
+              await runtimeLoaderFinish(
+                "✅ Ankieta zaktualizowana"
+              );
+            } catch (err) {
+              await runtimeLoaderFinish(
+                "❌ Aktualizacja nieudana"
+              );
+              throw err;
+            }
           };
       });
 
@@ -4279,7 +4299,12 @@ async function loadAdminPolls() {
               return;
             }
 
-            await adminPostAction(
+            adminLoaderTexts(
+              "poll"
+            );
+
+            try {
+              await adminPostAction(
               "adminDeleteGangPoll",
               {
                 pollId:
@@ -4287,8 +4312,20 @@ async function loadAdminPolls() {
               }
             );
 
-            await loadAdminPolls();
-            await loadGangPolls();
+              await Promise.allSettled([
+                loadAdminPolls(),
+                loadGangPolls()
+              ]);
+
+              await runtimeLoaderFinish(
+                "✅ Ankieta usunięta"
+              );
+            } catch (err) {
+              await runtimeLoaderFinish(
+                "❌ Usuwanie nieudane"
+              );
+              throw err;
+            }
           };
       });
 
@@ -4364,6 +4401,10 @@ function renderAdminGangTools(payload) {
           );
 
           try {
+            adminLoaderTexts(
+              "reservation"
+            );
+
             await adminPostAction(
               "adminClearReservation",
               {recipeKey:button.dataset.clearReservation}
@@ -4372,11 +4413,19 @@ function renderAdminGangTools(payload) {
             status.textContent =
               "✅ Rezerwacja została zwolniona.";
 
-            loadAdminGangTools();
+            await loadAdminGangTools();
             fetchApprovedRecipes();
+
+            await runtimeLoaderFinish(
+              "✅ Rezerwacja zwolniona"
+            );
           } catch (err) {
             status.textContent =
               err.message || "Nie udało się usunąć rezerwacji.";
+
+            await runtimeLoaderFinish(
+              "❌ Zwalnianie nieudane"
+            );
           } finally {
             clearActionLoading(button);
           }
@@ -4447,6 +4496,10 @@ function renderAdminGangTools(payload) {
           button.disabled = true;
 
           try {
+            adminLoaderTexts(
+              "announcement"
+            );
+
             await adminPostAction(
               "adminSetAnnouncementImportant",
               {
@@ -4454,11 +4507,21 @@ function renderAdminGangTools(payload) {
                 important
               }
             );
-            await loadAdminGangTools();
-            await loadPayments({background:true});
+            await Promise.allSettled([
+              loadAdminGangTools(),
+              loadPayments({background:true})
+            ]);
+
+            await runtimeLoaderFinish(
+              "✅ Ogłoszenie zaktualizowane"
+            );
           } catch (err) {
             el("admin-gang-tools-status").textContent =
               err.message || "Nie udało się zmienić przypięcia.";
+
+            await runtimeLoaderFinish(
+              "❌ Aktualizacja nieudana"
+            );
           }
         };
       });
@@ -4472,15 +4535,29 @@ function renderAdminGangTools(payload) {
           button.disabled = true;
 
           try {
+            adminLoaderTexts(
+              "announcement"
+            );
+
             await adminPostAction(
               "adminDeleteAnnouncement",
               {id:button.dataset.deleteAnnouncement}
             );
-            await loadAdminGangTools();
-            await loadPayments({background:true});
+            await Promise.allSettled([
+              loadAdminGangTools(),
+              loadPayments({background:true})
+            ]);
+
+            await runtimeLoaderFinish(
+              "✅ Ogłoszenie usunięte"
+            );
           } catch (err) {
             el("admin-gang-tools-status").textContent =
               err.message || "Nie udało się usunąć ogłoszenia.";
+
+            await runtimeLoaderFinish(
+              "❌ Usuwanie nieudane"
+            );
           }
         };
       });
@@ -4781,10 +4858,25 @@ async function setAdminSubmissionStatus(
 
   const funnyText =
     isApprove
-      ? "🧪 Destylator miesza w papierach, już kończę..."
+      ? [
+          "🧪 Destylator miesza w papierach, już kończę...",
+          "🥫 Recepta zaplątała się między puszkami...",
+          "📋 Sprawdzam ostatnią karteczkę z wynikiem...",
+          "🍺 Laborant obiecuje, że to już moment..."
+        ]
       : isDuplicate
-        ? "♻️ Szukam bliźniaka tej recepty w stercie kartek..."
-        : "🗑️ Wyrzucam receptę do kosza, kosz stawia opór...";
+        ? [
+            "♻️ Szukam bliźniaka tej recepty w stercie kartek...",
+            "🧬 Porównuję składniki jeszcze raz...",
+            "🥫 Duplikat schował się za puszką...",
+            "🍺 Archiwum twierdzi, że już go widziało..."
+          ]
+        : [
+            "🗑️ Wyrzucam receptę do kosza, kosz stawia opór...",
+            "📄 Kartka nie chce się poddać...",
+            "🥫 Kosz jest pełen puszek...",
+            "🍺 Jeszcze chwila i recepta znika..."
+          ];
 
 
   el("admin-status").textContent =
@@ -5120,6 +5212,10 @@ async function loadAdminPlayers() {
 
     status.textContent = "";
 
+    await runtimeLoaderFinish(
+      "✅ Dane sprawdzone"
+    );
+
 
   } catch (err) {
 
@@ -5163,6 +5259,10 @@ async function addAdminPlayer(event) {
   status.textContent =
     "Dodawanie gracza...";
 
+  adminLoaderTexts(
+    "playerAdd"
+  );
+
 
   try {
 
@@ -5190,15 +5290,6 @@ async function addAdminPlayer(event) {
     );
 
 
-    await new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          700
-        )
-    );
-
-
     input.value = "";
 
     status.textContent =
@@ -5210,6 +5301,10 @@ async function addAdminPlayer(event) {
 
     await loadAdminPaymentsStatus();
 
+    await runtimeLoaderFinish(
+      "✅ Gracz dodany"
+    );
+
 
   } catch (err) {
 
@@ -5217,6 +5312,10 @@ async function addAdminPlayer(event) {
       err && err.message
         ? err.message
         : "Nie udało się dodać gracza.";
+
+    await runtimeLoaderFinish(
+      "❌ Dodawanie nieudane"
+    );
   }
 }
 
@@ -5278,6 +5377,10 @@ async function deleteAdminPlayer(
   status.textContent =
     `Usuwanie gracza ${nick}...`;
 
+  adminLoaderTexts(
+    "playerDelete"
+  );
+
 
   try {
 
@@ -5308,15 +5411,6 @@ async function deleteAdminPlayer(
     );
 
 
-    await new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          700
-        )
-    );
-
-
     status.textContent =
       `✅ Usunięto gracza ${nick}.`;
 
@@ -5326,6 +5420,10 @@ async function deleteAdminPlayer(
 
     await loadAdminPaymentsStatus();
 
+    await runtimeLoaderFinish(
+      "✅ Gracz usunięty"
+    );
+
 
   } catch (err) {
 
@@ -5333,6 +5431,10 @@ async function deleteAdminPlayer(
       err && err.message
         ? err.message
         : "Nie udało się usunąć gracza.";
+
+    await runtimeLoaderFinish(
+      "❌ Usuwanie nieudane"
+    );
   }
 }
 
@@ -6165,6 +6267,8 @@ async function previewAdminPayments() {
   const nonce =
     makeNonce();
 
+  adminLoaderTexts("paymentsPreview");
+
 
   try {
 
@@ -6261,6 +6365,10 @@ status.textContent = "";
       err.message
         ? err.message
         : "Nie udało się sprawdzić danych.";
+
+    await runtimeLoaderFinish(
+      "❌ Sprawdzanie nieudane"
+    );
   }
 }
 
@@ -6323,6 +6431,10 @@ async function importAdminPayments() {
 
   status.textContent =
     "Wprowadzanie danych...";
+
+  adminLoaderTexts(
+    "paymentsImport"
+  );
 
 
   try {
@@ -6463,6 +6575,11 @@ async function importAdminPayments() {
     await loadAdminPaymentsStatus();
 
 
+    await runtimeLoaderFinish(
+      "✅ Wpłaty zaktualizowane"
+    );
+
+
     // Raport został już wykorzystany.
     // Ukrywamy przycisk zapisu,
     // aby przypadkiem nie zapisać go drugi raz.
@@ -6476,6 +6593,10 @@ async function importAdminPayments() {
       err.message
         ? err.message
         : "Nie udało się wprowadzić danych.";
+
+    await runtimeLoaderFinish(
+      "❌ Import nieudany"
+    );
 
   } finally {
 
@@ -6497,7 +6618,7 @@ function setupAdmin() {
             loadAdminPlayers()
           ]),
           "🛠️ Odświeżam panel Admina...",
-          "🍺 Panel Admina robi dolewkę, już kończę..."
+          ['🍺 Panel Admina robi dolewkę, już kończę...','🥫 Szukam ostatniej puszki z uprawnieniami...','🧹 Sprzątam kolejkę requestów...','🥴 Jeszcze tylko jedna rubryka...']
         );
       }
     );
@@ -6544,6 +6665,10 @@ function setupAdmin() {
 
         try {
 
+          adminLoaderTexts(
+            "company"
+          );
+
           const payload =
             await jsonp(
               "adminSetCompanyIncome",
@@ -6565,6 +6690,10 @@ function setupAdmin() {
 
           await loadAdminPaymentsStatus();
 
+          await runtimeLoaderFinish(
+            "✅ Spółka zaktualizowana"
+          );
+
         } catch (err) {
 
           const status =
@@ -6576,6 +6705,10 @@ function setupAdmin() {
                 ? err.message
                 : "Nie udało się zapisać dochodu spółki.";
           }
+
+          await runtimeLoaderFinish(
+            "❌ Aktualizacja nieudana"
+          );
 
         } finally {
           input.disabled = false;
@@ -6607,6 +6740,10 @@ function setupAdmin() {
         );
 
         try {
+          adminLoaderTexts(
+            "reservation"
+          );
+
           await adminPostAction(
             "adminClearAllReservations"
           );
@@ -6614,11 +6751,19 @@ function setupAdmin() {
           status.textContent =
             "✅ Rezerwacje zostały wyczyszczone.";
 
-          loadAdminGangTools();
+          await loadAdminGangTools();
           fetchApprovedRecipes();
+
+          await runtimeLoaderFinish(
+            "✅ Rezerwacje wyczyszczone"
+          );
         } catch (err) {
           status.textContent =
             err.message || "Nie udało się wyczyścić rezerwacji.";
+
+          await runtimeLoaderFinish(
+            "❌ Czyszczenie nieudane"
+          );
         } finally {
           clearActionLoading(button);
         }
@@ -6656,6 +6801,10 @@ function setupAdmin() {
         );
 
         try {
+          adminLoaderTexts(
+            "goal"
+          );
+
           await adminPostAction(
             "adminSaveGoal",
             {
@@ -6670,12 +6819,22 @@ function setupAdmin() {
             "✅ Cel gangu zapisany.";
 
           // Odświeżamy dane już po pokazaniu użytkownikowi sukcesu.
-          loadAdminGangTools();
-          loadPayments({background:true});
+          await Promise.allSettled([
+            loadAdminGangTools(),
+            loadPayments({background:true})
+          ]);
+
+          await runtimeLoaderFinish(
+            "✅ Cel zapisany"
+          );
 
         } catch (err) {
           status.textContent =
             err.message || "Nie udało się zapisać celu.";
+
+          await runtimeLoaderFinish(
+            "❌ Zapis celu nieudany"
+          );
         } finally {
           clearActionLoading(button);
         }
@@ -6698,17 +6857,31 @@ function setupAdmin() {
         );
 
         try {
+          adminLoaderTexts(
+            "goal"
+          );
+
           await adminPostAction("adminDeleteGoal");
 
           status.textContent =
             "✅ Cel został usunięty.";
 
-          loadAdminGangTools();
-          loadPayments({background:true});
+          await Promise.allSettled([
+            loadAdminGangTools(),
+            loadPayments({background:true})
+          ]);
+
+          await runtimeLoaderFinish(
+            "✅ Cel usunięty"
+          );
 
         } catch (err) {
           status.textContent =
             err.message || "Nie udało się usunąć celu.";
+
+          await runtimeLoaderFinish(
+            "❌ Usuwanie celu nieudane"
+          );
         } finally {
           clearActionLoading(button);
         }
@@ -6743,6 +6916,10 @@ function setupAdmin() {
         );
 
         try {
+          adminLoaderTexts(
+            "announcement"
+          );
+
           await adminPostAction(
             "adminAddAnnouncement",
             {
@@ -6758,12 +6935,22 @@ function setupAdmin() {
           status.textContent =
             "✅ Ogłoszenie dodane.";
 
-          loadAdminGangTools();
-          loadPayments({background:true});
+          await Promise.allSettled([
+            loadAdminGangTools(),
+            loadPayments({background:true})
+          ]);
+
+          await runtimeLoaderFinish(
+            "✅ Ogłoszenie dodane"
+          );
 
         } catch (err) {
           status.textContent =
             err.message || "Nie udało się dodać ogłoszenia.";
+
+          await runtimeLoaderFinish(
+            "❌ Dodawanie nieudane"
+          );
         } finally {
           clearActionLoading(button);
         }
@@ -6825,6 +7012,10 @@ function setupAdmin() {
         );
 
         try {
+          adminLoaderTexts(
+            "poll"
+          );
+
           await adminPostAction(
             "adminCreateGangPoll",
             {
@@ -6848,13 +7039,23 @@ function setupAdmin() {
           el("admin-poll-options").value = "";
           el("admin-poll-end").value = "";
 
-          await loadAdminPolls();
-          await loadGangPolls();
+          await Promise.allSettled([
+            loadAdminPolls(),
+            loadGangPolls()
+          ]);
+
+          await runtimeLoaderFinish(
+            "✅ Ankieta utworzona"
+          );
 
         } catch (err) {
           status.textContent =
             err.message ||
             "Nie udało się utworzyć ankiety.";
+
+          await runtimeLoaderFinish(
+            "❌ Tworzenie nieudane"
+          );
         } finally {
           clearActionLoading(button);
         }
@@ -6934,10 +7135,18 @@ function setupAdmin() {
           // Odświeżamy źródło danych dropdownu i liczbę sesji.
           await loadAccountAdminPermissions();
 
+          await runtimeLoaderFinish(
+            "✅ Sesje wylogowane"
+          );
+
         } catch (err) {
           status.textContent =
             err.message ||
             "Nie udało się wylogować sesji.";
+
+          await runtimeLoaderFinish(
+            "❌ Wylogowanie nieudane"
+          );
         } finally {
           clearActionLoading(button);
         }
@@ -7084,76 +7293,78 @@ function setupAdmin() {
 
   function runtimeLoaderStart(
     text="⏳ Odświeżam dane...",
-    funnyText="🥫 Serwer szuka ostatniej puszki..."
+    funnyTexts=[
+      "🥫 Serwer szuka ostatniej puszki...",
+      "🍺 Ktoś zalał logi, już wycieram...",
+      "🧹 Odkurzam dane spod serwera...",
+      "🥴 Jeszcze chwila, backend ma kaca..."
+    ]
   ) {
-    const box = el("app-preload");
-    const bar = el("app-preload-bar");
-    const percent = el("app-preload-percent");
+    const box=el("app-preload");
+    const bar=el("app-preload-bar");
+    const percent=el("app-preload-percent");
 
-    if (!box || !bar || !percent) {
-      return;
-    }
+    if(!box||!bar||!percent)return;
 
     clearInterval(runtimeLoaderTimer);
     clearTimeout(runtimeLoaderFunnyTimer);
 
-    runtimeLoaderActive = true;
-    runtimeLoaderProgress = 8;
+    runtimeLoaderActive=true;
+    runtimeLoaderProgress=8;
 
-    box.hidden = false;
-    box.classList.remove(
-      "done",
-      "hiding",
-      "finishing"
-    );
+    box.hidden=false;
+    box.classList.remove("done","hiding","finishing");
 
     appBootSetText(text);
-    bar.style.width = "8%";
-    percent.textContent = "8%";
+    bar.style.width="8%";
+    percent.textContent="8%";
 
-    const startedAt = Date.now();
+    const startedAt=Date.now();
 
-    runtimeLoaderTimer =
-      setInterval(() => {
-        if (!runtimeLoaderActive) return;
+    runtimeLoaderTimer=setInterval(()=>{
+      if(!runtimeLoaderActive)return;
 
-        const elapsed =
-          Date.now() - startedAt;
+      const elapsed=Date.now()-startedAt;
+      const target=Math.min(90,8+(elapsed/3200)*78);
 
-        // Szybki loader dla pojedynczego doczytania.
-        // Sam dochodzi maksymalnie do 90%.
-        const target =
-          Math.min(
-            90,
-            8 + (elapsed / 3200) * 78
-          );
+      runtimeLoaderProgress+=Math.max(
+        .8,
+        (target-runtimeLoaderProgress)*.18
+      );
 
-        runtimeLoaderProgress +=
-          Math.max(
-            .8,
-            (target - runtimeLoaderProgress) * .18
-          );
+      runtimeLoaderProgress=Math.min(
+        runtimeLoaderProgress,
+        90
+      );
 
-        runtimeLoaderProgress =
-          Math.min(
-            runtimeLoaderProgress,
-            90
-          );
+      bar.style.width=`${runtimeLoaderProgress}%`;
+      percent.textContent=`${Math.round(runtimeLoaderProgress)}%`;
+    },90);
 
-        bar.style.width =
-          `${runtimeLoaderProgress}%`;
+    runtimeLoaderFunnyTimer=setTimeout(()=>{
+      if(!runtimeLoaderActive)return;
 
-        percent.textContent =
-          `${Math.round(runtimeLoaderProgress)}%`;
-      }, 90);
+      const texts=Array.isArray(funnyTexts)
+        ? funnyTexts.filter(Boolean)
+        : [String(funnyTexts||"")].filter(Boolean);
 
-    // Zabawny tekst dopiero wtedy, gdy backend faktycznie każe czekać.
-    runtimeLoaderFunnyTimer =
-      setTimeout(() => {
-        if (runtimeLoaderActive) {
-          appBootSetText(funnyText);
+      if(!texts.length)return;
+
+      let index=0;
+      appBootSetText(texts[index++]);
+
+      const rotation=setInterval(()=>{
+        if(!runtimeLoaderActive){
+          clearInterval(rotation);
+          return;
         }
-      }, 3000);
+
+        appBootSetText(
+          texts[index%texts.length]
+        );
+        index+=1;
+      },1200);
+    },2000);
   }
 
   async function runtimeLoaderFinish(
@@ -7260,6 +7471,87 @@ function setupAdmin() {
   }
 
 
+  function adminLoaderTexts(kind){
+    const sets={
+      paymentsPreview:["🔍 Sprawdzam dane wpłat...",[
+        "🧾 Księgowy porównuje cyferki po raz trzeci...",
+        "🪙 Liczę drobniaki spod biurka...",
+        "🥫 Raport zaplątał się między puszkami...",
+        "🍺 Kalkulator prosi o chwilę przerwy..."
+      ]],
+      paymentsImport:["✅ Wprowadzam dane wpłat...",[
+        "💰 Księgowy przelicza wszystko jeszcze raz...",
+        "🧮 Kalkulator dostał zadyszki...",
+        "🥫 Wkładam wpłaty do właściwych przegródek...",
+        "🍺 Ostatnia kontrola i lecimy dalej..."
+      ]],
+      playerAdd:["➕ Dodaję gracza...",[
+        "👤 Szukam wolnego miejsca przy stole...",
+        "🪑 Dosuwam krzesło dla nowego gracza...",
+        "🥫 Sprawdzam, czy starczy puszek na powitanie...",
+        "🍺 Kadry właśnie znalazły długopis..."
+      ]],
+      playerDelete:["🗑️ Usuwam gracza...",[
+        "📦 Pakuję jego rzeczy do kartonu...",
+        "🧹 Sprzątam po nim sesje i uprawnienia...",
+        "🥫 Sprawdzam, czy nie zostawił puszek w szafce...",
+        "🍺 Kadry wykreślają ostatnią rubrykę..."
+      ]],
+      poll:["📊 Aktualizuję ankietę...",[
+        ['🗳️ Liczę głosy, nawet te oddane po pijaku...','📋 Komisja sprawdza ostatnią kartkę...','🥫 Głosy schowały się między puszkami...','🍺 Ankieta zaraz odzyska pion...'],
+        "📋 Ankieta szuka pieczątki...",
+        "🥫 Głosy rozsypały się między puszkami...",
+        "🍺 Komisja wyborcza robi krótką przerwę..."
+      ]],
+      announcement:["📢 Aktualizuję ogłoszenia...",[
+        "📯 Goniec chyba zasnął po drodze...",
+        "📌 Szukam pinezki do ważnego ogłoszenia...",
+        "🥫 Ogłoszenie utknęło pod stertą puszek...",
+        "🍺 Tablica ogłoszeń właśnie trzeźwieje..."
+      ]],
+      goal:["🎯 Aktualizuję cel gangu...",[
+        "🎯 Cel się przesunął, już go łapię...",
+        "📏 Mierzę postęp jeszcze raz...",
+        ['🥫 Zbieram puszki na realizację celu...','🎯 Cel ucieka, ale już go doganiam...','📏 Mierzę postęp linijką z magazynu...','🍺 Motywacja jeszcze się ładuje...'],
+        "🍺 Motywacja przyszła, ale trochę chwiejnym krokiem..."
+      ]],
+      reservation:["🧪 Aktualizuję rezerwacje...",[
+        "🧪 Destylator przestawia karteczki na beczkach...",
+        "🥫 Rezerwacja zgubiła się między puszkami...",
+        "📋 Sprawdzam, kto zaklepał którą receptę...",
+        "🍺 Laborant wraca za moment..."
+      ]],
+      company:["🏢 Aktualizuję Spółkę...",[
+        ['💸 Księgowy zgubił kalkulator, już szukam...','🧮 Kalkulator chyba poszedł na przerwę...','🥫 Liczę fundusz na puszkach...','🍺 Zarząd obiecuje, że to już chwila...'],
+        "🧾 Udziały układają się w równy stos...",
+        "🥫 Fundusz liczy puszki po raz ostatni...",
+        "🍺 Zarząd ma właśnie bardzo krótkie zebranie..."
+      ]],
+      sessions:["📱 Aktualizuję sesje gracza...",[
+        "📱 Szukam telefonu, który jeszcze się nie wylogował...",
+        "🔑 Zbieram porzucone klucze do sesji...",
+        "🥫 Jedna sesja schowała się za puszką...",
+        "🍺 Ostatnie urządzenie właśnie dostało wypowiedzenie..."
+      ]]
+    };
+
+    const set=sets[kind]||[
+      "⏳ Wykonuję operację...",
+      [
+        "🥫 Serwer szuka ostatniej puszki...",
+        "🍺 Backend robi małą przerwę...",
+        "🧹 Odkurzam dane...",
+        "🥴 Jeszcze chwila..."
+      ]
+    ];
+
+    runtimeLoaderStart(
+      set[0],
+      set[1]
+    );
+  }
+
+
   function openGangModule(
     target="payments-view"
   ) {
@@ -7329,22 +7621,22 @@ function setupAdmin() {
         "company-view":
           [
             "🏢 Odświeżam Spółkę...",
-            "💸 Księgowy zgubił kalkulator, już szukam..."
+            ['💸 Księgowy zgubił kalkulator, już szukam...','🧮 Kalkulator chyba poszedł na przerwę...','🥫 Liczę fundusz na puszkach...','🍺 Zarząd obiecuje, że to już chwila...']
           ],
         "polls-view":
           [
             "📊 Odświeżam ankiety...",
-            "🗳️ Liczę głosy, nawet te oddane po pijaku..."
+            ['🗳️ Liczę głosy, nawet te oddane po pijaku...','📋 Komisja sprawdza ostatnią kartkę...','🥫 Głosy schowały się między puszkami...','🍺 Ankieta zaraz odzyska pion...']
           ],
         "goals-view":
           [
             "🎯 Odświeżam cele gangu...",
-            "🥫 Zbieram puszki na realizację celu..."
+            ['🥫 Zbieram puszki na realizację celu...','🎯 Cel ucieka, ale już go doganiam...','📏 Mierzę postęp linijką z magazynu...','🍺 Motywacja jeszcze się ładuje...']
           ],
         "announcements-view":
           [
             "📢 Odświeżam ogłoszenia...",
-            "📯 Wołam gońca, chyba zasnął po drodze..."
+            ['📯 Wołam gońca, chyba zasnął po drodze...','📌 Szukam pinezki do ogłoszenia...','🥫 Kartka utknęła pod puszką...','🍺 Goniec twierdzi, że był tylko na chwilę...']
           ]
       };
 
@@ -7393,7 +7685,7 @@ function setupAdmin() {
           withRuntimeLoader(
             () => renderAccountView(),
             "👤 Odświeżam konto...",
-            "🔑 Szukam kluczy do konta, ktoś je znowu przełożył..."
+            ['🔑 Szukam kluczy do konta, ktoś je znowu przełożył...','📱 Sprawdzam, czy telefon nie schował sesji...','🥫 Token wpadł między puszki...','🍺 Konto zaraz się otrząśnie...']
           );
         } else {
           renderAccountView();
@@ -7431,7 +7723,7 @@ function setupAdmin() {
       withRuntimeLoader(
         () => renderAccountView(),
         "👤 Odświeżam konto...",
-        "🔑 Szukam kluczy do konta, ktoś je znowu przełożył..."
+        ['🔑 Szukam kluczy do konta, ktoś je znowu przełożył...','📱 Sprawdzam, czy telefon nie schował sesji...','🥫 Token wpadł między puszki...','🍺 Konto zaraz się otrząśnie...']
       );
     } else {
       renderAccountView();
