@@ -6355,7 +6355,11 @@ async function previewAdminPayments() {
       payload
     );
 
-status.textContent = "";
+    status.textContent = "";
+
+    await runtimeLoaderFinish(
+      "✅ Dane sprawdzone"
+    );
 
 
   } catch (err) {
@@ -7324,18 +7328,38 @@ function setupAdmin() {
     runtimeLoaderTimer=setInterval(()=>{
       if(!runtimeLoaderActive)return;
 
-      const elapsed=Date.now()-startedAt;
-      const target=Math.min(90,8+(elapsed/3200)*78);
+      const elapsed =
+        Date.now() - startedAt;
 
-      runtimeLoaderProgress+=Math.max(
-        .8,
-        (target-runtimeLoaderProgress)*.18
-      );
+      // v20.21 — wolniejszy, bardziej naturalny postęp.
+      // Pasek nie dobija szybko do 90% przy dłuższych operacjach.
+      const target =
+        Math.min(
+          92,
+          8 +
+          84 *
+          (
+            1 -
+            Math.exp(
+              -elapsed / 7000
+            )
+          )
+        );
 
-      runtimeLoaderProgress=Math.min(
-        runtimeLoaderProgress,
-        90
-      );
+      runtimeLoaderProgress +=
+        Math.max(
+          .22,
+          (
+            target -
+            runtimeLoaderProgress
+          ) * .105
+        );
+
+      runtimeLoaderProgress =
+        Math.min(
+          runtimeLoaderProgress,
+          92
+        );
 
       bar.style.width=`${runtimeLoaderProgress}%`;
       percent.textContent=`${Math.round(runtimeLoaderProgress)}%`;
