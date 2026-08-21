@@ -2284,17 +2284,6 @@ const MAP_POSITIONS = {
         </div>
 
         <div class="account-card" style="margin-top:10px">
-          <button id="account-bootstrap-code-open" type="button">🛠 Pierwsza konfiguracja administratora</button>
-          <div id="account-bootstrap-code-panel" class="account-form" style="margin-top:8px" hidden>
-            <div class="account-note">Tylko podczas migracji ze starego systemu. Pozwala wygenerować pierwszy kod 24h przy użyciu dotychczasowego hasła Admina.</div>
-            <input id="account-bootstrap-code-nick" placeholder="Nick konta administratora">
-            <input id="account-bootstrap-old-password" type="password" placeholder="Dotychczasowe hasło Admina">
-            <button id="account-bootstrap-generate-code" class="primary-btn" type="button">🔑 Wygeneruj pierwszy kod 24h</button>
-            <div id="account-bootstrap-code-result" class="salary-code-result" hidden></div>
-          </div>
-        </div>
-
-        <div class="account-card" style="margin-top:10px">
           <button id="account-reset-open" type="button">🔑 Mam kod resetujący hasło</button>
           <div id="account-reset-panel" class="account-form" style="margin-top:8px" hidden>
             <input id="account-reset-nick" placeholder="Nick z gry">
@@ -2420,7 +2409,7 @@ const MAP_POSITIONS = {
           <button id="account-logout-others" type="button">📱 Wyloguj inne sesje</button>
           <button id="account-logout" class="logout-btn" type="button">🚪 Wyloguj</button>
         </div>
-        ${account.bootstrapAvailable ? `<div class="account-admin-link"><b>🛠 Pierwsza konfiguracja administratora</b><div class="account-note">Jednorazowa migracja. Wpisz dotychczasowe hasło Admina, aby nadać temu kontu pierwsze uprawnienia administracyjne.</div><div class="account-form" style="margin-top:7px"><input id="account-bootstrap-password" type="password" placeholder="Dotychczasowe hasło Admina"><button id="account-bootstrap-admin" class="primary-btn" type="button">🛠 Nadaj temu kontu Admina</button></div></div>` : ""}
+
         ${account.admin ? `<div class="account-admin-link"><button id="account-admin-open" class="primary-btn" type="button">🛠 Panel administratora</button></div>` : ""}
       </div>
 
