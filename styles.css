@@ -895,3 +895,16 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
 #app-preload.done #app-preload-text{
   font-weight:700;
 }
+
+
+/* v20.19 — akcje akceptacji recept w Adminie */
+#admin-submissions button:disabled{
+  opacity:.62;
+  cursor:wait;
+}
+
+
+/* v20.21 — spokojniejszy postęp loadera podczas operacji */
+.app-preload-bar{
+  transition:width .30s ease;
+}
