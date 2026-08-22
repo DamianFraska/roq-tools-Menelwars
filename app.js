@@ -775,7 +775,7 @@ const MAP_POSITIONS = {
       const accepted =
         window.confirm(
           "Zarezerwować tę receptę?\n\n" +
-          `Rezerwacja zostanie przypisana do ${accountNick} na 12 godzin.`
+          `Rezerwacja zostanie przypisana do ${accountNick} na 24 godziny.`
         );
 
       if (!accepted) {
@@ -793,7 +793,7 @@ const MAP_POSITIONS = {
 
       const nick =
         window.prompt(
-          "Kto rezerwuje tę recepturę na 12 godzin?",
+          "Kto rezerwuje tę recepturę na 24 godziny?",
           savedNick
         );
 
@@ -872,7 +872,7 @@ const MAP_POSITIONS = {
 
       showRecipeActionNotice(
         result.message ||
-        "✅ Receptura zarezerwowana na 12 godzin.",
+        "✅ Receptura zarezerwowana na 24 godziny.",
         "success"
       );
 
@@ -1233,7 +1233,7 @@ const MAP_POSITIONS = {
                 class="unknown-card ${recipe.interesting ? "interesting" : ""}"
                 data-reserve-index="${index}"
                 style="cursor:pointer"
-                title="Kliknij, aby zarezerwować recepturę na 12 godzin">
+                title="Kliknij, aby zarezerwować recepturę na 24 godziny">
 
                 <div>
                   <strong>${displayName(recipe.baza)}</strong>
