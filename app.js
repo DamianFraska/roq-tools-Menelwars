@@ -1626,20 +1626,16 @@ const MAP_POSITIONS = {
 
   function currentKnownValue(k) {
 
+    // Formularz „Dodaj receptę” pokazuje wyłącznie wynik
+    // zatwierdzony po stronie serwera. Nie używamy tutaj
+    // starej, wbudowanej bazy D.known, bo mogłaby pokazać
+    // nieaktualną wartość jako „Aktualny znany wynik”.
     if (
       Object.prototype
         .hasOwnProperty
         .call(remoteApproved,k)
     ) {
       return Number(remoteApproved[k]);
-    }
-
-    if (
-      Object.prototype
-        .hasOwnProperty
-        .call(D.known,k)
-    ) {
-      return Number(D.known[k]);
     }
 
     return null;
