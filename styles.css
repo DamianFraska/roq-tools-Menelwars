@@ -908,3 +908,71 @@ footer{text-align:center;color:#7c6c57;font-size:12px;padding:16px}
 .app-preload-bar{
   transition:width .30s ease;
 }
+
+
+/* v20.24 — źródła wkładu Spółki */
+.company-contribution-breakdown{
+  margin-top:2px;
+  font-size:.82rem;
+  line-height:1.25;
+  opacity:.68;
+}
+
+.company-salary-line{
+  margin-top:3px;
+}
+
+@media(max-width:480px){
+  .company-contribution-breakdown{
+    font-size:.78rem;
+  }
+}
+
+
+/* v20.25 — zmiana zrzeczenia oczekująca na następne przeliczenie */
+.company-waiver-pending{
+  display:inline-block;
+  margin-left:6px;
+  font-size:.76rem;
+  font-weight:600;
+  opacity:.72;
+}
+
+@media(max-width:480px){
+  .company-waiver-pending{
+    display:block;
+    margin-left:0;
+    margin-top:2px;
+  }
+}
+
+
+/* v20.26 — ręczne potwierdzenie planu pensji */
+.admin-company-plan-control{
+  margin-top:12px;
+  padding:10px;
+  border:1px solid #d8c7aa;
+  border-radius:8px;
+  background:#fffdf8;
+}
+
+#admin-company-plan-activate{
+  width:100%;
+  margin-top:8px;
+}
+
+.company-waiver-pending{
+  display:inline-block;
+  margin-left:6px;
+  font-size:.76rem;
+  font-weight:600;
+  opacity:.72;
+}
+
+@media(max-width:480px){
+  .company-waiver-pending{
+    display:block;
+    margin-left:0;
+    margin-top:2px;
+  }
+}

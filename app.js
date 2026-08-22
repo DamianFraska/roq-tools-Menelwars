@@ -3513,14 +3513,35 @@ const MAP_POSITIONS = {
       String(identity.nick || "").trim().toLocaleLowerCase("pl-PL")
     );
 
-    const eligible = player && Number(player.salary) > 0;
-    const waived = Boolean(player && player.salaryWaived);
+    const eligible =
+      player &&
+      Number(
+        player.salary
+      ) > 0;
+
+    const proposedWaived =
+      Boolean(
+        player &&
+        player.salaryWaived
+      );
+
+    const requestedWaived =
+      Boolean(
+        player &&
+        player.salaryWaived
+      );
+
+    const planPending =
+      Boolean(
+        player &&
+        player.planPending
+      );
 
     const money = value =>
       (Number(value) || 0).toLocaleString("pl-PL",{maximumFractionDigits:2}) + " zł";
 
     box.innerHTML = `
-      <div class="salary-waiver-card ${waived ? "waived" : ""}">
+      <div class="salary-waiver-card ${proposedWaived ? "waived" : ""}">
         <b>💰 Twoja pensja — ${escapeHtml(identity.nick)}</b>
 
         ${
@@ -3528,24 +3549,32 @@ const MAP_POSITIONS = {
             ? `
                 <div class="finance-meta" style="margin-top:6px">
                   <span>Należna pensja: <strong>${money(player.salary)}</strong></span>
-                  <span>Do wypłaty w grze: <strong>${money(player.payoutSalary ?? player.salary)}</strong></span>
-                  ${waived ? `<span>Do Funduszu: <strong>${money(player.waivedAmount)}</strong></span>` : ""}
+                  <span>🎮 Pensja: <strong>${money(player.payoutSalary ?? player.salary)}</strong></span>
+                  ${proposedWaived ? `<span>💚 Fundusz: <strong>${money(player.waivedAmount)}</strong></span>` : ""}
                 </div>
 
                 <div class="salary-waiver-actions">
                   <div class="salary-waiver-note">
                     ${
-                      waived
-                        ? "Dobrowolnie zrzekasz się części pensji ponad minimalne 160 zł."
-                        : "Możesz zrzec się części pensji ponad minimalne 160 zł. Różnica trafi do Funduszu i nie zwiększy pensji pozostałych graczy."
+                      planPending
+                        ? (
+                            requestedWaived
+                              ? "💾 Zrzeczenie jest zapisane w planie proponowanym. Zacznie obowiązywać po ustawieniu pensji w grze przez Administrację."
+                              : "💾 Pełna pensja jest zapisana w planie proponowanym. Zacznie obowiązywać po ustawieniu pensji w grze przez Administrację."
+                          )
+                        : (
+                            requestedWaived
+                              ? "Dobrowolnie zrzekasz się części pensji ponad minimalne 160 zł. Po wypłacie kwota trafi do Funduszu i zwiększy Twój wkład wraz z bonusem 1,4%."
+                              : "Możesz zrzec się części pensji ponad minimalne 160 zł. Po wypłacie 100% tej kwoty trafi do Funduszu i zostanie doliczone do Twojego wkładu wraz z bonusem 1,4%."
+                          )
                     }
                   </div>
 
                   <button
                     id="company-salary-waiver-toggle"
-                    class="${waived ? "logout-btn" : "primary-btn"}"
+                    class="${requestedWaived ? "logout-btn" : "primary-btn"}"
                     type="button">
-                    ${waived ? "↩️ Przywróć pensję" : "💚 Zrzekam się pensji"}
+                    ${requestedWaived ? "↩️ Przywróć pensję" : "💚 Zrzekam się pensji"}
                   </button>
                 </div>
               `
@@ -3556,7 +3585,8 @@ const MAP_POSITIONS = {
 
     el("company-salary-waiver-toggle")?.addEventListener("click",async event => {
       const button = event.currentTarget;
-      const nextWaived = !waived;
+      const nextWaived =
+        !requestedWaived;
 
       if (!window.confirm(
         nextWaived
@@ -3577,9 +3607,8 @@ const MAP_POSITIONS = {
           waived:nextWaived
         });
 
-        status.textContent = nextWaived
-          ? "✅ Zrzekłeś się pensji. Kwota ponad 160 zł trafi do Funduszu."
-          : "✅ Pełna pensja została przywrócona.";
+        status.textContent =
+          "✅ Zapisano w planie proponowanym. Zmiana zacznie obowiązywać po ustawieniu pensji w grze przez Administrację.";
 
         await loadPayments({background:true});
       } catch (err) {
@@ -3657,17 +3686,39 @@ const MAP_POSITIONS = {
                   <div class="finance-name">
                     ${escapeHtml(player.nick)}
                     ${player.salaryWaived ? `<span class="salary-waived-badge">💚 pensja dla Funduszu</span>` : ""}
+                    ${
+                      player.waiverPending
+                        ? `
+                            <span class="company-waiver-pending">
+                              ${
+                                player.requestedSalaryWaived
+                                  ? "💾 zrzeczenie od następnego przeliczenia"
+                                  : "💾 pełna pensja od następnego przeliczenia"
+                              }
+                            </span>
+                          `
+                        : ""
+                    }
                   </div>
 
                   <div class="finance-meta">
                     <span>🏢 Wkład: <strong>${money(player.contribution)}</strong></span>
+                  </div>
+
+                  <div class="company-contribution-breakdown">
+                    Wpłaty ${money(player.paymentsContribution)}
+                    · Fundusz ${money(player.fundGiven)}
+                    · Bonus ${money(player.fundBonus)}
+                  </div>
+
+                  <div class="finance-meta company-salary-line">
                     <span>Udział: <strong>${(Number(player.share || 0)*100).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})}%</strong></span>
                     <span>💰 Należna: <strong>${money(player.salary)}</strong></span>
 
                     ${
                       player.salaryWaived
                         ? `
-                            <span>🎮 Do gry: <strong>${money(player.payoutSalary)}</strong></span>
+                            <span>🎮 Pensja: <strong>${money(player.payoutSalary)}</strong></span>
                             <span>💚 Fundusz: <strong>${money(player.waivedAmount)}</strong></span>
                           `
                         : ""
@@ -3680,8 +3731,11 @@ const MAP_POSITIONS = {
       </div>
 
       <p class="muted" style="margin-top:10px">
-        Rezygnacja z pensji nie zmienia udziałów ani należnych pensji pozostałych graczy.
-        Gracz zrzekający się pensji otrzymuje w grze minimalne 160 zł, a pozostała część jego własnej pensji trafia do Funduszu.
+        Dobrowolnie zrzeczona część pensji trafia w 100% do Funduszu i jest zapisywana jako wkład gracza.
+        Do niej doliczany jest bonus 1,4%. Ucięte grosze pozostają w Funduszu Spółki, ale nie są przypisywane graczowi.
+        Udział jest liczony z łącznego wkładu według wagi wkład<sup>0,8</sup>.
+        Widoczne kwoty są planem proponowanym; wypłata 03:00 jest rozliczana według ostatniego planu potwierdzonego przez Administrację.
+        Zmiana zrzeczenia zaczyna obowiązywać dopiero po następnym przeliczeniu pensji przez Administrację.
       </p>
     `;
 
@@ -5625,111 +5679,25 @@ function companyPlan(
   payload,
   income
 ) {
-
-  const players =
-    Array.isArray(
-      payload &&
-      payload.players
-    )
+  const players=
+    Array.isArray(payload&&payload.players)
       ? payload.players
       : [];
 
-  const safeIncome =
-    Math.max(
-      0,
-      Number(income) || 0
-    );
-
-  const eligible =
-    players
-      .map(player => ({
-        nick: player.nick,
-        contribution:
-          Math.max(
-            0,
-            Number(
-              player.contribution
-            ) || 0
-          )
-      }))
-      .filter(
-        player =>
-          player.contribution >=
-          COMPANY_MIN_CONTRIBUTION
-      );
-
-  const eligibleContribution =
-    eligible.reduce(
-      (sum, player) =>
-        sum +
-        player.contribution,
-      0
-    );
-
-  const targetSalaryBudget =
-    safeIncome *
-    COMPANY_SALARY_RATIO;
-
-  const baseTotal =
-    eligible.length *
-    COMPANY_BASE_SALARY;
-
-  // Budżet 80/20 wynika z dochodu spółki
-  // niezależnie od liczby zatrudnionych.
-  const salaryBudget =
-    targetSalaryBudget;
-
-  const developmentBudget =
-    safeIncome *
-    (1 - COMPANY_SALARY_RATIO);
-
-  const bonusPool =
-    Math.max(
-      0,
-      salaryBudget -
-      baseTotal
-    );
-
-  const rows =
-    eligible.map(player => {
-
-      const share =
-        eligibleContribution > 0
-          ? player.contribution /
-            eligibleContribution
-          : 0;
-
-      const salary =
-        COMPANY_BASE_SALARY +
-        bonusPool * share;
-
-      return {
-        ...player,
-        share,
-        salary
-      };
-    });
-
-  const actualSalaryTotal =
-    rows.reduce(
-      (sum, player) =>
-        sum +
-        Number(player.salary || 0),
-      0
-    );
+  const rows=players
+    .filter(p=>Number(p.share)>0 || Number(p.salary)>0)
+    .sort((a,b)=>Number(b.contribution||0)-Number(a.contribution||0));
 
   return {
-    income: safeIncome,
-    salaryBudget,
-    developmentBudget,
-    actualSalaryTotal,
-    baseTotal,
-    bonusPool,
-    eligibleContribution,
+    income:Number(payload.companyIncome ?? income)||0,
+    salaryBudget:Number(payload.salaryBudget)||0,
+    developmentBudget:Number(payload.developmentBudget)||0,
+    actualSalaryTotal:Number(payload.actualPayoutTotal)||0,
+    waivedToFund:Number(payload.waivedToFund)||0,
+    roundingToFund:Number(payload.roundingToFund)||0,
     rows
   };
 }
-
 
 function renderAdminCompanyPlan(
   payload =
@@ -5811,28 +5779,28 @@ function renderAdminCompanyPlan(
               <div>
                 <strong>
                   ${escapeHtml(player.nick)}
+                  ${player.salaryWaived ? " 💚" : ""}
                 </strong>
                 <div class="muted">
-                  Wkład:
-                  ${companyMoney(
-                    player.contribution
-                  )} zł
+                  Wkład: ${companyMoney(player.contribution)} zł
+                  · należna: ${companyMoney(player.salary)} zł
                 </div>
               </div>
 
               <strong>
-                ${(
-                  player.share * 100
-                )
+                ${(Number(player.share)*100)
                   .toFixed(2)
                   .replace(".",",")}%
               </strong>
 
-              <strong>
-                ${companyMoney(
-                  player.salary
-                )} zł
-              </strong>
+              <div style="text-align:right">
+                <strong>
+                  🎮 ${companyMoney(player.payoutSalary)} zł
+                </strong>
+                ${player.salaryWaived
+                  ? `<div class="muted">💚 ${companyMoney(player.waivedAmount)} zł</div>`
+                  : ""}
+              </div>
             </div>
           `)
           .join("")
@@ -5941,11 +5909,29 @@ function renderAdminCompanyPlan(
       Każdy zakwalifikowany dostaje najpierw
       <b>${COMPANY_BASE_SALARY} zł</b>,
       a pozostała część 50% dochodu jest
-      dzielona proporcjonalnie do wkładu.
+      dzielona według wagi <b>wkład<sup>0,8</sup></b>.
+      Pensję do gry zawsze ucinamy do pełnych złotych.
     </div>
 
     ${rowsHtml}
   `;
+
+  const activeStatus=el("admin-company-active-plan-status");
+
+  if (activeStatus) {
+    if (payload.hasActivePlan && Number(payload.activePlanEffectiveFrom)) {
+      const activeDate=new Date(Number(payload.activePlanEffectiveFrom));
+
+      activeStatus.innerHTML=
+        `<strong>🟢 Aktywny plan:</strong> ${escapeHtml(activeDate.toLocaleString("pl-PL"))}` +
+        (payload.proposalChanged
+          ? ` · <strong>🟡 obecne wyliczenia oczekują na ustawienie w grze</strong>`
+          : ` · aktualne wyliczenia są zgodne z planem`);
+    } else {
+      activeStatus.innerHTML=
+        `<strong>🔴 Brak aktywnego planu.</strong> Ustaw pokazane pensje w MenelWars i potwierdź je przed najbliższą wypłatą o 03:00.`;
+    }
+  }
 }
 
 async function loadAdminPaymentsStatus() {
@@ -6516,6 +6502,45 @@ async function importAdminPayments() {
     let message =
       `✅ ${payload.message || "Dane zostały zapisane."}`;
 
+    if (
+      payload.fundSettlement &&
+      Number(
+        payload.fundSettlement.payoutCount
+      ) > 0
+    ) {
+      message +=
+        "\n\n💚 Rozliczono wypłaty Spółki: " +
+        Number(
+          payload.fundSettlement.payoutCount
+        ) +
+        "\nDo Funduszu: " +
+        (
+          Number(
+            payload.fundSettlement.totalFund
+          ) || 0
+        ).toLocaleString(
+          "pl-PL",
+          {
+            minimumFractionDigits:2,
+            maximumFractionDigits:2
+          }
+        ) +
+        " zł" +
+        "\nBonus do wkładów: +" +
+        (
+          Number(
+            payload.fundSettlement.totalBonus
+          ) || 0
+        ).toLocaleString(
+          "pl-PL",
+          {
+            minimumFractionDigits:2,
+            maximumFractionDigits:2
+          }
+        ) +
+        " zł";
+    }
+
 
     if (
       Array.isArray(
@@ -6708,6 +6733,52 @@ function setupAdmin() {
         }
       }
     );
+
+  el("admin-company-plan-activate")
+    ?.addEventListener(
+      "click",
+      async event => {
+        const button=event.currentTarget;
+        const status=el("admin-company-plan-action-status");
+
+        if (!window.confirm(
+          "Potwierdzasz, że wszystkie pokazane pensje zostały już ustawione w MenelWars?\n\nOd tej chwili ten plan będzie rozliczany przy wypłatach o 03:00."
+        )) return;
+
+        setActionLoading(button,status,"Zapisywanie planu...");
+        adminLoaderTexts("salaryPlan");
+
+        try {
+          await adminPostAction(
+            "adminActivateCompanySalaryPlan"
+          );
+
+          status.textContent=
+            "✅ Plan ustawiony w grze został zapisany jako aktywny.";
+
+          await Promise.allSettled([
+            loadAdminPaymentsStatus(),
+            loadPayments({background:true})
+          ]);
+
+          await runtimeLoaderFinish(
+            "✅ Plan pensji aktywny"
+          );
+        } catch (err) {
+          status.textContent=
+            err&&err.message
+              ? err.message
+              : "Nie udało się aktywować planu pensji.";
+
+          await runtimeLoaderFinish(
+            "❌ Aktywacja nieudana"
+          );
+        } finally {
+          clearActionLoading(button);
+        }
+      }
+    );
+
 
   el("admin-payments-refresh")
   .addEventListener(
@@ -7539,6 +7610,12 @@ function setupAdmin() {
         "🧾 Udziały układają się w równy stos...",
         "🥫 Fundusz liczy puszki po raz ostatni...",
         "🍺 Zarząd ma właśnie bardzo krótkie zebranie..."
+      ]],
+      salaryPlan:["💰 Zapisuję plan pensji...",[
+        "🧾 Sprawdzam, czy wszystkie koperty się zgadzają...",
+        "🍺 Księgowy przysięga, że tym razem dobrze policzył...",
+        "🥫 Ostatnia pensja schowała się między puszkami...",
+        "💸 Zamykam kasę przed wypłatą o trzeciej..."
       ]],
       sessions:["📱 Aktualizuję sesje gracza...",[
         "📱 Szukam telefonu, który jeszcze się nie wylogował...",
