@@ -1260,7 +1260,7 @@ const MAP_POSITIONS = {
                 }
 
                 <div class="muted" style="margin-top:7px">
-                  🔓 Wolna · kliknij, aby zaklepać na 12 h
+                  🔓 Wolna · kliknij, aby zaklepać na 24 h
                 </div>
               </article>
             `).join("")
