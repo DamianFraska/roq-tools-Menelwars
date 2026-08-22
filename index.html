@@ -842,6 +842,35 @@
           <div id="submit-status" class="submit-status"></div>
 
         </form>
+
+        <div style="margin-top:18px;padding-top:16px;border-top:1px solid #d8c7aa">
+          <strong>📋 Import wyników z gry</strong>
+          <p class="muted" style="margin:6px 0 10px">
+            W MenelWars użyj „Kopiuj do Excela”, a następnie wklej tutaj cały skopiowany zestaw.
+            Możesz wkleić do 100 pozycji naraz.
+          </p>
+
+          <textarea
+            id="recipe-batch-text"
+            rows="8"
+            spellcheck="false"
+            placeholder="Nazwa składnika 1&#9;Nazwa składnika 2&#9;Nazwa składnika 3&#9;Program&#9;Wynik
+Obierki po ziemniakach&#9;Turbo drożdże&#9;Woda z kranu&#9;3&#9;4,18"
+            style="width:100%;box-sizing:border-box"
+          ></textarea>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button id="recipe-batch-preview" type="button">
+              🔎 Sprawdź wklejone dane
+            </button>
+            <button id="recipe-batch-submit" class="primary-btn" type="button" hidden>
+              📤 Wyślij do weryfikacji
+            </button>
+          </div>
+
+          <div id="recipe-batch-preview-result" style="margin-top:10px"></div>
+          <div id="recipe-batch-status" class="submit-status"></div>
+        </div>
       </div>
     </div>
   </section>

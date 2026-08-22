@@ -1787,6 +1787,337 @@ const MAP_POSITIONS = {
 
 
   // ============================================================
+  // IMPORT WIELU WYNIKÓW Z „KOPIUJ DO EXCELA” W MENELWARS
+  // ============================================================
+
+  let recipeBatchPreviewRows = [];
+
+  function recipeImportNormalizeLabel(value) {
+    return String(value || "")
+      .trim()
+      .replace(/[„”]/g,'"')
+      .replace(/\s+/g," ")
+      .toLocaleLowerCase("pl-PL");
+  }
+
+  function recipeImportCanonical(value, type) {
+    const raw = String(value || "").trim();
+    const normalized = recipeImportNormalizeLabel(raw);
+
+    const values =
+      type === "base" ? D.bases :
+      type === "yeast" ? D.yeasts :
+      type === "water" ? D.waters : [];
+
+    for (const internal of values) {
+      if (
+        recipeImportNormalizeLabel(internal) === normalized ||
+        recipeImportNormalizeLabel(displayName(internal)) === normalized
+      ) {
+        return internal;
+      }
+    }
+
+    const extra = {
+      water: {
+        "woda z kranu":"Kranówa",
+        "woda kranowa":"Kranówa",
+        "kranowa":"Kranówa"
+      },
+      base: {
+        "cukier klasyczny":"Cukier"
+      },
+      yeast: {}
+    };
+
+    return extra[type] && extra[type][normalized]
+      ? extra[type][normalized]
+      : null;
+  }
+
+  function parseRecipeBatchText(text) {
+    const lines = String(text || "")
+      .split(/\r?\n/)
+      .map(line => line.trimEnd())
+      .filter(line => line.trim());
+
+    const parsed = [];
+
+    lines.forEach((line, index) => {
+      const cols = line.split("\t").map(value => value.trim());
+
+      if (
+        index === 0 &&
+        recipeImportNormalizeLabel(cols[0]).includes("nazwa składnika 1")
+      ) {
+        return;
+      }
+
+      if (cols.length < 5) {
+        parsed.push({
+          line:index + 1,
+          state:"invalid",
+          error:"Nie udało się odczytać 5 kolumn. Wklej dane bezpośrednio z „Kopiuj do Excela”.",
+          raw:line
+        });
+        return;
+      }
+
+      const baza = recipeImportCanonical(cols[0],"base");
+      const drozdze = recipeImportCanonical(cols[1],"yeast");
+      const woda = recipeImportCanonical(cols[2],"water");
+      const program = Number(String(cols[3]).replace(/[^0-9]/g,""));
+      const litry = Number(
+        String(cols[4])
+          .replace(/\s+/g,"")
+          .replace(",",".")
+      );
+
+      const errors = [];
+      if (!baza) errors.push(`nieznana baza: ${cols[0] || "—"}`);
+      if (!drozdze) errors.push(`nieznane drożdże: ${cols[1] || "—"}`);
+      if (!woda) errors.push(`nieznana woda: ${cols[2] || "—"}`);
+      if (!PROGRAMS.includes(program)) errors.push(`nieprawidłowy program: ${cols[3] || "—"}`);
+      if (!Number.isFinite(litry) || litry <= 0 || litry > 50) errors.push(`nieprawidłowy wynik: ${cols[4] || "—"}`);
+
+      if (errors.length) {
+        parsed.push({
+          line:index + 1,
+          state:"invalid",
+          error:errors.join("; "),
+          raw:line
+        });
+        return;
+      }
+
+      parsed.push({
+        line:index + 1,
+        baza,
+        drozdze,
+        woda,
+        program,
+        litry,
+        recipeKey:key(baza,drozdze,woda,program),
+        state:"pending"
+      });
+    });
+
+    // Ta sama receptura z dwoma różnymi wynikami w jednym wklejeniu jest
+    // niejednoznaczna — nie wysyłamy żadnego z nich automatycznie.
+    const groups = new Map();
+    parsed
+      .filter(row => row.state === "pending")
+      .forEach(row => {
+        if (!groups.has(row.recipeKey)) groups.set(row.recipeKey,[]);
+        groups.get(row.recipeKey).push(row);
+      });
+
+    groups.forEach(rows => {
+      const values = [...new Set(rows.map(row => Number(row.litry).toFixed(6)))];
+
+      if (values.length > 1) {
+        rows.forEach(row => {
+          row.state = "invalid";
+          row.error = "Ta sama receptura występuje w tym imporcie z różnymi wynikami.";
+        });
+        return;
+      }
+
+      rows.forEach((row, rowIndex) => {
+        if (rowIndex > 0) {
+          row.state = "batchDuplicate";
+          return;
+        }
+
+        const known = Object.prototype.hasOwnProperty.call(remoteApproved,row.recipeKey)
+          ? Number(remoteApproved[row.recipeKey])
+          : null;
+
+        if (known !== null && Math.abs(known - row.litry) <= 0.000001) {
+          row.state = "known";
+          row.knownLiters = known;
+        } else if (known !== null) {
+          row.state = "correction";
+          row.knownLiters = known;
+        } else {
+          row.state = "new";
+          row.knownLiters = null;
+        }
+      });
+    });
+
+    return parsed;
+  }
+
+  function recipeBatchStateLabel(row) {
+    if (row.state === "new") return "🆕 Nowa receptura";
+    if (row.state === "correction") return `⚠️ Korekta ${fmt(row.knownLiters)} → ${fmt(row.litry)} l`;
+    if (row.state === "known") return "✅ Już znajduje się w bazie";
+    if (row.state === "batchDuplicate") return "↪️ Powtórzenie w tym samym wklejeniu — pominięte";
+    return "❌ " + (row.error || "Nieprawidłowy wiersz");
+  }
+
+  function renderRecipeBatchPreview() {
+    const box = el("recipe-batch-preview-result");
+    const submitButton = el("recipe-batch-submit");
+    if (!box || !submitButton) return;
+
+    const rows = recipeBatchPreviewRows;
+    const sendable = rows.filter(row => row.state === "new" || row.state === "correction");
+    const known = rows.filter(row => row.state === "known").length;
+    const duplicates = rows.filter(row => row.state === "batchDuplicate").length;
+    const invalid = rows.filter(row => row.state === "invalid").length;
+    const corrections = rows.filter(row => row.state === "correction").length;
+    const fresh = rows.filter(row => row.state === "new").length;
+
+    submitButton.hidden = !sendable.length;
+    submitButton.textContent = sendable.length
+      ? `📤 Wyślij ${sendable.length} do weryfikacji`
+      : "📤 Wyślij do weryfikacji";
+
+    if (!rows.length) {
+      box.innerHTML = `<div class="submit-info unknown-recipe">Wklej co najmniej jeden wiersz danych z gry.</div>`;
+      return;
+    }
+
+    box.innerHTML = `
+      <div class="submit-info ${invalid ? "unknown-recipe" : "known-recipe"}">
+        <b>Odczytano: ${rows.length}</b> ·
+        🆕 ${fresh} nowych ·
+        ⚠️ ${corrections} korekt ·
+        ✅ ${known} już znanych ·
+        ↪️ ${duplicates} powtórzeń ·
+        ❌ ${invalid} błędnych
+      </div>
+      <div style="display:grid;gap:6px;margin-top:8px;max-height:360px;overflow:auto">
+        ${rows.map(row => `
+          <div style="border:1px solid #d8c7aa;border-radius:8px;padding:8px;background:#fffdf8">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+              <div>
+                <b>${row.baza ? escapeHtml(displayName(row.baza)) : `Wiersz ${row.line}`}</b>
+                ${row.baza ? `<div class="muted">${escapeHtml(displayName(row.drozdze))} · ${escapeHtml(displayName(row.woda))} · P${row.program}</div>` : ""}
+              </div>
+              ${Number.isFinite(row.litry) ? `<strong>${fmt(row.litry)} l</strong>` : ""}
+            </div>
+            <div class="muted" style="margin-top:4px">${escapeHtml(recipeBatchStateLabel(row))}</div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function previewRecipeBatch() {
+    const status = el("recipe-batch-status");
+    const text = el("recipe-batch-text")?.value || "";
+
+    recipeBatchPreviewRows = parseRecipeBatchText(text).slice(0,100);
+    renderRecipeBatchPreview();
+
+    if (status) {
+      status.textContent = recipeBatchPreviewRows.length
+        ? "Sprawdź podgląd przed wysłaniem."
+        : "Nie znaleziono danych do importu.";
+    }
+  }
+
+  async function submitRecipeBatch() {
+    const status = el("recipe-batch-status");
+    const button = el("recipe-batch-submit");
+    const nick = el("submit-nick")?.value.trim() || "";
+    const items = recipeBatchPreviewRows
+      .filter(row => row.state === "new" || row.state === "correction")
+      .map(row => ({
+        baza:row.baza,
+        drozdze:row.drozdze,
+        woda:row.woda,
+        program:row.program,
+        litry:row.litry
+      }));
+
+    if (!nick) {
+      status.textContent = "Podaj nick w formularzu powyżej.";
+      return;
+    }
+
+    if (!items.length) {
+      status.textContent = "Nie ma nowych wyników ani korekt do wysłania.";
+      return;
+    }
+
+    if (!backendConfigured()) {
+      status.textContent = "Serwer zgłoszeń nie jest jeszcze skonfigurowany.";
+      return;
+    }
+
+    if (!window.confirm(
+      `Wysłać ${items.length} wyników do weryfikacji?\n\n` +
+      "Identyczne wyniki już istniejące w bazie zostały pominięte."
+    )) return;
+
+    localStorage.setItem(NICK_KEY,nick);
+    const nonce = makeRecipeNonce();
+    button.disabled = true;
+    status.textContent = "Wysyłanie paczki wyników...";
+
+    try {
+      await fetch(
+        BACKEND_URL,
+        {
+          method:"POST",
+          mode:"no-cors",
+          headers:{"Content-Type":"text/plain;charset=UTF-8"},
+          body:JSON.stringify({
+            action:"submitRecipeBatch",
+            nonce,
+            nick,
+            items
+          })
+        }
+      );
+
+      let result = null;
+
+      for (let attempt=0; attempt<20; attempt++) {
+        if (attempt > 0) await new Promise(resolve => setTimeout(resolve,350));
+        result = await jsonp("recipeBatchImportResult",{nonce});
+        if (result && !result.pending) break;
+      }
+
+      if (!result || result.pending) {
+        throw new Error("Serwer nie zwrócił wyniku importu.");
+      }
+
+      if (!result.ok) {
+        throw new Error(result.error || "Nie udało się zapisać importu.");
+      }
+
+      status.textContent =
+        `✅ Zapisano ${Number(result.insertedCount)||0} zgłoszeń do weryfikacji. ` +
+        `Pominięto: ${Number(result.skippedKnown)||0} już znanych, ` +
+        `${Number(result.skippedPending)||0} już oczekujących. ` +
+        (Number(result.rejectedCount) ? `Odrzucono ${Number(result.rejectedCount)} błędnych.` : "");
+
+      el("recipe-batch-text").value = "";
+      recipeBatchPreviewRows = [];
+      renderRecipeBatchPreview();
+      fetchApprovedRecipes();
+
+    } catch (err) {
+      status.textContent = err && err.message
+        ? err.message
+        : "Nie udało się wysłać importu.";
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function setupRecipeBatchImport() {
+    el("recipe-batch-preview")?.addEventListener("click",previewRecipeBatch);
+    el("recipe-batch-submit")?.addEventListener("click",submitRecipeBatch);
+  }
+
+
+  // ============================================================
   // AUTOMATYCZNE POBIERANIE ZATWIERDZONYCH RECEPTUR
   // JSONP omija ograniczenia CORS Apps Script.
   // ============================================================
@@ -8355,6 +8686,7 @@ function setupAdmin() {
 
 renderMap();
 setupSubmissionForm();
+setupRecipeBatchImport();
 setupPayments();
 renderAll();
 fetchApprovedRecipes();
