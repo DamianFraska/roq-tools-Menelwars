@@ -2177,6 +2177,12 @@ const MAP_POSITIONS = {
             );
 
             renderAll();
+
+            // Po pobraniu zatwierdzonych recept z backendu
+            // odśwież także komunikat w formularzu „Dodaj”.
+            // Bez tego formularz mógł pozostać ze stanem „nieodkryta”
+            // policzonym jeszcze przed załadowaniem remoteApproved.
+            updateSubmissionInfo();
           }
 
         } finally {
