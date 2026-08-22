@@ -1626,16 +1626,25 @@ const MAP_POSITIONS = {
 
   function currentKnownValue(k) {
 
-    // Formularz „Dodaj receptę” pokazuje wyłącznie wynik
-    // zatwierdzony po stronie serwera. Nie używamy tutaj
-    // starej, wbudowanej bazy D.known, bo mogłaby pokazać
-    // nieaktualną wartość jako „Aktualny znany wynik”.
+    // Jedno wspólne źródło prawdy dla interfejsu receptur:
+    // 1) wynik zatwierdzony na serwerze ma pierwszeństwo,
+    // 2) jeśli serwer nie ma jeszcze tej receptury, używamy
+    //    wbudowanej bazy D.known.
+    // To jest ta sama zasada, której używa allRecipes().
     if (
       Object.prototype
         .hasOwnProperty
         .call(remoteApproved,k)
     ) {
       return Number(remoteApproved[k]);
+    }
+
+    if (
+      Object.prototype
+        .hasOwnProperty
+        .call(D.known,k)
+    ) {
+      return Number(D.known[k]);
     }
 
     return null;
@@ -1929,9 +1938,7 @@ const MAP_POSITIONS = {
           return;
         }
 
-        const known = Object.prototype.hasOwnProperty.call(remoteApproved,row.recipeKey)
-          ? Number(remoteApproved[row.recipeKey])
-          : null;
+        const known = currentKnownValue(row.recipeKey);
 
         if (known !== null && Math.abs(known - row.litry) <= 0.000001) {
           row.state = "known";
@@ -2010,7 +2017,7 @@ const MAP_POSITIONS = {
     const status = el("recipe-batch-status");
     const text = el("recipe-batch-text")?.value || "";
 
-    recipeBatchPreviewRows = parseRecipeBatchText(text).slice(0,100);
+    recipeBatchPreviewRows = parseRecipeBatchText(text).slice(0,1000);
     renderRecipeBatchPreview();
 
     if (status) {
