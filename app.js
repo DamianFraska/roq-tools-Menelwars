@@ -1977,10 +1977,9 @@ const MAP_POSITIONS = {
     const corrections = rows.filter(row => row.state === "correction").length;
     const fresh = rows.filter(row => row.state === "new").length;
 
-    submitButton.hidden = !sendable.length;
-    submitButton.textContent = sendable.length
-      ? `📤 Wyślij ${sendable.length} do weryfikacji`
-      : "📤 Wyślij do weryfikacji";
+    // v20.33: importer działa jednym przyciskiem.
+    // Drugi element zostaje ukryty tylko dla zgodności z istniejącym DOM.
+    submitButton.hidden = true;
 
     if (!rows.length) {
       box.innerHTML = `<div class="submit-info unknown-recipe">Wklej co najmniej jeden wiersz danych z gry.</div>`;
@@ -2013,23 +2012,26 @@ const MAP_POSITIONS = {
     `;
   }
 
-  function previewRecipeBatch() {
+  async function previewRecipeBatch() {
     const status = el("recipe-batch-status");
     const text = el("recipe-batch-text")?.value || "";
 
     recipeBatchPreviewRows = parseRecipeBatchText(text).slice(0,1000);
     renderRecipeBatchPreview();
 
-    if (status) {
-      status.textContent = recipeBatchPreviewRows.length
-        ? "Sprawdź podgląd przed wysłaniem."
-        : "Nie znaleziono danych do importu.";
+    if (!recipeBatchPreviewRows.length) {
+      if (status) status.textContent = "Nie znaleziono danych do importu.";
+      return;
     }
+
+    // Jedno kliknięcie: sprawdzamy dane i od razu wysyłamy
+    // wszystkie nowe receptury oraz korekty.
+    await submitRecipeBatch();
   }
 
-  async function submitRecipeBatch() {
+    async function submitRecipeBatch() {
     const status = el("recipe-batch-status");
-    const button = el("recipe-batch-submit");
+    const button = el("recipe-batch-preview");
     const nick = el("submit-nick")?.value.trim() || "";
     const items = recipeBatchPreviewRows
       .filter(row => row.state === "new" || row.state === "correction")
@@ -2047,7 +2049,22 @@ const MAP_POSITIONS = {
     }
 
     if (!items.length) {
-      status.textContent = "Nie ma nowych wyników ani korekt do wysłania.";
+      const confirmedCount = recipeBatchPreviewRows.filter(
+        row => row.state === "known" || row.state === "batchDuplicate"
+      ).length;
+      const invalidCount = recipeBatchPreviewRows.filter(
+        row => row.state === "invalid"
+      ).length;
+
+      if (confirmedCount) {
+        status.textContent =
+          `✅ Sprawdzono ${confirmedCount} wyników — wszystkie poprawne pozycje są już w bazie.` +
+          (invalidCount ? ` Pominięto ${invalidCount} błędnych.` : "");
+      } else {
+        status.textContent =
+          "Nie znaleziono poprawnych nowych wyników ani korekt do wysłania.";
+      }
+
       return;
     }
 
@@ -2055,11 +2072,6 @@ const MAP_POSITIONS = {
       status.textContent = "Serwer zgłoszeń nie jest jeszcze skonfigurowany.";
       return;
     }
-
-    if (!window.confirm(
-      `Wysłać ${items.length} wyników do weryfikacji?\n\n` +
-      "Identyczne wyniki już istniejące w bazie zostały pominięte."
-    )) return;
 
     localStorage.setItem(NICK_KEY,nick);
     const nonce = makeRecipeNonce();
@@ -2120,7 +2132,6 @@ const MAP_POSITIONS = {
 
   function setupRecipeBatchImport() {
     el("recipe-batch-preview")?.addEventListener("click",previewRecipeBatch);
-    el("recipe-batch-submit")?.addEventListener("click",submitRecipeBatch);
   }
 
 
